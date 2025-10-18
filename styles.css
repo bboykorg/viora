@@ -677,4 +677,211 @@ display:block;
 a{
     text-decoration: none;
 }
+/* --- Общие сбросы --- */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
 
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #0a0a0f;
+    color: #fff;
+    overflow: hidden;
+    width: 100vw;
+    height: 100vh;
+}
+
+/* --- Editor Page --- */
+.editor-page {
+    display: flex;
+    gap: 20px;
+    width: 100vw;
+    height: 100vh;
+    padding: 20px;
+    align-items: stretch;
+    box-sizing: border-box;
+    font-family: 'Inter', system-ui, sans-serif;
+}
+
+/* --- Canvas --- */
+.canvas-area {
+    flex: 1 1 auto;
+    border-radius: 18px;
+    background: rgba(10, 10, 15, 0.45);
+    backdrop-filter: blur(8px);
+    position: relative;
+    overflow: auto;
+    padding: 40px;
+    min-height: 80vh;
+}
+
+/* --- Side Panel --- */
+.side-panel {
+    width: 420px;
+    max-width: 40%;
+    background: rgba(8, 8, 10, 0.6);
+    border-radius: 16px;
+    padding: 18px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+}
+
+/* --- Nodes --- */
+.node {
+    width: 260px;
+    min-height: 56px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    padding: 12px;
+    box-sizing: border-box;
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    cursor: default;
+    transition: transform 0.2s ease;
+}
+
+.node:hover {
+    transform: scale(1.02);
+}
+
+/* --- Node Text --- */
+.node .title[contenteditable] {
+    cursor: text;
+    outline: none;
+    min-height: 20px;
+}
+
+/* --- Node Buttons --- */
+.add-btn,
+.remove-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    user-select: none;
+    transition: all 0.2s ease;
+}
+
+.add-btn {
+    width: 28px;
+    height: 28px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    cursor: pointer;
+}
+
+.add-btn:hover {
+    background: rgba(0, 217, 255, 0.2);
+    border-color: rgba(0, 217, 255, 0.4);
+}
+
+.remove-btn {
+    width: 26px;
+    height: 26px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    cursor: pointer;
+}
+
+.remove-btn:hover {
+    background: rgba(255, 68, 68, 0.2);
+    border-color: rgba(239, 68, 68, 0.4);
+}
+
+/* --- Disabled Add Button --- */
+.add-btn[disabled] {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+/* --- Connectors --- */
+.connector-svg {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+
+/* --- Text Styles --- */
+.small-muted {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 13px;
+}
+
+.button-primary {
+    background: #00d9ff;
+    color: #0a0a0f;
+    padding: 10px 12px;
+    border-radius: 10px;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s ease;
+}
+
+.button-primary:hover {
+    box-shadow: 0 0 15px rgba(0, 217, 255, 0.5);
+}
+
+.button-ghost {
+    background: transparent;
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 10px 12px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.button-ghost:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+/* --- Back Link --- */
+.back-link {
+    position: fixed;
+    top: 14px;
+    left: 14px;
+    z-index: 9999;
+    background: rgba(255, 255, 255, 0.06);
+    color: #ffffff;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    font-weight: 600;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.5);
+    transition: all 0.2s ease;
+}
+
+.back-link:hover {
+    background: rgba(0, 217, 255, 0.15);
+    border-color: rgba(0, 217, 255, 0.4);
+}
+
+/* --- Responsive --- */
+@media (max-width: 768px) {
+    .editor-page {
+        flex-direction: column;
+    }
+    .side-panel {
+        width: 100%;
+        max-width: 100%;
+    }
+    .canvas-area {
+        padding: 20px;
+        min-height: 60vh;
+    }
+    .node {
+        width: 90vw;
+        max-width: 320px;
+    }
+}
