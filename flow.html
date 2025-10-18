@@ -5,136 +5,85 @@
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>Поток Кадров — Viora</title>
 <link rel="stylesheet" href="styles.css">
-<style>
-  :root{--bg:rgba(10,10,15,0.45);--panel:rgba(8,8,10,0.6)}
-  .editor-page { width:100vw; height:100vh; display:flex; gap:20px; padding:20px; align-items:stretch; box-sizing:border-box; font-family:Inter, system-ui, sans-serif; }
-  .canvas-area { flex:1 1 auto; border-radius:18px; background: var(--bg); backdrop-filter: blur(8px); position:relative; overflow:auto; padding:40px; min-height:80vh;}
-  .side-panel { width:420px; max-width:40%; background: var(--panel); border-radius:16px; padding:18px; box-shadow:0 8px 30px rgba(0,0,0,0.6); color:#fff; }
-  .node { width:260px; min-height:56px; background: rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:12px; box-sizing:border-box; position:absolute; display:flex; flex-direction:column; gap:8px; cursor:move; }
-  .add-btn { width:28px; height:28px; border-radius:8px; display:inline-flex; align-items:center; justify-content:center; background: rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); cursor:pointer; user-select:none; }
-  .add-btn[disabled] { opacity:0.45; cursor:not-allowed; transform:none; }
-  .remove-btn { width:26px; height:26px; border-radius:8px; display:inline-flex; align-items:center; justify-content:center; background: rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.06); cursor:pointer; }
-  .connector-svg { position:absolute; inset:0; pointer-events:none; }
-  .small-muted { color: rgba(255,255,255,0.6); font-size:13px; }
-  .button-primary { background:var(--color-primary); color:#0a0a0f; padding:10px 12px; border-radius:10px; cursor:pointer; border:none; }
-  .button-ghost { background:transparent; color: #fff; border:1px solid rgba(255,255,255,0.08); padding:10px 12px; border-radius:10px; cursor:pointer; }
-  .back-link {
-    position: fixed;
-    top: 14px;
-    left: 14px;
-    z-index: 9999;
-    background: rgba(255,255,255,0.06);
-    color: #ffffff;
-    text-decoration: none;
-    display: inline-flex;
-    align-items:center;
-    gap:8px;
-    padding:8px 10px;
-    border-radius:10px;
-    border: 1px solid rgba(255,255,255,0.08);
-    font-weight: 600;
-    box-shadow: 0 6px 20px rgba(0,0,0,0.5);
-  }
-  .node {
-    cursor: default;
-}
-.node .title[contenteditable] {
-    cursor: text;
-}
-.node .remove-btn,
-.node .add-btn {
-    cursor: pointer;
-}
-</style>
 </head>
 <body>
-  <a class="back-link" href="/viora">← Назад</a>
+<a class="back-link" href="/viora">← Назад</a>
 
-  <div class="editor-page">
-    <div class="canvas-area" id="canvasArea">
-      <svg class="connector-svg" id="connectors" width="100%" height="100%"></svg>
+<div class="editor-page">
+  <div class="canvas-area" id="canvasArea">
+    <svg class="connector-svg" id="connectors" width="100%" height="100%"></svg>
 
-      <div class="node" id="node-root" style="left:calc(50% - 130px); top:80px;" data-id="root">
-        <div contenteditable class="title" data-placeholder="Опишите главный кадр...">Опишите главный кадр</div>
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <div class="small-muted">Главный кадр</div>
-          <div class="add-btn" title="Добавить исход">+</div>
-        </div>
-      </div>
-
-    </div>
-
-    <div class="side-panel">
-      <h3>ИИ-режиссёр (Поток кадров)</h3>
-      <div class="small-muted">У каждого кадра допускается только один следующий кадр (один исход). Чтобы заменить исход — сначала удалите существующий у крестика на нём.</div>
-
-      <div style="height:12px"></div>
-      <div style="font-weight:600">Главный кадр</div>
-      <div id="ai-title" class="small-muted"></div>
-
-      <div style="height:10px"></div>
-      <div style="font-weight:600">Исход (единственный)</div>
-      <div id="ai-outcome" class="small-muted"></div>
-
-      <div style="height:12px"></div>
-      <div class="ai-box" id="ai-output">Нажмите «Предложить кадр», чтобы ИИ сгенерировал следующий кадр на основе заданного.</div>
-
-      <div style="height:12px"></div>
-      <div style="display:flex;gap:10px">
-        <button class="button-primary" id="ai-run">Предложить кадр</button>
-        <button class="button-ghost" id="ai-clear">Очистить все исходы</button>
+    <!-- Главный кадр -->
+    <div class="node" id="node-root" style="left: calc(50% - 130px); top: 80px;" data-id="root">
+      <div contenteditable class="title" data-placeholder="Опишите главный кадр...">Опишите главный кадр</div>
+      <div style="display:flex; justify-content:space-between; align-items:center">
+        <div class="small-muted">Главный кадр</div>
+        <div class="add-btn" title="Добавить исход">+</div>
       </div>
     </div>
   </div>
 
+  <div class="side-panel">
+    <h3>ИИ-режиссёр (Поток кадров)</h3>
+    <div class="small-muted">У каждого кадра допускается только один исход. Чтобы заменить — удалите существующий.</div>
+
+    <div style="height:12px"></div>
+    <div style="font-weight:600">Главный кадр</div>
+    <div id="ai-title" class="small-muted"></div>
+
+    <div style="height:10px"></div>
+    <div style="font-weight:600">Исход</div>
+    <div id="ai-outcome" class="small-muted"></div>
+
+    <div style="height:12px"></div>
+    <div class="ai-box" id="ai-output">Нажмите «Предложить кадр», чтобы ИИ сгенерировал следующий кадр.</div>
+
+    <div style="height:12px"></div>
+    <div style="display:flex; gap:10px">
+      <button class="button-primary" id="ai-run">Предложить кадр</button>
+      <button class="button-ghost" id="ai-clear">Очистить все исходы</button>
+    </div>
+  </div>
+</div>
+
 <script>
-// --- JS для flow.html с fetch к Flask ---
+// --- JS для flow.html ---
 const canvas = document.getElementById('canvasArea');
 const connectorsSvg = document.getElementById('connectors');
-const edges = []; // {from, to}
+const edges = [];
 
 function byId(id){ return document.querySelector(`[data-id="${id}"]`); }
 
-// делаем элемент перетаскиваемым
-function makeDraggable(elem) {
+function makeDraggable(elem){
   let dragging=false, dx=0, dy=0;
-  elem.addEventListener('mousedown', (e) => {
-    if (e.target.closest('.add-btn') || e.target.closest('.remove-btn')) return;
-    dragging = true;
-    const rect = elem.getBoundingClientRect();
-    dx = e.clientX - rect.left;
-    dy = e.clientY - rect.top;
-    elem.style.zIndex = 1000;
+  elem.addEventListener('mousedown', e=>{
+    if(e.target.closest('.add-btn')||e.target.closest('.remove-btn')) return;
+    dragging=true;
+    const rect=elem.getBoundingClientRect();
+    dx=e.clientX-rect.left;
+    dy=e.clientY-rect.top;
+    elem.style.zIndex=1000;
   });
-  document.addEventListener('mousemove', (e) => {
-    if (!dragging) return;
-    const rect = canvas.getBoundingClientRect();
-    let nx = e.clientX - rect.left - dx;
-    let ny = e.clientY - rect.top - dy;
-    if (nx < 10) nx = 10;
-    if (ny < 10) ny = 10;
-    elem.style.left = nx + 'px';
-    elem.style.top = ny + 'px';
+  document.addEventListener('mousemove', e=>{
+    if(!dragging) return;
+    const rect=canvas.getBoundingClientRect();
+    elem.style.left=(e.clientX-rect.left-dx)+'px';
+    elem.style.top=(e.clientY-rect.top-dy)+'px';
     renderConnections();
   });
-  document.addEventListener('mouseup', () => {
-    if (dragging) {
-      dragging = false;
-      elem.style.zIndex = '';
-    }
-  });
+  document.addEventListener('mouseup', ()=>{ if(dragging){dragging=false; elem.style.zIndex='';} });
 }
 
-function createNodeAt(x,y,text,parentId) {
-  const id = 'node-' + Date.now() + '-' + Math.floor(Math.random()*1000);
-  const div = document.createElement('div');
-  div.className = 'node';
-  div.style.left = x + 'px';
-  div.style.top = y + 'px';
-  div.dataset.id = id;
-  div.innerHTML = `
+function createNodeAt(x,y,text,parentId){
+  const id='node-'+Date.now()+'-'+Math.floor(Math.random()*1000);
+  const div=document.createElement('div');
+  div.className='node';
+  div.style.left=x+'px';
+  div.style.top=y+'px';
+  div.dataset.id=id;
+  div.innerHTML=`
     <div contenteditable class="title" data-placeholder="Опишите кадр...">${text}</div>
-    <div style="display:flex;justify-content:space-between;align-items:center">
+    <div style="display:flex; justify-content:space-between; align-items:center">
       <div class="small-muted">Кадр</div>
       <div style="display:flex;gap:8px;align-items:center">
         <div class="add-btn" title="Добавить исход">+</div>
@@ -145,50 +94,24 @@ function createNodeAt(x,y,text,parentId) {
   canvas.appendChild(div);
   makeDraggable(div);
   setupNodeButtons(div);
-  if (parentId) {
-    edges.push({from: parentId,to:id});
-    const parent = byId(parentId);
-    if (parent) {
-      parent.dataset.childId = id;
-      const btn = parent.querySelector('.add-btn');
-      if (btn) btn.setAttribute('disabled','');
-    }
-  }
+  if(parentId){ edges.push({from: parentId, to: id}); const parent=byId(parentId); if(parent){parent.dataset.childId=id; parent.querySelector('.add-btn')?.setAttribute('disabled','');} }
   updateAIPreview();
   renderConnections();
   return id;
 }
 
-function removeNode(nodeId) {
-  const node = byId(nodeId);
-  if (!node) return;
-  const parentEdgeIndex = edges.findIndex(e=>e.to===nodeId);
-  const parentId = parentEdgeIndex!==-1?edges[parentEdgeIndex].from:null;
-  const childEdges = [];
-  for (let i=0;i<edges.length;i++){if(edges[i].from===nodeId)childEdges.push({index:i,to:edges[i].to});}
-
-  if(parentId && childEdges.length>0){
-    const firstChildId = childEdges[0].to;
-    edges[parentEdgeIndex].to = firstChildId;
-    const parent = byId(parentId);
-    if(parent){parent.dataset.childId = firstChildId; const pbtn = parent.querySelector('.add-btn'); if(pbtn)pbtn.setAttribute('disabled','');}
-    for(let i=childEdges.length-1;i>=0;i--){
-      const ce = childEdges[i];
-      if(ce.to!==firstChildId) edges.splice(ce.index,1);
-      else edges.splice(ce.index,1);
-    }
-  } else {
-    if(parentEdgeIndex!==-1) edges.splice(parentEdgeIndex,1);
-    for(let i=edges.length-1;i>=0;i--){if(edges[i].from===nodeId) edges.splice(i,1);}
-    if(parentId){const parent=byId(parentId); if(parent){delete parent.dataset.childId; const btn=parent.querySelector('.add-btn'); if(btn) btn.removeAttribute('disabled');}}
-  }
+function removeNode(nodeId){
+  const node=byId(nodeId);
+  if(!node) return;
+  for(let i=edges.length-1;i>=0;i--){if(edges[i].from===nodeId||edges[i].to===nodeId) edges.splice(i,1);}
+  if(node.dataset.childId){ delete node.dataset.childId; }
   node.remove();
   renderConnections();
   updateAIPreview();
 }
 
 function renderConnections(){
-  while(connectorsSvg.firstChild) connectorsSvg.removeChild(connectorsSvg.firstChild);
+  connectorsSvg.innerHTML='';
   edges.forEach(e=>{
     const a=byId(e.from), b=byId(e.to);
     if(!a||!b) return;
@@ -206,24 +129,24 @@ function renderConnections(){
   });
 }
 
-function setupNodeButtons(nodeElem){
-  const addBtn=nodeElem.querySelector('.add-btn');
-  const removeBtn=nodeElem.querySelector('.remove-btn');
-  const titleEl=nodeElem.querySelector('.title');
-  if(nodeElem.dataset.childId) addBtn&&addBtn.setAttribute('disabled',''); else addBtn&&addBtn.removeAttribute('disabled');
+function setupNodeButtons(node){
+  const addBtn=node.querySelector('.add-btn');
+  const removeBtn=node.querySelector('.remove-btn');
+  const title=node.querySelector('.title');
 
-  if(addBtn){addBtn.addEventListener('click',(e)=>{
+  addBtn?.addEventListener('click', e=>{
     e.stopPropagation();
-    if(nodeElem.dataset.childId){addBtn.classList.add('blink'); setTimeout(()=>addBtn.classList.remove('blink'),350); return;}
-    const rect=nodeElem.getBoundingClientRect();
+    const rect=node.getBoundingClientRect();
     const cr=canvas.getBoundingClientRect();
-    const x=rect.left-cr.left+rect.width+40, y=rect.top-cr.top;
-    createNodeAt(x,y,'Следующий кадр...',nodeElem.dataset.id);
-  });}
+    createNodeAt(rect.left-cr.left+rect.width+40, rect.top-cr.top, 'Следующий кадр...', node.dataset.id);
+  });
 
-  if(removeBtn){removeBtn.addEventListener('click',(e)=>{e.stopPropagation(); removeNode(nodeElem.dataset.id);});}
+  removeBtn?.addEventListener('click', e=>{
+    e.stopPropagation();
+    removeNode(node.dataset.id);
+  });
 
-  titleEl&&titleEl.addEventListener('input', updateAIPreview);
+  title?.addEventListener('input', updateAIPreview);
 }
 
 function collectTreeForAI(){
@@ -243,19 +166,17 @@ function collectTreeForAI(){
 
 function updateAIPreview(){
   const tree=collectTreeForAI();
-  const title=tree.length?tree[0].text:'';
-  const outcome=tree.length>1?tree[1].text:'';
-  document.getElementById('ai-title').innerText=title||'—';
-  document.getElementById('ai-outcome').innerText=outcome||'—';
+  document.getElementById('ai-title').innerText=tree[0]?.text||'—';
+  document.getElementById('ai-outcome').innerText=tree[1]?.text||'—';
 }
 
 document.getElementById('ai-run').addEventListener('click', async ()=>{
   const tree=collectTreeForAI();
-  const title=tree.length?tree[0].text:'';
-  const outcome=tree.length>1?tree[1].text:'';
+  const title=tree[0]?.text||'';
+  const outcome=tree[1]?.text||'';
   const outBox=document.getElementById('ai-output');
   if(!title){outBox.innerText='Опишите главный кадр.'; return;}
-  if(!outcome){outBox.innerText='Добавьте хотя бы один исход (нажмите + у нужного кадра).'; return;}
+  if(!outcome){outBox.innerText='Добавьте хотя бы один исход.'; return;}
   outBox.innerText='Обрабатываем...';
   try{
     const resp=await fetch('main.py/runAi',{
@@ -268,21 +189,19 @@ document.getElementById('ai-run').addEventListener('click', async ()=>{
   }catch(err){console.error(err); outBox.innerText='Ошибка при запросе к AI.';}
 });
 
-document.getElementById('ai-clear').addEventListener('click',()=>{
+document.getElementById('ai-clear').addEventListener('click', ()=>{
   const all=Array.from(document.querySelectorAll('.node')).map(n=>n.dataset.id);
-  for(const id of all){if(id!=='root') removeNode(id);}
+  for(const id of all){ if(id!=='root') removeNode(id); }
+  const root=byId('root'); if(root){delete root.dataset.childId; root.querySelector('.add-btn')?.removeAttribute('disabled');}
   edges.length=0;
-  const root=byId('root'); if(root){delete root.dataset.childId; const btn=root.querySelector('.add-btn'); if(btn) btn.removeAttribute('disabled');}
   renderConnections();
   updateAIPreview();
   document.getElementById('ai-output').innerText='Все исходы удалены.';
 });
 
-document.querySelectorAll('.node').forEach(n=>{makeDraggable(n); setupNodeButtons(n);});
-
-window.addEventListener('resize',renderConnections);
-canvas.addEventListener('scroll',renderConnections);
-
+document.querySelectorAll('.node').forEach(n=>{ makeDraggable(n); setupNodeButtons(n); });
+window.addEventListener('resize', renderConnections);
+canvas.addEventListener('scroll', renderConnections);
 updateAIPreview();
 renderConnections();
 </script>
