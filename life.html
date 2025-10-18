@@ -327,6 +327,65 @@ document.getElementById('ai-reset').addEventListener('click', () => {
 window.addEventListener('resize', renderConnections);
 canvas.addEventListener('scroll', renderConnections);
 updateAIPreview();
+
+function removeNode(nodeId) {
+  const node = document.querySelector(`[data-id="${nodeId}"]`);
+  if (!node) return;
+
+  // Найти родительское ребро (если есть)
+  const parentEdgeIndex = edges.findIndex(e => e.to === nodeId);
+  const parentId = parentEdgeIndex !== -1 ? edges[parentEdgeIndex].from : null;
+
+  // Соберём все дочерние ребра node -> child*
+  const childEdges = [];
+  for (let i = 0; i < edges.length; i++) {
+    if (edges[i].from === nodeId) childEdges.push({index: i, to: edges[i].to});
+  }
+
+  if (parentId) {
+    // Пере-привяжем всех детей к родителю: создадим edges parent->child
+    // (добавим новые ребра) и удалим старые node->child
+    childEdges.forEach(ce => {
+      // Добавляем новое ребро parent -> child (если такого ещё нет)
+      const exists = edges.some(e => e.from === parentId && e.to === ce.to);
+      if (!exists) edges.push({from: parentId, to: ce.to});
+      // удалим старое ребро node->child (по индексу позже)
+    });
+
+    // Так как мы добавляли ребра в конец edges, теперь удалим старые node->child по индексам:
+    // проходим в обратном порядке, чтобы индексы были валидны
+    for (let i = childEdges.length - 1; i >= 0; i--) {
+      edges.splice(childEdges[i].index, 1);
+    }
+
+    // Удалим ребро parent->node (т.к. node будет удалён)
+    if (parentEdgeIndex !== -1) edges.splice(parentEdgeIndex, 1);
+
+    // Обновим dataset у родителя (если вы храните какие-то флаги)
+    const parent = document.querySelector(`[data-id="${parentId}"]`);
+    if (parent) {
+      // В life узлы могут иметь много детей, нет строгого childId,
+      // поэтому дополнительной метки не обязательно. Если у вас есть UI-флаги — обновите их здесь.
+      const pbtn = parent.querySelector('.add-btn');
+      if (pbtn) pbtn.removeAttribute('disabled');
+    }
+  } else {
+    // Если родителя нет — просто превратим детей в верхнего уровня:
+    // удаляем ребра node->child
+    for (let i = edges.length - 1; i >= 0; i--) {
+      if (edges[i].from === nodeId) edges.splice(i, 1);
+    }
+    // также удалим родительское ребро к node, если вдруг было
+    if (parentEdgeIndex !== -1) edges.splice(parentEdgeIndex, 1);
+  }
+
+  // Удалим само DOM-узел
+  node.remove();
+
+  // Обновим визуальные связи и превью ИИ
+  renderConnections();
+  updateAIPreview();
+}
 </script>
 </body>
 </html>
