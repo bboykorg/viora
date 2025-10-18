@@ -679,31 +679,10 @@ function setWallpaperState(isEnabled) {
     }
 }
 
-function initializeWallpaperToggle() {
-    const hasVisited = localStorage.getItem('hasVisited');
-    if (hasVisited === null) {
-        localStorage.setItem('hasVisited', 'true');
-        localStorage.setItem('wallpaperEnabled', 'true');
-        isLiveWallpaperEnabled = true;
-        // NOTE: checkbox style in CSS uses checked=false as ON visually; set accordingly
-        wallpaperToggle.checked = false;
-        animateBackground();
-        animateLogo();
-    } else {
-        const savedState = localStorage.getItem('wallpaperEnabled');
-        isLiveWallpaperEnabled = savedState !== null ? savedState === 'true' : true;
-        isLogoAnimationFinished = true;
-        document.getElementById('logo-screen').classList.remove('active');
-        document.getElementById('main-screen').classList.add('active');
-        document.getElementById('profile-avatar').style.display = 'flex';
-        wallpaperToggle.checked = !isLiveWallpaperEnabled;
-        setWallpaperState(isLiveWallpaperEnabled);
-    }
-
-    wallpaperToggle.addEventListener('change', (e) => {
-        setWallpaperState(!e.target.checked);
-    });
-}
+isLiveWallpaperEnabled = true;
+wallpaperToggle.checked = false; // Включаем живые обои по умолчанию
+animateBackground();
+animateLogo();
 
 // 8. Модалки и регистрация
 const REG_MODAL = document.getElementById('registration-modal');
@@ -853,6 +832,7 @@ document.getElementById('viora-logo').addEventListener('click', () => {
 </body>
 
 </html>
+
 
 
 
