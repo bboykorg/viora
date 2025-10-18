@@ -81,20 +81,40 @@
   pointer-events:none;
 }
 .small-muted { color: rgba(255,255,255,0.5); font-size:13px; }
+
+/* кнопка назад вынесена и зафиксирована в верхний левый угол (белая) */
 .back-link {
-  color: #ffffff; /* Белая кнопка Назад */
-  text-decoration:none;
-  display:inline-block;
-  margin-bottom:12px;
-  font-weight: 500;
+  position: fixed;
+  top: 14px;
+  left: 14px;
+  z-index: 9999;
+  background: rgba(255,255,255,0.06);
+  color: #ffffff;
+  text-decoration: none;
+  display: inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:8px 10px;
+  border-radius:10px;
+  border: 1px solid rgba(255,255,255,0.08);
+  font-weight: 600;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.5);
 }
+
 .ai-box { background: rgba(255,255,255,0.02); padding:12px; border-radius:10px; min-height:120px; overflow:auto; }
 .action-row { display:flex; gap:10px; margin-top:12px; }
 .button-primary { background:var(--color-primary); color:#0a0a0f; padding:10px 12px; border-radius:10px; cursor:pointer; border:none; }
 .button-ghost { background:transparent; color: #fff; border:1px solid rgba(255,255,255,0.08); padding:10px 12px; border-radius:10px; cursor:pointer; }
+.title { outline: none; min-height:20px; color:#fff; font-weight:600; }
+/* placeholder */
+.title[contenteditable]:empty:before { content: attr(data-placeholder); color: rgba(255,255,255,0.35); display:block; }
+.remove-btn { width:26px; height:26px; border-radius:8px; display:inline-flex; align-items:center; justify-content:center; background: rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.06); cursor:pointer; }
 </style>
 </head>
 <body>
+  <!-- фиксированная кнопка Назад -->
+  <a class="back-link" href="/viora">← Назад</a>
+
   <div class="editor-page">
     <div class="canvas-area" id="canvasArea">
       <svg class="connector-svg" id="connectors" width="100%" height="100%"></svg>
@@ -111,7 +131,7 @@
     </div>
 
     <div class="side-panel">
-      <a class="back-link" href="/viora">← Назад</a>
+      <!-- Внутренняя кнопка "Назад" удалена; она фиксирована наверху страницы -->
       <h3>ИИ-помощник</h3>
       <div class="small-muted">Он читает заголовок (проблему) и все исходы, а затем предлагает наиболее комфортный вариант.</div>
 
@@ -237,6 +257,23 @@ function setupNodeButtons(nodeElem) {
     document.querySelector(`[data-id="${newId}"] .title`)?.focus();
   });
   title.addEventListener('input', updateAIPreview);
+
+  // Удаление узла (если есть кнопка remove)
+  const removeBtn = nodeElem.querySelector('.remove-btn');
+  if (removeBtn) {
+    removeBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const id = nodeElem.dataset.id;
+      // удалить все связанные edges и ноду
+      // удалить edge где to == id
+      for (let i = edges.length - 1; i >= 0; i--) {
+        if (edges[i].to === id || edges[i].from === id) edges.splice(i,1);
+      }
+      nodeElem.remove();
+      renderConnections();
+      updateAIPreview();
+    });
+  }
 }
 
 document.querySelectorAll('.node').forEach(n => {
