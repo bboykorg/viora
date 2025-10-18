@@ -36,9 +36,16 @@
     font-weight: 600;
     box-shadow: 0 6px 20px rgba(0,0,0,0.5);
   }
-  .title { outline: none; min-height:20px; color:#fff; font-weight:600; }
-  /* placeholder */
-  .title[contenteditable]:empty:before { content: attr(data-placeholder); color: rgba(255,255,255,0.35); display:block; }
+  .node {
+    cursor: default;
+}
+.node .title[contenteditable] {
+    cursor: text;
+}
+.node .remove-btn,
+.node .add-btn {
+    cursor: pointer;
+}
 </style>
 </head>
 <body>
@@ -293,3 +300,4 @@ renderConnections();
 </script>
 </body>
 </html>
+
