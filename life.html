@@ -6,87 +6,32 @@
 <title>Путь Жизни — Viora</title>
 <link rel="stylesheet" href="styles.css">
 <style>
-/* Локальные стили для редактора (Путь Жизни) */
-.editor-page {
-  width: 100vw;
-  height: 100vh;
-  display:flex;
-  gap: 20px;
-  padding: 20px;
-  align-items: stretch;
-  box-sizing: border-box;
-}
-.canvas-area {
-  flex: 1 1 auto;
-  border-radius: 18px;
-  background: rgba(10,10,15,0.45);
-  backdrop-filter: blur(8px);
-  position: relative;
-  overflow: auto;
-  padding: 40px;
-  min-height: 80vh;
-}
-.side-panel {
-  width: 420px;
-  max-width: 40%;
-  background: rgba(8,8,10,0.6);
-  border-radius: 16px;
-  padding: 18px;
-  box-shadow: 0 8px 30px rgba(0,0,0,0.6);
-  color: #fff;
-}
-.node {
-  width: 220px;
-  min-height: 56px;
-  background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 14px;
-  padding: 12px;
-  box-sizing: border-box;
-  position: absolute;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  cursor: move;
-}
-.node .title {
-  font-weight: 600;
-  font-size: 14px;
-  color: #fff;
-  outline: none;
-  min-height: 20px;
-}
-.node .controls {
-  display:flex;
-  gap:8px;
-  justify-content:flex-end;
-  align-items:center;
-}
-.add-btn {
-  width:28px;
-  height:28px;
-  border-radius:8px;
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.06);
-  cursor:pointer;
-  transition: transform .12s;
-}
-.add-btn:hover { transform: scale(1.05); }
-.connector-svg {
-  position:absolute;
-  inset:0;
-  pointer-events:none;
-}
-.small-muted { color: rgba(255,255,255,0.5); font-size:13px; }
+/* Локальные стили для Путь Жизни */
+:root{--bg:rgba(10,10,15,0.45);--panel:rgba(8,8,10,0.6);--primary:#ffd166}
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter, system-ui, sans-serif;background:#0b0b0f;color:#fff}
+.editor-page { width:100vw; height:100vh; display:flex; gap:20px; padding:20px; align-items:stretch; }
+.canvas-area { flex:1 1 auto; border-radius:18px; background: var(--bg); backdrop-filter: blur(8px); position:relative; overflow:auto; padding:40px; min-height:80vh; }
+.side-panel { width:420px; max-width:40%; background: var(--panel); border-radius:16px; padding:18px; box-shadow:0 8px 30px rgba(0,0,0,0.6); color:#fff; }
+.node { width:220px; min-height:56px; background: rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:12px; position:absolute; display:flex; flex-direction:column; gap:8px; cursor:move; }
+.node .title { font-weight:600; font-size:14px; color:#fff; outline:none; min-height:20px; }
+.controls { display:flex; gap:8px; justify-content:flex-end; align-items:center; }
+.add-btn, .remove-btn { width:28px; height:28px; border-radius:8px; display:inline-flex; align-items:center; justify-content:center; cursor:pointer; user-select:none; border:1px solid rgba(255,255,255,0.06); background: rgba(255,255,255,0.04); }
+.remove-btn { background: rgba(255,255,255,0.02); }
+.add-btn[disabled] { opacity:0.45; cursor:not-allowed; }
+.connector-svg { position:absolute; inset:0; pointer-events:none; }
+.small-muted { color: rgba(255,255,255,0.6); font-size:13px; }
+.ai-box { background: rgba(255,255,255,0.02); padding:12px; border-radius:10px; min-height:120px; overflow:auto; color:#fff; }
+.action-row { display:flex; gap:10px; margin-top:12px; }
+.button-primary { background:var(--primary); color:#0a0a0f; padding:10px 12px; border-radius:10px; cursor:pointer; border:none; font-weight:600; }
+.button-ghost { background:transparent; color:#fff; border:1px solid rgba(255,255,255,0.08); padding:10px 12px; border-radius:10px; cursor:pointer; }
+.title[contenteditable]:empty:before { content: attr(data-placeholder); color: rgba(255,255,255,0.35); display:block; }
 
-/* кнопка назад вынесена и зафиксирована в верхний левый угол (белая) */
+/* фиксированная белая кнопка назад */
 .back-link {
   position: fixed;
-  top: 14px;
-  left: 14px;
+  top: 12px;
+  left: 12px;
   z-index: 9999;
   background: rgba(255,255,255,0.06);
   color: #ffffff;
@@ -100,28 +45,18 @@
   font-weight: 600;
   box-shadow: 0 6px 20px rgba(0,0,0,0.5);
 }
-
-.ai-box { background: rgba(255,255,255,0.02); padding:12px; border-radius:10px; min-height:120px; overflow:auto; }
-.action-row { display:flex; gap:10px; margin-top:12px; }
-.button-primary { background:var(--color-primary); color:#0a0a0f; padding:10px 12px; border-radius:10px; cursor:pointer; border:none; }
-.button-ghost { background:transparent; color: #fff; border:1px solid rgba(255,255,255,0.08); padding:10px 12px; border-radius:10px; cursor:pointer; }
-.title { outline: none; min-height:20px; color:#fff; font-weight:600; }
-/* placeholder */
-.title[contenteditable]:empty:before { content: attr(data-placeholder); color: rgba(255,255,255,0.35); display:block; }
-.remove-btn { width:26px; height:26px; border-radius:8px; display:inline-flex; align-items:center; justify-content:center; background: rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.06); cursor:pointer; }
 </style>
 </head>
 <body>
-  <!-- фиксированная кнопка Назад -->
   <a class="back-link" href="/viora">← Назад</a>
 
   <div class="editor-page">
     <div class="canvas-area" id="canvasArea">
       <svg class="connector-svg" id="connectors" width="100%" height="100%"></svg>
 
-      <!-- initial main node -->
-      <div class="node" id="node-root" style="left: calc(50% - 110px); top: 80px;" data-id="root">
-        <div contenteditable class="title" data-placeholder="Опишите проблему...">Нажмите и впишите проблему</div>
+      <!-- root node -->
+      <div class="node" data-id="root" id="node-root" style="left: calc(50% - 110px); top: 80px;">
+        <div class="title" contenteditable data-placeholder="Опишите проблему...">Нажмите и впишите проблему</div>
         <div class="controls">
           <div class="small-muted">Главный пункт</div>
           <div class="add-btn" title="Добавить исход" data-add>+</div>
@@ -131,9 +66,8 @@
     </div>
 
     <div class="side-panel">
-      <!-- Внутренняя кнопка "Назад" удалена; она фиксирована наверху страницы -->
       <h3>ИИ-помощник</h3>
-      <div class="small-muted">Он читает заголовок (проблему) и все исходы, а затем предлагает наиболее комфортный вариант.</div>
+      <div class="small-muted">Он читает заголовок (проблему) и все исходы, затем предлагает наиболее комфортный вариант.</div>
 
       <div style="height:14px"></div>
 
@@ -158,51 +92,65 @@
   </div>
 
 <script>
-// --- JavaScript остаётся без изменений (тот же функционал узлов и ИИ)
-let nodeCounter = 1;
+/* --- Логика редактора для life.html --- */
+
 const canvas = document.getElementById('canvasArea');
 const connectorsSvg = document.getElementById('connectors');
-const edges = [];
+let nodeCounter = 1;
+const edges = []; // {from, to}
 
-function createNode(x = 100, y = 200, text = 'Новый исход', parentId = null) {
+// Утилиты
+function byId(id) { return document.querySelector(`[data-id="${id}"]`); }
+
+// Создание нового узла (можно указать parentId или null)
+function createNode(x=120,y=120,text='Новый исход', parentId=null) {
   const id = 'node-' + (++nodeCounter);
   const div = document.createElement('div');
   div.className = 'node';
+  div.dataset.id = id;
   div.style.left = x + 'px';
   div.style.top = y + 'px';
-  div.dataset.id = id;
-
   div.innerHTML = `
-    <div contenteditable class="title">${text}</div>
+    <div class="title" contenteditable data-placeholder="Описание...">${text}</div>
     <div class="controls">
       <div class="small-muted">Исход</div>
-      <div class="add-btn" title="Добавить исход" data-add>+</div>
+      <div class="add-btn" title="Добавить исход">+</div>
+      <div class="remove-btn" title="Удалить узел">✕</div>
     </div>
   `;
   canvas.appendChild(div);
   makeDraggable(div);
   setupNodeButtons(div);
 
-  if (parentId) addEdge(parentId, id);
-  updateAIPreview();
+  if (parentId) {
+    edges.push({from: parentId, to: id});
+  }
   renderConnections();
+  updateAIPreview();
   return id;
 }
 
+// Перетаскивание
 function makeDraggable(elem) {
-  let dragging = false, dx = 0, dy = 0;
+  let dragging=false, dx=0, dy=0;
   elem.addEventListener('mousedown', (e) => {
-    if (e.target.dataset.add !== undefined) return;
+    if (e.target.closest('.add-btn') || e.target.closest('.remove-btn')) return;
     dragging = true;
-    dx = e.clientX - elem.getBoundingClientRect().left;
-    dy = e.clientY - elem.getBoundingClientRect().top;
+    const rect = elem.getBoundingClientRect();
+    const canvasRect = canvas.getBoundingClientRect();
+    dx = e.clientX - rect.left;
+    dy = e.clientY - rect.top;
     elem.style.zIndex = 1000;
   });
   document.addEventListener('mousemove', (e) => {
     if (!dragging) return;
     const rect = canvas.getBoundingClientRect();
-    elem.style.left = (e.clientX - rect.left - dx) + 'px';
-    elem.style.top = (e.clientY - rect.top - dy) + 'px';
+    let nx = e.clientX - rect.left - dx;
+    let ny = e.clientY - rect.top - dy;
+    if (nx < 8) nx = 8;
+    if (ny < 8) ny = 8;
+    elem.style.left = nx + 'px';
+    elem.style.top = ny + 'px';
     renderConnections();
   });
   document.addEventListener('mouseup', () => {
@@ -213,16 +161,12 @@ function makeDraggable(elem) {
   });
 }
 
-function addEdge(fromId, toId) {
-  edges.push({from: fromId, to: toId});
-  renderConnections();
-}
-
+// Рисуем кривые между узлами
 function renderConnections() {
   connectorsSvg.innerHTML = '';
   edges.forEach(e => {
-    const a = document.querySelector(`[data-id="${e.from}"]`);
-    const b = document.querySelector(`[data-id="${e.to}"]`);
+    const a = byId(e.from);
+    const b = byId(e.to);
     if (!a || !b) return;
     const ra = a.getBoundingClientRect();
     const rb = b.getBoundingClientRect();
@@ -234,68 +178,57 @@ function renderConnections() {
     const path = document.createElementNS('http://www.w3.org/2000/svg','path');
     const dx = Math.max(40, Math.abs(x2-x1)/2);
     path.setAttribute('d', `M ${x1} ${y1} C ${x1} ${y1+dx} ${x2} ${y2-dx} ${x2} ${y2}`);
-    path.setAttribute('stroke', 'rgba(255,255,255,0.12)');
-    path.setAttribute('stroke-width', '2');
-    path.setAttribute('fill', 'none');
+    path.setAttribute('stroke','rgba(255,255,255,0.12)');
+    path.setAttribute('stroke-width','2');
+    path.setAttribute('fill','none');
     connectorsSvg.appendChild(path);
   });
 }
 
+// Настройка кнопок узла
 function setupNodeButtons(nodeElem) {
-  const addBtn = nodeElem.querySelector('[data-add]');
+  const addBtn = nodeElem.querySelector('.add-btn');
+  const removeBtn = nodeElem.querySelector('.remove-btn');
   const title = nodeElem.querySelector('.title');
+
   addBtn && addBtn.addEventListener('click', (e) => {
     e.stopPropagation();
     const rect = nodeElem.getBoundingClientRect();
     const canvasRect = canvas.getBoundingClientRect();
-    const newId = createNode(
-      rect.left - canvasRect.left + rect.width + 40,
-      rect.top - canvasRect.top,
-      'Вариант решения...',
-      nodeElem.dataset.id
-    );
-    document.querySelector(`[data-id="${newId}"] .title`)?.focus();
+    const x = rect.left - canvasRect.left + rect.width + 30;
+    const y = rect.top - canvasRect.top;
+    const newId = createNode(x, y, 'Вариант решения...', nodeElem.dataset.id);
+    const newTitle = byId(newId).querySelector('.title');
+    newTitle && newTitle.focus();
   });
-  title.addEventListener('input', updateAIPreview);
 
-  // Удаление узла (если есть кнопка remove)
-  const removeBtn = nodeElem.querySelector('.remove-btn');
-  if (removeBtn) {
-    removeBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const id = nodeElem.dataset.id;
-      // удалить все связанные edges и ноду
-      // удалить edge где to == id
-      for (let i = edges.length - 1; i >= 0; i--) {
-        if (edges[i].to === id || edges[i].from === id) edges.splice(i,1);
-      }
-      nodeElem.remove();
-      renderConnections();
-      updateAIPreview();
-    });
-  }
+  removeBtn && removeBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const id = nodeElem.dataset.id;
+    removeNode(id);
+  });
+
+  title && title.addEventListener('input', updateAIPreview);
 }
 
-document.querySelectorAll('.node').forEach(n => {
-  makeDraggable(n);
-  setupNodeButtons(n);
-});
-
+// Собрать дерево/список текстов для AI-превью
 function collectTreeText() {
-  const root = document.querySelector('[data-id="root"]');
-  const title = root ? root.querySelector('.title').innerText.trim() : '';
-  const outcomes = Array.from(document.querySelectorAll('.node[data-id]:not([data-id="root"])'))
+  const root = byId('root');
+  const title = root ? (root.querySelector('.title').innerText.trim()) : '';
+  // все узлы кроме root
+  const outcomes = Array.from(document.querySelectorAll('.node[data-id]'))
+    .filter(n => n.dataset.id !== 'root')
     .map(n => n.querySelector('.title').innerText.trim())
     .filter(Boolean);
   return { title, outcomes };
 }
-
 function updateAIPreview() {
   const { title, outcomes } = collectTreeText();
   document.getElementById('ai-title').innerText = title || '—';
-  document.getElementById('ai-outcomes').innerText = outcomes.length ? outcomes.join('\n• ') : '—';
+  document.getElementById('ai-outcomes').innerText = outcomes.length ? ('• ' + outcomes.join('\n• ')) : '—';
 }
 
+// Примитивный scorer
 function scoreOutcome(text, title) {
   const positive = ['легко','быстро','безопасно','комфорт','просто','меньше','удобн'];
   const negatives = ['дорого','риск','опасн','сложно','трудн'];
@@ -305,87 +238,85 @@ function scoreOutcome(text, title) {
   negatives.forEach(n => { if (t.includes(n)) score -= 2; });
   if (t.length < 25) score += 1;
   if (t.length > 120) score -= 1;
-  (title.toLowerCase().split(/\W+/)).forEach(w => { if (t.includes(w)) score += 0.5; });
+  (title.toLowerCase().split(/\W+/)).forEach(w => { if (w.length>3 && t.includes(w)) score += 0.5; });
   return score + Math.random()*0.4;
 }
 
-document.getElementById('ai-run').addEventListener('click', () => {
-  const { title, outcomes } = collectTreeText();
-  const outBox = document.getElementById('ai-output');
-  if (!title) return outBox.innerText = 'Пожалуйста, опишите проблему.';
-  if (!outcomes.length) return outBox.innerText = 'Добавьте варианты решения.';
-  const scored = outcomes.map(o => ({text:o,score:scoreOutcome(o,title)}));
-  scored.sort((a,b)=>b.score-a.score);
-  const best = scored[0];
-  outBox.innerText = `Проблема: «${title}».\n\nЛучший вариант: «${best.text}».\n\nПояснение: содержит позитивные признаки и сбалансирован по сложности.`;
-});
-
-document.getElementById('ai-reset').addEventListener('click', () => {
-  document.getElementById('ai-output').innerText = 'Сброшено.';
-});
-
-window.addEventListener('resize', renderConnections);
-canvas.addEventListener('scroll', renderConnections);
-updateAIPreview();
-
+// --- Новая функция удаления: дети не удаляются, а переназначаются на родителя ---
 function removeNode(nodeId) {
-  const node = document.querySelector(`[data-id="${nodeId}"]`);
+  const node = byId(nodeId);
   if (!node) return;
 
-  // Найти родительское ребро (если есть)
+  // найти индекс ребра parent -> node (если есть)
   const parentEdgeIndex = edges.findIndex(e => e.to === nodeId);
   const parentId = parentEdgeIndex !== -1 ? edges[parentEdgeIndex].from : null;
 
-  // Соберём все дочерние ребра node -> child*
+  // найти все ребра node -> child*
   const childEdges = [];
   for (let i = 0; i < edges.length; i++) {
-    if (edges[i].from === nodeId) childEdges.push({index: i, to: edges[i].to});
+    if (edges[i].from === nodeId) childEdges.push({ index: i, to: edges[i].to });
   }
 
   if (parentId) {
-    // Пере-привяжем всех детей к родителю: создадим edges parent->child
-    // (добавим новые ребра) и удалим старые node->child
+    // переназначаем всех детей на родителя (parent -> child)
     childEdges.forEach(ce => {
-      // Добавляем новое ребро parent -> child (если такого ещё нет)
+      // если такого ребра ещё нет — добавляем
       const exists = edges.some(e => e.from === parentId && e.to === ce.to);
-      if (!exists) edges.push({from: parentId, to: ce.to});
-      // удалим старое ребро node->child (по индексу позже)
+      if (!exists) edges.push({ from: parentId, to: ce.to });
     });
 
-    // Так как мы добавляли ребра в конец edges, теперь удалим старые node->child по индексам:
-    // проходим в обратном порядке, чтобы индексы были валидны
+    // удаляем старые ребра node->child (обход в обратном порядке)
     for (let i = childEdges.length - 1; i >= 0; i--) {
       edges.splice(childEdges[i].index, 1);
     }
 
-    // Удалим ребро parent->node (т.к. node будет удалён)
+    // удаляем ребро parent->node
     if (parentEdgeIndex !== -1) edges.splice(parentEdgeIndex, 1);
-
-    // Обновим dataset у родителя (если вы храните какие-то флаги)
-    const parent = document.querySelector(`[data-id="${parentId}"]`);
-    if (parent) {
-      // В life узлы могут иметь много детей, нет строгого childId,
-      // поэтому дополнительной метки не обязательно. Если у вас есть UI-флаги — обновите их здесь.
-      const pbtn = parent.querySelector('.add-btn');
-      if (pbtn) pbtn.removeAttribute('disabled');
-    }
   } else {
-    // Если родителя нет — просто превратим детей в верхнего уровня:
-    // удаляем ребра node->child
+    // нет родителя: просто удаляем ребра node->child — дети станут верхнего уровня
     for (let i = edges.length - 1; i >= 0; i--) {
-      if (edges[i].from === nodeId) edges.splice(i, 1);
+      if (edges[i].from === nodeId) edges.splice(i,1);
     }
-    // также удалим родительское ребро к node, если вдруг было
-    if (parentEdgeIndex !== -1) edges.splice(parentEdgeIndex, 1);
+    // также удалить ребро parent->node если есть (на всякий случай)
+    if (parentEdgeIndex !== -1) edges.splice(parentEdgeIndex,1);
   }
 
-  // Удалим само DOM-узел
+  // удалить сам DOM-узел
   node.remove();
 
-  // Обновим визуальные связи и превью ИИ
+  // обновления
   renderConnections();
   updateAIPreview();
 }
+
+// Обработчики AI-кнопок
+document.getElementById('ai-run').addEventListener('click', () => {
+  const { title, outcomes } = collectTreeText();
+  const out = document.getElementById('ai-output');
+  if (!title) { out.innerText = 'Пожалуйста, опишите проблему.'; return; }
+  if (!outcomes.length) { out.innerText = 'Добавьте варианты решения.'; return; }
+  const scored = outcomes.map(o => ({ text: o, score: scoreOutcome(o, title) }));
+  scored.sort((a,b) => b.score - a.score);
+  const best = scored[0];
+  out.innerText = `Проблема: «${title}».\n\nЛучший вариант: «${best.text}».\n\nПояснение: содержит позитивные признаки и сбалансирован по сложности.`;
+});
+document.getElementById('ai-reset').addEventListener('click', () => {
+  document.getElementById('ai-output').innerText = 'Сброшено.';
+});
+
+// Инициализация: повесить драг/кнопки на уже существующие узлы
+document.querySelectorAll('.node').forEach(n => {
+  makeDraggable(n);
+  setupNodeButtons(n);
+});
+
+// перерисовка при ресайзе/скролле
+window.addEventListener('resize', renderConnections);
+canvas.addEventListener('scroll', renderConnections);
+
+// стартовое обновление
+renderConnections();
+updateAIPreview();
 </script>
 </body>
 </html>
