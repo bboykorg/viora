@@ -81,11 +81,21 @@
 }
 .small-muted { color: rgba(255,255,255,0.5); font-size:13px; }
 .back-link {
-  color: #ffffff; /* Белая кнопка Назад */
-  text-decoration:none;
-  display:inline-block;
-  margin-bottom:12px;
-  font-weight: 500;
+    position: fixed;
+    top: 14px;
+    left: 14px;
+    z-index: 9999;
+    background: rgba(255, 255, 255, 0.06);
+    color: #ffffff;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    font-weight: 600;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
 }
 .ai-box { background: rgba(255,255,255,0.02); padding:12px; border-radius:10px; min-height:120px; overflow:auto; }
 .action-row { display:flex; gap:10px; margin-top:12px; }
@@ -335,5 +345,6 @@ updateAIPreview();
 </script>
 </body>
 </html>
+
 
 
