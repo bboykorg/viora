@@ -673,3 +673,7 @@ content: attr(data-placeholder);
 color: rgba(255,255,255,0.35);
 display:block;
 }
+
+a:hover{
+    text-decoration: none;
+}
