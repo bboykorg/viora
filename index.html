@@ -56,7 +56,7 @@
     <div id="main-screen" class="screen">
         <div class="main-container">
             <div class="buttons-wrapper">
-                <a class="glass-button cyan-button" href="/viora/life.html" >
+                <a class="glass-button cyan-button" href="viora/life.html" >
                     <div class="button-glow"></div>
                     <div class="button-content">
                         <svg class="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -67,7 +67,7 @@
                     </div>
                 </a>
 
-                <a class="glass-button purple-button" href="/viora/flow.html">
+                <a class="glass-button purple-button" href="viora/flow.html">
                     <div class="button-glow"></div>
                     <div class="button-content">
                         <svg class="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -81,7 +81,15 @@
 
             <p class="tagline">Сделай свой выбор видимым</p>
         </div>
-        
+
+        <div id="wallpaper-toggle-container">
+            <span class="toggle-label">Живые обои</span>
+            <label class="toggle-switch">
+                <input type="checkbox" id="wallpaper-toggle" checked>
+                <span class="slider round"></span>
+            </label>
+        </div>
+
         <div id="profile-avatar">
             <svg class="icon" viewBox="0 0 24 24">
                 <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
@@ -672,9 +680,11 @@ function setWallpaperState(isEnabled) {
 }
 
 isLiveWallpaperEnabled = true;
-wallpaperToggle.checked = false; // Включаем живые обои по умолчанию
+wallpaperToggle.checked = false;
 animateBackground();
 animateLogo();
+
+
 
 // 8. Модалки и регистрация
 const REG_MODAL = document.getElementById('registration-modal');
@@ -822,25 +832,4 @@ document.getElementById('viora-logo').addEventListener('click', () => {
 /* ---------- конец script.js ---------- */
     </script>
 </body>
-
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
