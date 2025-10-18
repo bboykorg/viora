@@ -6,23 +6,28 @@
 <title>Поток Кадров — Viora</title>
 <link rel="stylesheet" href="styles.css">
 <style>
-:root{--bg:rgba(10,10,15,0.45);--panel:rgba(8,8,10,0.6)}
-.editor-page { width:100vw; height:100vh; display:flex; gap:20px; padding:20px; align-items:stretch; box-sizing:border-box; font-family:Inter, system-ui, sans-serif; }
+/* Стили для Поток Кадров */
+:root{--bg:rgba(10,10,15,0.45);--panel:rgba(8,8,10,0.6);--primary:#ffd166}
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter, system-ui, sans-serif;background:#0b0b0f;color:#fff}
+.editor-page { width:100vw; height:100vh; display:flex; gap:20px; padding:20px; align-items:stretch; }
 .canvas-area { flex:1 1 auto; border-radius:18px; background: var(--bg); backdrop-filter: blur(8px); position:relative; overflow:auto; padding:40px; min-height:80vh;}
 .side-panel { width:420px; max-width:40%; background: var(--panel); border-radius:16px; padding:18px; box-shadow:0 8px 30px rgba(0,0,0,0.6); color:#fff; }
-.node { width:260px; min-height:56px; background: rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:12px; box-sizing:border-box; position:absolute; display:flex; flex-direction:column; gap:8px; cursor:move; }
-.add-btn { width:28px; height:28px; border-radius:8px; display:inline-flex; align-items:center; justify-content:center; background: rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); cursor:pointer; user-select:none; }
-.add-btn[disabled] { opacity:0.45; cursor:not-allowed; transform:none; }
-.remove-btn { width:26px; height:26px; border-radius:8px; display:inline-flex; align-items:center; justify-content:center; background: rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.06); cursor:pointer; }
+.node { width:260px; min-height:56px; background: rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:12px; position:absolute; display:flex; flex-direction:column; gap:8px; cursor:move; }
+.add-btn, .remove-btn { width:28px; height:28px; border-radius:8px; display:inline-flex; align-items:center; justify-content:center; cursor:pointer; user-select:none; border:1px solid rgba(255,255,255,0.06); background: rgba(255,255,255,0.04); }
+.add-btn[disabled] { opacity:0.45; cursor:not-allowed; }
 .connector-svg { position:absolute; inset:0; pointer-events:none; }
 .small-muted { color: rgba(255,255,255,0.6); font-size:13px; }
-.button-primary { background:var(--color-primary); color:#0a0a0f; padding:10px 12px; border-radius:10px; cursor:pointer; border:none; }
-.button-ghost { background:transparent; color: #fff; border:1px solid rgba(255,255,255,0.08); padding:10px 12px; border-radius:10px; cursor:pointer; }
-/* кнопка назад вынесена и зафиксирована в верхний левый угол */
+.ai-box { background: rgba(255,255,255,0.02); padding:12px; border-radius:10px; min-height:120px; overflow:auto; color:#fff; }
+.button-primary { background:var(--primary); color:#0a0a0f; padding:10px 12px; border-radius:10px; cursor:pointer; border:none; font-weight:600; }
+.button-ghost { background:transparent; color:#fff; border:1px solid rgba(255,255,255,0.08); padding:10px 12px; border-radius:10px; cursor:pointer; }
+.title[contenteditable]:empty:before { content: attr(data-placeholder); color: rgba(255,255,255,0.35); display:block; }
+
+/* фиксированная белая кнопка назад */
 .back-link {
   position: fixed;
-  top: 14px;
-  left: 14px;
+  top: 12px;
+  left: 12px;
   z-index: 9999;
   background: rgba(255,255,255,0.06);
   color: #ffffff;
@@ -36,13 +41,9 @@
   font-weight: 600;
   box-shadow: 0 6px 20px rgba(0,0,0,0.5);
 }
-.title { outline: none; min-height:20px; color:#fff; font-weight:600; }
-/* placeholder */
-.title[contenteditable]:empty:before { content: attr(data-placeholder); color: rgba(255,255,255,0.35); display:block; }
 </style>
 </head>
 <body>
-  <!-- Кнопка "Назад" вынесена сюда и фиксирована в левом верхнем углу -->
   <a class="back-link" href="/viora">← Назад</a>
 
   <div class="editor-page">
@@ -50,18 +51,20 @@
       <svg class="connector-svg" id="connectors" width="100%" height="100%"></svg>
 
       <!-- root node -->
-      <div class="node" id="node-root" style="left:calc(50% - 130px); top:80px;" data-id="root">
-        <div contenteditable class="title" data-placeholder="Опишите главный кадр...">Опишите главный кадр</div>
+      <div class="node" data-id="root" id="node-root" style="left:calc(50% - 130px); top:80px;">
+        <div class="title" contenteditable data-placeholder="Опишите главный кадр...">Опишите главный кадр</div>
         <div style="display:flex;justify-content:space-between;align-items:center">
           <div class="small-muted">Главный кадр</div>
-          <div class="add-btn" title="Добавить исход">+</div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <div class="add-btn" title="Добавить исход">+</div>
+            <div class="remove-btn" title="Удалить узел">✕</div>
+          </div>
         </div>
       </div>
 
     </div>
 
     <div class="side-panel">
-      <!-- Убрана внутренняя кнопка "Назад" — теперь она фиксирована наверху страницы -->
       <h3>ИИ-режиссёр (Поток кадров)</h3>
       <div class="small-muted">У каждого кадра допускается только один следующий кадр (один исход). Чтобы заменить исход — сначала удалите существующий у крестика на нём.</div>
 
@@ -85,19 +88,19 @@
   </div>
 
 <script>
-// Поток кадров: у каждого узла — максимум 1 исход
+/* --- Логика редактора для flow.html --- */
+
 const canvas = document.getElementById('canvasArea');
 const connectorsSvg = document.getElementById('connectors');
-const edges = []; // {from, to}
+const edges = []; // список ребер {from,to}
 
-// утилиты
+// Утилита
 function byId(id){ return document.querySelector(`[data-id="${id}"]`); }
 
-// делаем элемент перетаскиваемым
+// Перетаскивание
 function makeDraggable(elem) {
   let dragging=false, dx=0, dy=0;
   elem.addEventListener('mousedown', (e) => {
-    // если клик по кнопке, не начинаем drag
     if (e.target.closest('.add-btn') || e.target.closest('.remove-btn')) return;
     dragging = true;
     const rect = elem.getBoundingClientRect();
@@ -110,30 +113,27 @@ function makeDraggable(elem) {
     const rect = canvas.getBoundingClientRect();
     let nx = e.clientX - rect.left - dx;
     let ny = e.clientY - rect.top - dy;
-    if (nx < 10) nx = 10;
-    if (ny < 10) ny = 10;
+    if (nx < 8) nx = 8;
+    if (ny < 8) ny = 8;
     elem.style.left = nx + 'px';
     elem.style.top = ny + 'px';
     renderConnections();
   });
   document.addEventListener('mouseup', () => {
-    if (dragging) {
-      dragging = false;
-      elem.style.zIndex = '';
-    }
+    if (dragging) { dragging = false; elem.style.zIndex = ''; }
   });
 }
 
-// создание нового узла (child) с привязкой к parentId
-function createNodeAt(x,y, text, parentId) {
+// Создать новый узел и привязать к parentId (в потоке у parent может быть только 1 child)
+function createNodeAt(x,y,text,parentId=null) {
   const id = 'node-' + Date.now() + '-' + Math.floor(Math.random()*1000);
   const div = document.createElement('div');
   div.className = 'node';
+  div.dataset.id = id;
   div.style.left = x + 'px';
   div.style.top = y + 'px';
-  div.dataset.id = id;
   div.innerHTML = `
-    <div contenteditable class="title" data-placeholder="Опишите кадр...">${text}</div>
+    <div class="title" contenteditable data-placeholder="Опишите кадр...">${text}</div>
     <div style="display:flex;justify-content:space-between;align-items:center">
       <div class="small-muted">Кадр</div>
       <div style="display:flex;gap:8px;align-items:center">
@@ -145,58 +145,28 @@ function createNodeAt(x,y, text, parentId) {
   canvas.appendChild(div);
   makeDraggable(div);
   setupNodeButtons(div);
-  // связь parent->child
+
   if (parentId) {
+    // убрать предыдущий child у parent, если есть (в этой реализации parent не должен иметь больше 1 child)
+    // но мы предполагаем, что UI отключает кнопку +, поэтому просто добавим ребро
     edges.push({from: parentId, to: id});
-    // пометить parent что у него есть child
+    // отметить parent.dataset.childId и отключить кнопку
     const parent = byId(parentId);
     if (parent) {
       parent.dataset.childId = id;
-      // отключаем кнопку добавления у parent
-      const btn = parent.querySelector('.add-btn');
-      if (btn) btn.setAttribute('disabled','');
+      const pbtn = parent.querySelector('.add-btn');
+      if (pbtn) pbtn.setAttribute('disabled','');
     }
   }
-  updateAIPreview();
+
   renderConnections();
+  updateAIPreview();
   return id;
 }
 
-// удаление узла (и его ветки исходов рекурсивно)
-function removeNode(nodeId) {
-  const node = byId(nodeId);
-  if (!node) return;
-  // если у node есть child — рекурсивно удалить
-  const childId = node.dataset.childId;
-  if (childId) removeNode(childId);
-
-  // удалить edge, и очистить parent.dataset.childId для родителя (если есть)
-  const parentEdgeIndex = edges.findIndex(e => e.to === nodeId);
-  if (parentEdgeIndex !== -1) {
-    const parentId = edges[parentEdgeIndex].from;
-    const parent = byId(parentId);
-    if (parent) {
-      delete parent.dataset.childId;
-      const pbtn = parent.querySelector('.add-btn');
-      if (pbtn) pbtn.removeAttribute('disabled');
-    }
-    edges.splice(parentEdgeIndex,1);
-  }
-
-  // удалить все edges where from == nodeId (т.е. его собственные исходы)
-  for (let i = edges.length-1; i >= 0; i--) {
-    if (edges[i].from === nodeId) edges.splice(i,1);
-  }
-
-  // удалить DOM
-  node.remove();
-  renderConnections();
-  updateAIPreview();
-}
-
-// рендер связей (SVG кривые)
+// Рендер линий
 function renderConnections() {
-  while (connectorsSvg.firstChild) connectorsSvg.removeChild(connectorsSvg.firstChild);
+  connectorsSvg.innerHTML = '';
   edges.forEach(e => {
     const a = byId(e.from);
     const b = byId(e.to);
@@ -210,84 +180,62 @@ function renderConnections() {
     const y2 = rb.top - canvasRect.top;
     const path = document.createElementNS('http://www.w3.org/2000/svg','path');
     const dx = Math.max(40, Math.abs(x2-x1)/2);
-    const d = `M ${x1} ${y1} C ${x1} ${y1+dx} ${x2} ${y2-dx} ${x2} ${y2}`;
-    path.setAttribute('d', d);
-    path.setAttribute('stroke', 'rgba(255,255,255,0.12)');
-    path.setAttribute('stroke-width', '2');
-    path.setAttribute('fill', 'none');
+    path.setAttribute('d', `M ${x1} ${y1} C ${x1} ${y1+dx} ${x2} ${y2-dx} ${x2} ${y2}`);
+    path.setAttribute('stroke','rgba(255,255,255,0.12)');
+    path.setAttribute('stroke-width','2');
+    path.setAttribute('fill','none');
     connectorsSvg.appendChild(path);
   });
 }
 
-// настраиваем кнопки добавления/удаления/редактирования у узла
+// Настроить кнопки узла
 function setupNodeButtons(nodeElem) {
   const addBtn = nodeElem.querySelector('.add-btn');
   const removeBtn = nodeElem.querySelector('.remove-btn');
-  const titleEl = nodeElem.querySelector('.title');
+  const title = nodeElem.querySelector('.title');
 
-  // если у узла уже есть child — отключаем кнопку
+  // если nodeElem имеет childId — блокируем addBtn
   if (nodeElem.dataset.childId) addBtn && addBtn.setAttribute('disabled','');
   else addBtn && addBtn.removeAttribute('disabled');
 
-  if (addBtn) {
-    addBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      // если уже есть исход — показываем подсказку (или можно заменить)
-      if (nodeElem.dataset.childId) {
-        // лёгкое визуальное уведомление: мигание
-        addBtn.classList.add('blink');
-        setTimeout(()=> addBtn.classList.remove('blink'), 350);
-        return;
-      }
-      // создаём child рядом с parent
-      const rect = nodeElem.getBoundingClientRect();
-      const canvasRect = canvas.getBoundingClientRect();
-      const x = rect.left - canvasRect.left + rect.width + 40;
-      const y = rect.top - canvasRect.top;
-      createNodeAt(x, y, 'Следующий кадр...', nodeElem.dataset.id);
-    });
-  }
+  addBtn && addBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    // если уже есть child — визуально показать (мигание)
+    if (nodeElem.dataset.childId) {
+      addBtn.classList.add('blink');
+      setTimeout(()=> addBtn.classList.remove('blink'), 300);
+      return;
+    }
+    const rect = nodeElem.getBoundingClientRect();
+    const canvasRect = canvas.getBoundingClientRect();
+    const x = rect.left - canvasRect.left + rect.width + 36;
+    const y = rect.top - canvasRect.top;
+    createNodeAt(x,y,'Следующий кадр...', nodeElem.dataset.id);
+  });
 
-  if (removeBtn) {
-    removeBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      // при удалении узла — очистим связи корректно
-      const id = nodeElem.dataset.id;
-      removeNode(id);
-    });
-  }
+  removeBtn && removeBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const id = nodeElem.dataset.id;
+    removeNode(id);
+  });
 
-  // обновление AI-превью при вводе
-  titleEl && titleEl.addEventListener('input', updateAIPreview);
+  title && title.addEventListener('input', updateAIPreview);
 }
 
-// инициализация существующих узлов (root)
-document.querySelectorAll('.node').forEach(n => {
-  makeDraggable(n);
-  setupNodeButtons(n);
-});
-
-// вспомогательные: найти edge index по from->to
-function findEdgeIndexFromTo(from, to) {
-  return edges.findIndex(e => e.from === from && e.to === to);
-}
-
-// функция обновления панели ИИ (текущий заголовок и список исходов от корня)
+// Сбор цепочки от root вниз для AI-превью
 function collectTreeForAI() {
-  const root = byId('root');
   const seen = [];
   function traverse(id) {
     const node = byId(id);
     if (!node) return;
     const txt = node.querySelector('.title')?.innerText.trim() || '';
-    seen.push({id, text: txt});
-    const childId = node.dataset.childId;
-    if (childId) traverse(childId);
+    seen.push({ id, text: txt });
+    const childEdge = edges.find(e => e.from === id);
+    if (childEdge) traverse(childEdge.to);
   }
   traverse('root');
   return seen;
 }
-
 function updateAIPreview() {
   const tree = collectTreeForAI();
   const title = tree.length ? tree[0].text : '';
@@ -296,34 +244,99 @@ function updateAIPreview() {
   document.getElementById('ai-outcome').innerText = outcome || '—';
 }
 
-// кнопки панели
+// --- Удаление узла: дети не удаляются ---
+// Если у удаляемого узла есть родитель (parent->node) и у node есть child(ren) (node->child),
+// то parent переподключается к первому child (parent->firstChild),
+// остальные child (если есть) становятся верхнего уровня (ребра node->child удаляются).
+// Если родителя нет — все node->child ребра просто удаляются (дети остаются верхнего уровня).
+function removeNode(nodeId) {
+  const node = byId(nodeId);
+  if (!node) return;
+
+  const parentEdgeIndex = edges.findIndex(e => e.to === nodeId);
+  const parentId = parentEdgeIndex !== -1 ? edges[parentEdgeIndex].from : null;
+
+  // собрать все child edges node -> child
+  const childEdges = [];
+  for (let i = 0; i < edges.length; i++) {
+    if (edges[i].from === nodeId) childEdges.push({ index: i, to: edges[i].to });
+  }
+
+  if (parentId && childEdges.length > 0) {
+    // переподключаем родителя к первому ребенку
+    const firstChild = childEdges[0].to;
+    edges[parentEdgeIndex].to = firstChild;
+
+    // пометим parent.dataset.childId
+    const parent = byId(parentId);
+    if (parent) {
+      parent.dataset.childId = firstChild;
+      const pbtn = parent.querySelector('.add-btn');
+      if (pbtn) pbtn.setAttribute('disabled','');
+    }
+
+    // удаляем старые node->child ребра (в обратном порядке)
+    for (let i = childEdges.length - 1; i >= 0; i--) {
+      const idx = childEdges[i].index;
+      // если это ребро node->firstChild — его нужно удалить (так как parent теперь ведёт к firstChild)
+      edges.splice(idx,1);
+    }
+  } else {
+    // либо нет parent, либо нет детей: просто удалить ребра parent->node (если есть) и node->child
+    if (parentEdgeIndex !== -1) edges.splice(parentEdgeIndex,1);
+    for (let i = edges.length - 1; i >= 0; i--) {
+      if (edges[i].from === nodeId) edges.splice(i,1);
+    }
+    if (parentId) {
+      const parent = byId(parentId);
+      if (parent) {
+        delete parent.dataset.childId;
+        const pbtn = parent.querySelector('.add-btn');
+        if (pbtn) pbtn.removeAttribute('disabled');
+      }
+    }
+  }
+
+  // удалить DOM-элемент
+  node.remove();
+
+  // если parent присутствует и теперь у него нет child (например мы удалили node, у parent был только node), откроем кнопку
+  if (parentId) {
+    const parent = byId(parentId);
+    if (parent) {
+      const stillHas = edges.some(e => e.from === parentId);
+      if (!stillHas) {
+        delete parent.dataset.childId;
+        const pbtn = parent.querySelector('.add-btn');
+        if (pbtn) pbtn.removeAttribute('disabled');
+      }
+    }
+  }
+
+  renderConnections();
+  updateAIPreview();
+}
+
+// Кнопки AI
 document.getElementById('ai-run').addEventListener('click', () => {
   const tree = collectTreeForAI();
-  if (!tree.length || !tree[0].text) {
-    document.getElementById('ai-output').innerText = 'Опишите главный кадр.';
-    return;
-  }
-  const second = tree[1];
-  if (!second || !second.text) {
-    document.getElementById('ai-output').innerText = 'Добавьте хотя бы один исход (нажмите + у нужного кадра).';
-    return;
-  }
-  // простая рекомендация ИИ
-  const suggestion = `Предлагаемый следующий кадр: «${second.text}».\n\nПричина: этот кадр логично следует за главным кадром и прост в постановке.`;
-  document.getElementById('ai-output').innerText = suggestion;
+  const out = document.getElementById('ai-output');
+  if (!tree.length || !tree[0].text) { out.innerText = 'Опишите главный кадр.'; return; }
+  if (!tree[1] || !tree[1].text) { out.innerText = 'Добавьте хотя бы один исход (нажмите + у нужного кадра).'; return; }
+  out.innerText = `Предлагаемый следующий кадр: «${tree[1].text}».\n\nПричина: этот кадр логично следует за главным кадром и прост в постановке.`;
 });
 
 document.getElementById('ai-clear').addEventListener('click', () => {
-  // удаляем все узлы кроме root
-  const all = Array.from(document.querySelectorAll('.node')).map(n => n.dataset.id);
+  // удалить все узлы, кроме root
+  const all = Array.from(document.querySelectorAll('.node')).map(n=>n.dataset.id);
   for (const id of all) {
     if (id === 'root') continue;
-    // removeNode безопасно рекурсивно удалит детей
-    removeNode(id);
+    const el = byId(id);
+    if (el) el.remove();
   }
-  // очистим любые оставшиеся edges
+  // очистить ребра
   edges.length = 0;
-  // сброс flags у root
+  // очистить root flags
   const root = byId('root');
   if (root) { delete root.dataset.childId; const btn = root.querySelector('.add-btn'); if (btn) btn.removeAttribute('disabled'); }
   renderConnections();
@@ -331,13 +344,16 @@ document.getElementById('ai-clear').addEventListener('click', () => {
   document.getElementById('ai-output').innerText = 'Все исходы удалены.';
 });
 
-// следим за ресайзом/скроллом чтобы корректно перерисовывать линии
+// Инициализация существующих нод (root)
+document.querySelectorAll('.node').forEach(n => {
+  makeDraggable(n);
+  // если вёрстка корня не содержит remove-btn/add-btn как раньше, setupNodeButtons учтёт отсутствующие
+  setupNodeButtons(n);
+});
 window.addEventListener('resize', renderConnections);
 canvas.addEventListener('scroll', renderConnections);
-
-// начальное обновление
-updateAIPreview();
 renderConnections();
+updateAIPreview();
 </script>
 </body>
 </html>
