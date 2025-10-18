@@ -18,13 +18,33 @@
 .small-muted { color: rgba(255,255,255,0.6); font-size:13px; }
 .button-primary { background:var(--color-primary); color:#0a0a0f; padding:10px 12px; border-radius:10px; cursor:pointer; border:none; }
 .button-ghost { background:transparent; color: #fff; border:1px solid rgba(255,255,255,0.08); padding:10px 12px; border-radius:10px; cursor:pointer; }
-.back-link { color: #ffffff; text-decoration:none; display:inline-block; margin-bottom:12px; } /* белый цвет */
+/* кнопка назад вынесена и зафиксирована в верхний левый угол */
+.back-link {
+  position: fixed;
+  top: 14px;
+  left: 14px;
+  z-index: 9999;
+  background: rgba(255,255,255,0.06);
+  color: #ffffff;
+  text-decoration: none;
+  display: inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:8px 10px;
+  border-radius:10px;
+  border: 1px solid rgba(255,255,255,0.08);
+  font-weight: 600;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.5);
+}
 .title { outline: none; min-height:20px; color:#fff; font-weight:600; }
 /* placeholder */
 .title[contenteditable]:empty:before { content: attr(data-placeholder); color: rgba(255,255,255,0.35); display:block; }
 </style>
 </head>
 <body>
+  <!-- Кнопка "Назад" вынесена сюда и фиксирована в левом верхнем углу -->
+  <a class="back-link" href="/viora">← Назад</a>
+
   <div class="editor-page">
     <div class="canvas-area" id="canvasArea">
       <svg class="connector-svg" id="connectors" width="100%" height="100%"></svg>
@@ -41,7 +61,7 @@
     </div>
 
     <div class="side-panel">
-      <a class="back-link" href="/viora">← Назад</a>
+      <!-- Убрана внутренняя кнопка "Назад" — теперь она фиксирована наверху страницы -->
       <h3>ИИ-режиссёр (Поток кадров)</h3>
       <div class="small-muted">У каждого кадра допускается только один следующий кадр (один исход). Чтобы заменить исход — сначала удалите существующий у крестика на нём.</div>
 
@@ -321,10 +341,3 @@ renderConnections();
 </script>
 </body>
 </html>
-
-
-
-
-
-
-
