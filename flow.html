@@ -18,7 +18,6 @@
   .small-muted { color: rgba(255,255,255,0.6); font-size:13px; }
   .button-primary { background:var(--color-primary); color:#0a0a0f; padding:10px 12px; border-radius:10px; cursor:pointer; border:none; }
   .button-ghost { background:transparent; color: #fff; border:1px solid rgba(255,255,255,0.08); padding:10px 12px; border-radius:10px; cursor:pointer; }
-  /* кнопка назад вынесена и зафиксирована в верхний левый угол */
   .back-link {
     position: fixed;
     top: 14px;
@@ -126,7 +125,6 @@ function makeDraggable(elem) {
   });
 }
 
-// создание нового узла (child)
 function createNodeAt(x,y,text,parentId) {
   const id = 'node-' + Date.now() + '-' + Math.floor(Math.random()*1000);
   const div = document.createElement('div');
@@ -161,7 +159,6 @@ function createNodeAt(x,y,text,parentId) {
   return id;
 }
 
-// удаление узла
 function removeNode(nodeId) {
   const node = byId(nodeId);
   if (!node) return;
@@ -190,7 +187,6 @@ function removeNode(nodeId) {
   updateAIPreview();
 }
 
-// отрисовка линий
 function renderConnections(){
   while(connectorsSvg.firstChild) connectorsSvg.removeChild(connectorsSvg.firstChild);
   edges.forEach(e=>{
@@ -210,7 +206,6 @@ function renderConnections(){
   });
 }
 
-// настройка кнопок узла
 function setupNodeButtons(nodeElem){
   const addBtn=nodeElem.querySelector('.add-btn');
   const removeBtn=nodeElem.querySelector('.remove-btn');
@@ -231,7 +226,6 @@ function setupNodeButtons(nodeElem){
   titleEl&&titleEl.addEventListener('input', updateAIPreview);
 }
 
-// сбор дерева для AI
 function collectTreeForAI(){
   const root=byId('root');
   const seen=[];
@@ -247,7 +241,6 @@ function collectTreeForAI(){
   return seen;
 }
 
-// обновление панели AI
 function updateAIPreview(){
   const tree=collectTreeForAI();
   const title=tree.length?tree[0].text:'';
@@ -256,7 +249,6 @@ function updateAIPreview(){
   document.getElementById('ai-outcome').innerText=outcome||'—';
 }
 
-// кнопка AI с fetch
 document.getElementById('ai-run').addEventListener('click', async ()=>{
   const tree=collectTreeForAI();
   const title=tree.length?tree[0].text:'';
@@ -276,7 +268,6 @@ document.getElementById('ai-run').addEventListener('click', async ()=>{
   }catch(err){console.error(err); outBox.innerText='Ошибка при запросе к AI.';}
 });
 
-// очистка всех исходов
 document.getElementById('ai-clear').addEventListener('click',()=>{
   const all=Array.from(document.querySelectorAll('.node')).map(n=>n.dataset.id);
   for(const id of all){if(id!=='root') removeNode(id);}
@@ -287,17 +278,13 @@ document.getElementById('ai-clear').addEventListener('click',()=>{
   document.getElementById('ai-output').innerText='Все исходы удалены.';
 });
 
-// инициализация существующих узлов
 document.querySelectorAll('.node').forEach(n=>{makeDraggable(n); setupNodeButtons(n);});
 
-// ресайз/скролл
 window.addEventListener('resize',renderConnections);
 canvas.addEventListener('scroll',renderConnections);
 
-// начальное обновление
 updateAIPreview();
 renderConnections();
 </script>
 </body>
 </html>
-
