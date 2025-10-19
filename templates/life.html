@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Путь Жизни — Viora</title>
+<link rel="stylesheet" href="/static/styles.css">
+<style>
+.editor-page {
+  width: 100vw;
+  height: 100vh;
+  display:flex;
+  gap: 20px;
+  padding: 20px;
+  align-items: stretch;
+  box-sizing: border-box;
+}
+.canvas-area {
+  flex: 1 1 auto;
+  border-radius: 18px;
+  background: rgba(10,10,15,0.45);
+  backdrop-filter: blur(8px);
+  position: relative;
+  overflow: auto;
+  padding: 40px;
+  min-height: 80vh;
+}
+.side-panel {
+  width: 420px;
+  max-width: 40%;
+  background: rgba(8,8,10,0.6);
+  border-radius: 16px;
+  padding: 18px;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.6);
+  color: #fff;
+}
+.node {
+  width: 220px;
+  min-height: 56px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 14px;
+  padding: 12px;
+  box-sizing: border-box;
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  cursor: move;
+}
+.node .title {
+  font-weight: 600;
+  font-size: 14px;
+  color: #fff;
+  outline: none;
+  min-height: 20px;
+}
+.node { width:260px;
+   min-height:56px;
+   background: rgba(255,255,255,0.03);
+   border:1px solid rgba(255,255,255,0.08);
+   border-radius:14px;
+   padding:12px;
+   box-sizing:border-box;
+   position:absolute;
+   display:flex;
+   flex-direction:column;
+   gap:8px;
+   cursor:move;
+ }
+.add-btn {
+  width:28px;
+  height:28px;
+  border-radius:8px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.06);
+  cursor:pointer;
+  transition: transform .12s;
+}
+.add-btn:hover { transform: scale(1.05); }
+.connector-svg {
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+}
+.small-muted { color: rgba(255,255,255,0.5); font-size:13px; }
+.back-link {
+    position: fixed;
+    top: 14px;
+    left: 14px;
+    z-index: 9999;
+    background: rgba(255, 255, 255, 0.06);
+    color: #ffffff;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    font-weight: 600;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+}
+.ai-box { background: rgba(255,255,255,0.02); padding:12px; border-radius:10px; min-height:120px; overflow:auto; }
+.action-row { display:flex; gap:10px; margin-top:12px; }
+.button-primary { background:var(--color-primary); color:#0a0a0f; padding:10px 12px; border-radius:10px; cursor:pointer; border:none; }
+.button-ghost { background:transparent; color: #fff; border:1px solid rgba(255,255,255,0.08); padding:10px 12px; border-radius:10px; cursor:pointer; }
+
+</style>
+</head>
+<body>
+  <a class="back-link" href="/">← Назад</a>
+  <div class="editor-page">
+    <div class="canvas-area" id="canvasArea">
+      <svg class="connector-svg" id="connectors" width="100%" height="100%"></svg>
+
+      <!-- initial main node -->
+      <div class="node" id="node-root" style="left: calc(50% - 110px); top: 80px;" data-id="root">
+        <div contenteditable class="title" data-placeholder="Опишите проблему...">Нажмите и впишите проблему</div>
+        <div class="controls">
+          <div class="small-muted">Главный пункт</div>
+          <div class="add-btn" title="Добавить исход" data-add>+</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-panel">
+      <h3>ИИ-помощник</h3>
+      <div class="small-muted">Он читает заголовок (проблему) и все исходы, а затем предлагает наиболее комфортный вариант.</div>
+
+      <div style="height:14px"></div>
+
+      <div style="font-weight:600">Заголовок (проблема)</div>
+      <div id="ai-title" class="small-muted" style="min-height:34px"></div>
+
+      <div style="height:10px"></div>
+      <div style="font-weight:600">Исходы (варианты решения)</div>
+      <div id="ai-outcomes" class="small-muted" style="min-height:60px"></div>
+
+      <div style="height:12px"></div>
+      <div class="ai-box" id="ai-output">Нажмите «Предложить», чтобы ИИ проанализировал варианты.</div>
+
+      <div class="action-row">
+        <button class="button-primary" id="ai-run">Предложить</button>
+        <button class="button-ghost" id="ai-reset">Сбросить подсказку</button>
+      </div>
+
+      <div style="height:10px"></div>
+      <div class="small-muted">Поддержка: узлы редактируемы, перетаскивайте их, нажмите «+» на узле чтобы создать исход. У исходов есть та же логика.</div>
+    </div>
+  </div>
+
+<script>
+// --- JS для life.html с fetch к Flask ---
+let nodeCounter = 1;
+const canvas = document.getElementById('canvasArea');
+const connectorsSvg = document.getElementById('connectors');
+const edges = [];
+
+// Создание нового узла
+function createNode(x = 100, y = 200, text = 'Новый исход', parentId = null) {
+  const id = 'node-' + (++nodeCounter);
+  const div = document.createElement('div');
+  div.className = 'node';
+  div.style.left = x + 'px';
+  div.style.top = y + 'px';
+  div.dataset.id = id;
+
+  div.innerHTML = `
+    <div contenteditable class="title">${text}</div>
+    <div class="controls">
+      <div class="small-muted">Исход</div>
+      <div class="add-btn" title="Добавить исход" data-add>+</div>
+      <div class="remove-btn" title="Удалить узел">✕</div>
+    </div>
+  `;
+  canvas.appendChild(div);
+  makeDraggable(div);
+  setupNodeButtons(div);
+
+  if (parentId) addEdge(parentId, id);
+  updateAIPreview();
+  renderConnections();
+  return id;
+}
+
+// Драг-н-дроп узлов
+function makeDraggable(elem) {
+  let dragging = false, dx = 0, dy = 0;
+  elem.addEventListener('mousedown', (e) => {
+    if (e.target.dataset.add !== undefined || e.target.classList.contains('remove-btn')) return;
+    dragging = true;
+    dx = e.clientX - elem.getBoundingClientRect().left;
+    dy = e.clientY - elem.getBoundingClientRect().top;
+    elem.style.zIndex = 1000;
+  });
+  document.addEventListener('mousemove', (e) => {
+    if (!dragging) return;
+    const rect = canvas.getBoundingClientRect();
+    elem.style.left = (e.clientX - rect.left - dx) + 'px';
+    elem.style.top = (e.clientY - rect.top - dy) + 'px';
+    renderConnections();
+  });
+  document.addEventListener('mouseup', () => {
+    if (dragging) {
+      dragging = false;
+      elem.style.zIndex = '';
+    }
+  });
+}
+
+// Добавление ребра
+function addEdge(fromId, toId) {
+  edges.push({from: fromId, to: toId});
+  renderConnections();
+}
+
+// Рисуем линии между узлами
+function renderConnections() {
+  connectorsSvg.innerHTML = '';
+  edges.forEach(e => {
+    const a = document.querySelector(`[data-id="${e.from}"]`);
+    const b = document.querySelector(`[data-id="${e.to}"]`);
+    if (!a || !b) return;
+    const ra = a.getBoundingClientRect();
+    const rb = b.getBoundingClientRect();
+    const canvasRect = canvas.getBoundingClientRect();
+    const x1 = ra.left + ra.width/2 - canvasRect.left;
+    const y1 = ra.top + ra.height - canvasRect.top;
+    const x2 = rb.left + rb.width/2 - canvasRect.left;
+    const y2 = rb.top - canvasRect.top;
+    const dx = Math.max(40, Math.abs(x2-x1)/2);
+    const path = document.createElementNS('http://www.w3.org/2000/svg','path');
+    path.setAttribute('d', `M ${x1} ${y1} C ${x1} ${y1+dx} ${x2} ${y2-dx} ${x2} ${y2}`);
+    path.setAttribute('stroke','rgba(255,255,255,0.12)');
+    path.setAttribute('stroke-width','2');
+    path.setAttribute('fill','none');
+    connectorsSvg.appendChild(path);
+  });
+}
+
+// Настройка кнопок узла
+function setupNodeButtons(nodeElem) {
+  const addBtn = nodeElem.querySelector('[data-add]');
+  const removeBtn = nodeElem.querySelector('.remove-btn');
+  const title = nodeElem.querySelector('.title');
+
+  addBtn && addBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const rect = nodeElem.getBoundingClientRect();
+    const canvasRect = canvas.getBoundingClientRect();
+    const newId = createNode(
+      rect.left - canvasRect.left + rect.width + 40,
+      rect.top - canvasRect.top,
+      'Вариант решения...',
+      nodeElem.dataset.id
+    );
+    document.querySelector(`[data-id="${newId}"] .title`)?.focus();
+  });
+
+  removeBtn && removeBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    removeNode(nodeElem.dataset.id);
+  });
+
+  title.addEventListener('input', updateAIPreview);
+}
+
+// Собрать данные для AI
+function collectTreeText() {
+  const root = document.querySelector('[data-id="root"]');
+  const title = root ? root.querySelector('.title').innerText.trim() : '';
+  const outcomes = Array.from(document.querySelectorAll('.node[data-id]:not([data-id="root"])'))
+    .map(n => n.querySelector('.title').innerText.trim())
+    .filter(Boolean);
+  return { title, outcomes };
+}
+
+// Обновление AI-превью
+function updateAIPreview() {
+  const { title, outcomes } = collectTreeText();
+  document.getElementById('ai-title').innerText = title || '—';
+  document.getElementById('ai-outcomes').innerText = outcomes.length ? ('• ' + outcomes.join('\n• ')) : '—';
+}
+
+// Удаление узла
+function removeNode(nodeId) {
+  const node = document.querySelector(`[data-id="${nodeId}"]`);
+  if (!node) return;
+  const parentEdgeIndex = edges.findIndex(e => e.to === nodeId);
+  const parentId = parentEdgeIndex !== -1 ? edges[parentEdgeIndex].from : null;
+  const childEdges = edges.filter(e => e.from === nodeId);
+
+  if (parentId) {
+    childEdges.forEach(ce => {
+      if (!edges.some(e => e.from === parentId && e.to === ce.to)) edges.push({from: parentId, to: ce.to});
+    });
+    for (let i = edges.length-1; i>=0; i--) {
+      if (edges[i].from === nodeId) edges.splice(i,1);
+    }
+    if (parentEdgeIndex !== -1) edges.splice(parentEdgeIndex,1);
+  } else {
+    for (let i = edges.length-1; i>=0; i--) {
+      if (edges[i].from === nodeId) edges.splice(i,1);
+    }
+    if (parentEdgeIndex !== -1) edges.splice(parentEdgeIndex,1);
+  }
+
+  node.remove();
+  renderConnections();
+  updateAIPreview();
+}
+
+// --- AI fetch ---
+document.getElementById('ai-run').addEventListener('click', async () => {
+  const { title, outcomes } = collectTreeText();
+  const outBox = document.getElementById('ai-output');
+  if (!title) return outBox.innerText = 'Пожалуйста, опишите проблему.';
+  if (!outcomes.length) return outBox.innerText = 'Добавьте варианты решения.';
+
+  outBox.innerText = 'Обрабатываем...';
+
+  try {
+    const response = await fetch('/runAi', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title, outcomes })
+    });
+    const data = await response.json();
+    outBox.innerText = data.result;
+  } catch(err) {
+    outBox.innerText = 'Ошибка при запросе к AI.';
+    console.error(err);
+  }
+});
+
+document.getElementById('ai-reset').addEventListener('click', () => {
+  document.getElementById('ai-output').innerText = 'Сброшено.';
+});
+
+// Инициализация существующих узлов
+document.querySelectorAll('.node').forEach(n => {
+  makeDraggable(n);
+  setupNodeButtons(n);
+});
+
+window.addEventListener('resize', renderConnections);
+canvas.addEventListener('scroll', renderConnections);
+updateAIPreview();
+</script>
+</body>
+</html>

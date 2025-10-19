@@ -41,6 +41,7 @@ def run_ai():
             },
         ]
     )
+    print(chat_response.choices[0].message.content)
     return jsonify({"result": chat_response.choices[0].message.content})
 
 if __name__ == "__main__":

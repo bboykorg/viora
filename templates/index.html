@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="description" content="Viora - Сделай свой выбор видимым. Космический портал для осознанных решений.">
+    <title>Viora - Портал осознанных решений</title>
+    <link rel="stylesheet" href="/static/styles.css">
+
+</head>
+<body>
+    <!-- Canvas-слои -->
+    <canvas id="stars-bg" class="canvas-layer"></canvas>
+    <canvas id="nebula" class="canvas-layer"></canvas>
+    <canvas id="stars-mid" class="canvas-layer"></canvas>
+    <canvas id="stars-front" class="canvas-layer"></canvas>
+    <canvas id="comets" class="canvas-layer"></canvas>
+    <canvas id="particles" class="canvas-layer"></canvas>
+
+    <!-- Logo screen -->
+    <div id="logo-screen" class="screen active">
+        <svg id="viora-logo" viewBox="0 0 550 200" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stop-color="#00d9ff" />
+                    <stop offset="50%" stop-color="#a855f7" />
+                    <stop offset="100%" stop-color="#00d9ff" />
+                </linearGradient>
+                <filter id="glow">
+                    <feGaussianBlur stdDeviation="6" result="coloredBlur"/>
+                    <feMerge>
+                        <feMergeNode in="coloredBlur"/>
+                        <feMergeNode in="SourceGraphic"/>
+                    </feMerge>
+                </filter>
+            </defs>
+            <g id="letter-v">
+                <path id="v-1" d="M 60 60 L 100 160" stroke="url(#logoGradient)" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)"/>
+                <path id="v-2" d="M 140 60 L 100 160" stroke="url(#logoGradient)" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)"/>
+            </g>
+            <path id="letter-i" d="M 180 60 L 180 160" stroke="url(#logoGradient)" stroke-width="4" fill="none" stroke-linecap="round" filter="url(#glow)"/>
+            <circle id="letter-o" cx="280" cy="110" r="50" stroke="url(#logoGradient)" stroke-width="4" fill="none" filter="url(#glow)"/>
+            <g id="letter-r">
+                <path id="r-1" d="M 360 60 L 360 160" stroke="url(#logoGradient)" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)"/>
+                <path id="r-2" d="M 360 60 L 400 60 Q 430 60 430 85 Q 430 110 400 110 L 360 110" stroke="url(#logoGradient)" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)"/>
+                <path id="r-3" d="M 400 110 L 430 160" stroke="url(#logoGradient)" stroke-width="4" fill="none" stroke-linecap="round" filter="url(#glow)"/>
+            </g>
+            <g id="letter-a">
+                <path id="a-1" d="M 450 160 L 490 60 L 530 160" stroke="url(#logoGradient)" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)"/>
+                <path id="a-2" d="M 465 120 L 515 120" stroke="url(#logoGradient)" stroke-width="4" fill="none" stroke-linecap="round" filter="url(#glow)"/>
+            </g>
+        </svg>
+    </div>
+
+    <!-- Main screen -->
+    <div id="main-screen" class="screen">
+        <div class="main-container">
+            <div class="buttons-wrapper">
+                <a class="glass-button cyan-button" href="/life" >
+                    <div class="button-glow"></div>
+                    <div class="button-content">
+                        <svg class="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/>
+                        </svg>
+                        <h2 class="button-title">Путь Жизни</h2>
+                        <p class="button-description">Построй дерево решений<br>о твоей жизни</p>
+                    </div>
+                </a>
+
+                <a class="glass-button purple-button" href="/flow">
+                    <div class="button-glow"></div>
+                    <div class="button-content">
+                        <svg class="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z"/>
+                        </svg>
+                        <h2 class="button-title">Поток Кадров</h2>
+                        <p class="button-description">Создавай сюжеты для видео<br>и презентаций</p>
+                    </div>
+                </a>
+            </div>
+
+            <p class="tagline">Сделай свой выбор видимым</p>
+        </div>
+
+        <div id="wallpaper-toggle-container">
+            <span class="toggle-label">Живые обои</span>
+            <label class="toggle-switch">
+                <input type="checkbox" id="wallpaper-toggle" checked>
+                <span class="slider round"></span>
+            </label>
+        </div>
+
+        <div id="profile-avatar">
+            <svg class="icon" viewBox="0 0 24 24">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                <circle cx="9" cy="7" r="4"></circle>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+            </svg>
+        </div>
+
+        <!-- Registration modal -->
+        <div id="registration-modal" class="modal-backdrop">
+            <div class="modal-box">
+                <h3 class="modal-title">Приветствие в Viora</h3>
+                <div class="input-group">
+                    <label for="reg-name-input">Назовите себя, чтобы войти в Портал:</label>
+                    <input type="text" id="reg-name-input" class="name-input" placeholder="Введите ваше имя">
+                </div>
+                <div class="modal-actions">
+                    <button class="action-button no" id="reg-no">
+                        <svg class="icon" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    </button>
+                    <button class="action-button yes" id="reg-yes" disabled>
+                        <svg class="icon" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Profile modal -->
+        <div id="profile-modal" class="modal-backdrop">
+            <div class="modal-box" id="profile-modal-box">
+                <div class="profile-avatar-display">
+                    <svg class="icon" viewBox="0 0 24 24">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                    </svg>
+                    <div class="edit-icon" id="edit-profile-icon">
+                        <svg class="icon" viewBox="0 0 24 24"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
+                    </div>
+                </div>
+
+                <div class="profile-info">
+                    Вы: <span id="profile-name-display" class="profile-username">Гость</span>
+                    <input type="text" id="profile-name-input" class="profile-input-edit" style="display: none;">
+                </div>
+
+                <div class="modal-actions">
+                    <button class="action-button no" id="profile-no">
+                        <svg class="icon" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    </button>
+                    <button class="action-button yes" id="profile-yes" disabled>
+                        <svg class="icon" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- GSAP (через CDN в HTML) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+
+    <!-- ВСТАВЛЕНО: script.js -->
+    <script>
+/* ---------- script.js (встроено) ---------- */
+
+// 1. Инициализация Canvas и Контекстов
+const canvasBg = document.getElementById('stars-bg');
+const canvasNebula = document.getElementById('nebula');
+const canvasMid = document.getElementById('stars-mid');
+const canvasFront = document.getElementById('stars-front');
+const canvasComets = document.getElementById('comets');
+const canvasParticles = document.getElementById('particles');
+const wallpaperToggle = document.getElementById('wallpaper-toggle');
+
+const ctxBg = canvasBg.getContext('2d');
+const ctxNebula = canvasNebula.getContext('2d');
+const ctxMid = canvasMid.getContext('2d');
+const ctxFront = canvasFront.getContext('2d');
+const ctxComets = canvasComets.getContext('2d');
+const ctxParticles = canvasParticles.getContext('2d');
+
+let width = window.innerWidth;
+let height = window.innerHeight;
+let time = 0;
+let lastCometPackageTime = Date.now();
+let lastWarpJumpTime = Date.now();
+let nextCometDelay = 10000 + Math.random() * 15000;
+let animationFrameId;
+let isLiveWallpaperEnabled = true;
+let isLogoAnimationFinished = false;
+
+// 2. resize и мышь
+function resizeCanvas() {
+    width = window.innerWidth;
+    height = window.innerHeight;
+    [canvasBg, canvasNebula, canvasMid, canvasFront, canvasComets, canvasParticles].forEach(canvas => {
+        canvas.width = width;
+        canvas.height = height;
+    });
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+let mouseX = width / 2;
+let mouseY = height / 2;
+function handleMouseMove(e) {
+    mouseX = e.clientX;
+    mouseY = e.clientY;
+}
+if (window.matchMedia("(min-width: 769px)").matches) {
+    document.addEventListener('mousemove', handleMouseMove);
+}
+
+// 3. Космические объекты
+const STAR_COLORS = [
+    [255, 255, 255], [100, 200, 255], [255, 255, 180], [200, 150, 255]
+];
+function getRandomStarColor() {
+    return STAR_COLORS[Math.floor(Math.random() * STAR_COLORS.length)];
+}
+
+const starsBg = [];
+for (let i = 0; i < 150; i++) {
+    const star = {
+        x: Math.random() * width, y: Math.random() * height, size: Math.random() * 1.5 + 0.3,
+        speed: Math.random() * 0.0003 + 0.0001, phase: Math.random() * Math.PI * 2,
+        maxBrightness: Math.random() * 0.4 + 0.3, baseX: 0, baseY: 0, color: STAR_COLORS[0]
+    };
+    star.baseX = star.x; star.baseY = star.y;
+    starsBg.push(star);
+}
+
+const starsMid = [];
+for (let i = 0; i < 100; i++) {
+    const star = {
+        x: Math.random() * width, y: Math.random() * height, size: Math.random() * 2 + 0.5,
+        speed: Math.random() * 0.0005 + 0.0002, phase: Math.random() * Math.PI * 2,
+        maxBrightness: Math.random() * 0.6 + 0.4, baseX: 0, baseY: 0, color: getRandomStarColor()
+    };
+    star.baseX = star.x; star.baseY = star.y;
+    starsMid.push(star);
+}
+
+const starsFront = [];
+for (let i = 0; i < 60; i++) {
+    const star = {
+        x: Math.random() * width, y: Math.random() * height, size: Math.random() * 2.5 + 1,
+        speed: Math.random() * 0.0008 + 0.0003, phase: Math.random() * Math.PI * 2,
+        maxBrightness: Math.random() * 0.9 + 0.7, baseX: 0, baseY: 0, color: [0, 217, 255]
+    };
+    star.baseX = star.x; star.baseY = star.y;
+    starsFront.push(star);
+}
+
+const auroraBands = [];
+for (let i = 0; i < 5; i++) {
+    auroraBands.push({
+        y: height * (0.2 + i * 0.15),
+        color: i % 2 === 0 ? [0, 217, 255] : [168, 85, 247],
+        baseOpacity: Math.random() * 0.08 + 0.02,
+        waveFrequency: Math.random() * 0.01 + 0.005,
+        waveAmplitude: Math.random() * 100 + 50
+    });
+}
+
+const comets = [];
+const warpJumps = [];
+
+function createComet() {
+    const side = Math.floor(Math.random() * 4);
+    let x, y, angle;
+    switch (side) {
+        case 0: x = Math.random() * width; y = -50; angle = Math.random() * Math.PI / 3 + Math.PI / 3; break;
+        case 1: x = width + 50; y = Math.random() * height; angle = Math.random() * Math.PI / 3 + Math.PI; break;
+        case 2: x = Math.random() * width; y = height + 50; angle = Math.random() * Math.PI / 3 + Math.PI * 1.2; break;
+        default: x = -50; y = Math.random() * height; angle = Math.random() * Math.PI / 3;
+    }
+    const newComet = { x, y, angle, speed: Math.random() * 2 + 1.5, length: Math.random() * 120 + 80, opacity: 1, maxOpacity: Math.random() * 0.3 + 0.6 };
+    comets.push(newComet);
+}
+
+function createCometPackage() {
+    const numComets = Math.floor(Math.random() * 5) + 1;
+    for (let i = 0; i < numComets; i++) {
+        setTimeout(createComet, i * 150 + Math.random() * 500);
+    }
+    lastCometPackageTime = Date.now();
+    nextCometDelay = 10000 + Math.random() * 15000;
+}
+
+function createWarpJump() {
+    warpJumps.push({
+        startX: Math.random() * width,
+        startY: Math.random() * height,
+        endX: Math.random() * width,
+        endY: Math.random() * height,
+        duration: Math.random() * 0.5 + 0.2,
+        progress: 0,
+        opacity: 1
+    });
+    gsap.to('body', { x: '+=10', y: '+=10', duration: 0.08, repeat: 1, yoyo: true, ease: 'sine.out', overwrite: true });
+}
+
+// 4. Логотип -> частицы
+const logoParticles = [];
+let logoDispersed = false;
+
+function createLogoParticles() {
+    if (logoDispersed) return;
+    logoDispersed = true;
+    const svg = document.getElementById('viora-logo');
+    const paths = svg.querySelectorAll('path, circle');
+    paths.forEach(path => {
+        const length = path.getTotalLength ? path.getTotalLength() : 314;
+        const numParticles = Math.floor(length / 2);
+        for (let i = 0; i < numParticles; i++) {
+            const point = path.getPointAtLength ? path.getPointAtLength((i / numParticles) * length) : {
+                x: 280 + 50 * Math.cos((i / numParticles) * Math.PI * 2),
+                y: 110 + 50 * Math.sin((i / numParticles) * Math.PI * 2)
+            };
+            const rect = svg.getBoundingClientRect();
+            const scaleX = rect.width / 550;
+            const scaleY = rect.height / 200;
+            logoParticles.push({
+                x: rect.left + point.x * scaleX,
+                y: rect.top + point.y * scaleY,
+                vx: (Math.random() - 0.5) * 7,
+                vy: (Math.random() - 0.5) * 5,
+                size: Math.random() * 2 + 1,
+                opacity: 1,
+                decay: Math.random() * 0.015 + 0.01,
+                color: Math.random() > 0.5 ? [255, 255, 255] : [100, 200, 255]
+            });
+        }
+    });
+}
+
+function animateLogoParticles() {
+    ctxParticles.clearRect(0, 0, width, height);
+    for (let i = logoParticles.length - 1; i >= 0; i--) {
+        const particle = logoParticles[i];
+        particle.x += particle.vx;
+        particle.y += particle.vy;
+        particle.vy += 0.08;
+        particle.opacity -= particle.decay;
+        if (particle.opacity <= 0) {
+            logoParticles.splice(i, 1);
+            continue;
+        }
+        ctxParticles.beginPath();
+        ctxParticles.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+        ctxParticles.fillStyle = `rgba(${particle.color[0]}, ${particle.color[1]}, ${particle.color[2]}, ${particle.opacity})`;
+        ctxParticles.shadowBlur = 10;
+        ctxParticles.shadowColor = `rgba(${particle.color[0]}, ${particle.color[1]}, ${particle.color[2]}, ${particle.opacity})`;
+        ctxParticles.fill();
+        ctxParticles.shadowBlur = 0;
+    }
+    if (logoParticles.length > 0) {
+        requestAnimationFrame(animateLogoParticles);
+    }
+}
+
+function startDisintegration() {
+    const svg = document.getElementById('viora-logo');
+    isLogoAnimationFinished = true;
+    createLogoParticles();
+    animateLogoParticles();
+    gsap.to(svg, { opacity: 0, duration: 0.3, ease: "power2.in" });
+    const logoScreen = document.getElementById('logo-screen');
+    setTimeout(() => {
+        logoScreen.classList.remove('active');
+        document.getElementById('main-screen').classList.add('active');
+        document.getElementById('profile-avatar').style.display = 'flex';
+    }, 1000);
+}
+
+// 5. Анимация логотипа (GSAP)
+function animateLogo() {
+    document.getElementById('logo-screen').classList.add('active');
+
+    const speedFactor = 0.3335;
+    const V_DURATION = 0.4 * speedFactor;
+    const I_DURATION = 0.3 * speedFactor;
+    const O_DURATION = 0.5 * speedFactor;
+    const R_MAIN_DURATION = 0.4 * speedFactor;
+    const A_DIAG_DURATION = 0.5 * speedFactor;
+    const FINAL_GLOW_DURATION = 0.5 * speedFactor;
+    const DISINTEGRATION_DELAY = 0.2 * speedFactor;
+
+    const vPaths = document.querySelectorAll('#v-1, #v-2');
+    const iPath = document.getElementById('letter-i');
+    const oCircle = document.getElementById('letter-o');
+    const rPaths = document.querySelectorAll('#r-1, #r-2, #r-3');
+    const aPaths = document.querySelectorAll('#a-1, #a-2');
+    const allPaths = document.querySelectorAll('#viora-logo path, #viora-logo circle');
+
+    allPaths.forEach(path => {
+        const len = path.getTotalLength ? path.getTotalLength() : 314;
+        path.style.strokeDasharray = len;
+        path.style.strokeDashoffset = len;
+    });
+
+    const timeline = gsap.timeline({ delay: 0.5, onComplete: startDisintegration });
+
+    timeline.to(vPaths[0], { strokeDashoffset: 0, duration: V_DURATION, ease: "power2.inOut", onStart: () => vPaths[0].style.filter = 'drop-shadow(0 0 10px rgba(0, 217, 255, 0.8))' })
+        .to(vPaths[0], { filter: 'drop-shadow(0 0 3px rgba(255, 255, 255, 0.3))', duration: V_DURATION }, '+=0')
+        .to(vPaths[1], { strokeDashoffset: 0, duration: V_DURATION, ease: "power2.inOut", onStart: () => vPaths[1].style.filter = 'drop-shadow(0 0 10px rgba(0, 217, 255, 0.8))' }, `-=${V_DURATION * 0.7}`)
+        .to(vPaths[1], { filter: 'drop-shadow(0 0 3px rgba(255, 255, 255, 0.3))', duration: V_DURATION }, '+=0');
+
+    timeline.to(iPath, { strokeDashoffset: 0, duration: I_DURATION, ease: "power3.out", onStart: () => iPath.style.filter = 'drop-shadow(0 0 15px rgba(255, 255, 255, 1))' }, `-=${V_DURATION * 0.5}`)
+        .to(iPath, { filter: 'drop-shadow(0 0 3px rgba(255, 255, 255, 0.3))', duration: I_DURATION }, '+=0');
+
+    timeline.to(oCircle, { strokeDashoffset: 0, duration: O_DURATION, ease: "power2.inOut" }, `-=${I_DURATION * 0.5}`)
+        .to(oCircle, { filter: 'drop-shadow(0 0 10px rgba(168, 85, 247, 0.8))' }, `-=${O_DURATION}`)
+        .to(oCircle, { filter: 'drop-shadow(0 0 3px rgba(255, 255, 255, 0.3))', duration: O_DURATION }, '+=0');
+
+    timeline.to(rPaths[0], { strokeDashoffset: 0, duration: I_DURATION, ease: "power2.out" }, `-=${O_DURATION * 0.5}`)
+        .to(rPaths[1], { strokeDashoffset: 0, duration: R_MAIN_DURATION, ease: "power2.inOut", onStart: () => rPaths[1].style.filter = 'drop-shadow(0 0 10px rgba(168, 85, 247, 0.8))' })
+        .to(rPaths[1], { filter: 'drop-shadow(0 0 3px rgba(255, 255, 255, 0.3))', duration: R_MAIN_DURATION }, '+=0')
+        .to(rPaths[2], { strokeDashoffset: 0, duration: I_DURATION, ease: "power2.out" }, `-=${R_MAIN_DURATION * 0.5}`);
+
+    timeline.to(aPaths[0], { strokeDashoffset: 0, duration: A_DIAG_DURATION, ease: "power2.inOut", onStart: () => aPaths[0].style.filter = 'drop-shadow(0 0 10px rgba(0, 217, 255, 0.8))' }, `-=${I_DURATION * 0.5}`)
+        .to(aPaths[0], { filter: 'drop-shadow(0 0 3px rgba(255, 255, 255, 0.3))', duration: A_DIAG_DURATION }, '+=0')
+        .to(aPaths[1], { strokeDashoffset: 0, duration: I_DURATION * 0.5, ease: "power3.out" }, `-=${I_DURATION * 0.5}`);
+
+    timeline.to('#viora-logo path, #viora-logo circle', {
+        filter: 'drop-shadow(0 0 30px rgba(0, 217, 255, 0.8))',
+        duration: FINAL_GLOW_DURATION
+    }, `+=${DISINTEGRATION_DELAY}`);
+}
+
+// 6. Отрисовка фона (animateBackground / drawStaticBackground)
+function animateBackground() {
+    if (!isLiveWallpaperEnabled && comets.length === 0 && warpJumps.length === 0) {
+        drawStaticBackground(true);
+        cancelAnimationFrame(animationFrameId);
+        return;
+    }
+
+    if (isLiveWallpaperEnabled) {
+        time += 0.005;
+    }
+
+    // Очистка Canvas
+    ctxBg.fillStyle = '#0a0a0f';
+    ctxBg.fillRect(0, 0, width, height);
+    ctxNebula.clearRect(0, 0, width, height);
+    ctxMid.clearRect(0, 0, width, height);
+    ctxFront.clearRect(0, 0, width, height);
+    ctxComets.clearRect(0, 0, width, height);
+
+    // Градиент фона
+    const gradient = ctxBg.createRadialGradient(width / 2, height / 2, 0, width / 2, height / 2, width / 2);
+    gradient.addColorStop(0, 'rgba(0, 217, 255, 0.06)');
+    gradient.addColorStop(0.4, 'rgba(168, 85, 247, 0.03)');
+    gradient.addColorStop(1, 'rgba(10, 10, 15, 0)');
+    ctxBg.fillStyle = gradient;
+    ctxBg.fillRect(0, 0, width, height);
+
+    // Туманность
+    auroraBands.forEach(band => {
+        ctxNebula.beginPath();
+        const [r, g, b] = band.color;
+        const waveTime = isLiveWallpaperEnabled ? time : 0;
+        ctxNebula.moveTo(0, band.y + Math.sin(waveTime * band.waveFrequency + 0) * band.waveAmplitude);
+        for (let x = 0; x <= width; x += 10) {
+            const waveY = band.y + Math.sin(x * 0.01 + waveTime * band.waveFrequency) * band.waveAmplitude;
+            ctxNebula.lineTo(x, waveY);
+        }
+        const grad = ctxNebula.createLinearGradient(0, band.y - band.waveAmplitude * 2, 0, band.y + band.waveAmplitude * 2);
+        grad.addColorStop(0, `rgba(${r}, ${g}, ${b}, 0)`);
+        grad.addColorStop(0.5, `rgba(${r}, ${g}, ${b}, ${band.baseOpacity})`);
+        grad.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0)`);
+        ctxNebula.strokeStyle = grad;
+        ctxNebula.lineWidth = band.waveAmplitude * 1.5;
+        ctxNebula.lineCap = 'round';
+        ctxNebula.shadowBlur = 40;
+        ctxNebula.shadowColor = `rgba(${r}, ${g}, ${b}, 0.5)`;
+        ctxNebula.stroke();
+        ctxNebula.shadowBlur = 0;
+    });
+
+    const parallaxDepth = [0.01, 0.03, 0.08];
+    const hoverRadius = 100;
+
+    [starsBg, starsMid, starsFront].forEach((starLayer, layerIndex) => {
+        const ctx = layerIndex === 0 ? ctxBg : layerIndex === 1 ? ctxMid : ctxFront;
+        const parallaxFactor = isLiveWallpaperEnabled ? parallaxDepth[layerIndex] : 0;
+        starLayer.forEach(star => {
+            let currentX = star.baseX;
+            let currentY = star.baseY;
+            let starBrightness;
+            let hoverBoost = 0;
+            if (isLiveWallpaperEnabled) {
+                const dxCenter = mouseX - width / 2;
+                const dyCenter = mouseY - height / 2;
+                currentX = star.baseX + dxCenter * parallaxFactor * 0.3;
+                currentY = star.baseY + dyCenter * parallaxFactor * 0.3;
+                star.phase += star.speed;
+                starBrightness = Math.sin(star.phase) * 0.3 + 0.7;
+            } else {
+                starBrightness = 1;
+            }
+
+            if (window.matchMedia("(min-width: 769px)").matches) {
+                const dxStar = mouseX - currentX;
+                const dyStar = mouseY - currentY;
+                const distance = Math.sqrt(dxStar * dxStar + dyStar * dyStar);
+                if (distance < hoverRadius) {
+                    hoverBoost = (1 - (distance / hoverRadius)) * 0.5;
+                }
+            }
+
+            starBrightness = Math.min(1, starBrightness + hoverBoost);
+            const alpha = starBrightness * star.maxBrightness;
+            const [r, g, b] = star.color;
+            ctx.beginPath();
+            ctx.arc(currentX, currentY, star.size, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
+            ctx.fill();
+
+            if (alpha > 0.6) {
+                ctx.shadowBlur = layerIndex * 10 + 5;
+                ctx.shadowColor = `rgba(${r}, ${g}, ${b}, ${alpha * 0.8})`;
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            }
+        });
+    });
+
+    const now = Date.now();
+    if (now - lastCometPackageTime > nextCometDelay) {
+        createCometPackage();
+    }
+    if (isLiveWallpaperEnabled) {
+        if (now - lastWarpJumpTime > 15000 + Math.random() * 15000) {
+            createWarpJump();
+            lastWarpJumpTime = now;
+        }
+    }
+
+    comets.forEach((comet, index) => {
+        comet.x += Math.cos(comet.angle) * comet.speed;
+        comet.y += Math.sin(comet.angle) * comet.speed;
+        comet.opacity -= 0.003;
+        if (comet.opacity <= 0 ||
+            comet.x < -200 || comet.x > width + 200 ||
+            comet.y < -200 || comet.y > height + 200) {
+            comets.splice(index, 1);
+            return;
+        }
+        const tailX = comet.x - Math.cos(comet.angle) * comet.length;
+        const tailY = comet.y - Math.sin(comet.angle) * comet.length;
+        const gradient = ctxComets.createLinearGradient(comet.x, comet.y, tailX, tailY);
+        gradient.addColorStop(0, `rgba(168, 85, 247, ${comet.opacity * comet.maxOpacity})`);
+        gradient.addColorStop(0.5, `rgba(0, 217, 255, ${comet.opacity * comet.maxOpacity * 0.6})`);
+        gradient.addColorStop(1, 'rgba(168, 85, 247, 0)');
+        ctxComets.strokeStyle = gradient;
+        ctxComets.lineWidth = 3;
+        ctxComets.lineCap = 'round';
+        ctxComets.shadowBlur = 25;
+        ctxComets.shadowColor = 'rgba(168, 85, 247, 0.8)';
+        ctxComets.beginPath();
+        ctxComets.moveTo(tailX, tailY);
+        ctxComets.lineTo(comet.x, comet.y);
+        ctxComets.stroke();
+        ctxComets.shadowBlur = 0;
+    });
+
+    warpJumps.forEach((jump, index) => {
+        jump.progress += 0.05;
+        if (jump.progress >= 1) {
+            warpJumps.splice(index, 1);
+            return;
+        }
+        const currentX = jump.startX + (jump.endX - jump.startX) * jump.progress;
+        const currentY = jump.startY + (jump.endY - jump.startY) * jump.progress;
+        ctxComets.beginPath();
+        ctxComets.moveTo(jump.startX, jump.startY);
+        for (let t = 0; t <= jump.progress; t += 0.05) {
+            const x = jump.startX + (jump.endX - jump.startX) * t;
+            const y = jump.startY + (jump.endY - jump.startY) * t;
+            const offset = Math.sin(t * Math.PI * 10) * 10;
+            const dx = jump.endX - jump.startX;
+            const dy = jump.endY - jump.startY;
+            const normalX = -dy / Math.sqrt(dx * dx + dy * dy);
+            const normalY = dx / Math.sqrt(dx * dx + dy * dy);
+            ctxComets.lineTo(x + normalX * offset, y + normalY * offset);
+        }
+        ctxComets.lineTo(currentX, currentY);
+        ctxComets.strokeStyle = `rgba(0, 217, 255, ${jump.opacity * (1 - jump.progress)})`;
+        ctxComets.lineWidth = 2;
+        ctxComets.shadowBlur = 20;
+        ctxComets.shadowColor = 'rgba(168, 85, 247, 0.8)';
+        ctxComets.stroke();
+        ctxComets.shadowBlur = 0;
+    });
+
+    animationFrameId = requestAnimationFrame(animateBackground);
+}
+
+function drawStaticBackground(clear = false) {
+    if (clear) {
+        ctxBg.fillStyle = '#0a0a0f';
+        ctxBg.fillRect(0, 0, width, height);
+        ctxNebula.clearRect(0, 0, width, height);
+        ctxMid.clearRect(0, 0, width, height);
+        ctxFront.clearRect(0, 0, width, height);
+        ctxComets.clearRect(0, 0, width, height);
+    }
+
+    const gradient = ctxBg.createRadialGradient(width / 2, height / 2, 0, width / 2, height / 2, width / 2);
+    gradient.addColorStop(0, 'rgba(0, 217, 255, 0.06)');
+    gradient.addColorStop(0.4, 'rgba(168, 85, 247, 0.03)');
+    gradient.addColorStop(1, 'rgba(10, 10, 15, 0)');
+    ctxBg.fillStyle = gradient;
+    ctxBg.fillRect(0, 0, width, height);
+
+    auroraBands.forEach(band => {
+        ctxNebula.beginPath();
+        const [r, g, b] = band.color;
+        ctxNebula.moveTo(0, band.y);
+        for (let x = 0; x <= width; x += 10) {
+            const waveY = band.y + Math.sin(x * 0.01) * band.waveAmplitude;
+            ctxNebula.lineTo(x, waveY);
+        }
+        const grad = ctxNebula.createLinearGradient(0, band.y - band.waveAmplitude * 2, 0, band.y + band.waveAmplitude * 2);
+        grad.addColorStop(0, `rgba(${r}, ${g}, ${b}, 0)`);
+        grad.addColorStop(0.5, `rgba(${r}, ${g}, ${b}, ${band.baseOpacity})`);
+        grad.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0)`);
+        ctxNebula.strokeStyle = grad;
+        ctxNebula.lineWidth = band.waveAmplitude * 1.5;
+        ctxNebula.lineCap = 'round';
+        ctxNebula.shadowBlur = 40;
+        ctxNebula.shadowColor = `rgba(${r}, ${g}, ${b}, 0.5)`;
+        ctxNebula.stroke();
+        ctxNebula.shadowBlur = 0;
+    });
+
+    const hoverRadius = 100;
+    [starsBg, starsMid, starsFront].forEach((starLayer, layerIndex) => {
+        const ctx = layerIndex === 0 ? ctxBg : layerIndex === 1 ? ctxMid : ctxFront;
+        starLayer.forEach(star => {
+            let starBrightness = 1;
+            let hoverBoost = 0;
+            if (window.matchMedia("(min-width: 769px)").matches) {
+                const dxStar = mouseX - star.baseX;
+                const dyStar = mouseY - star.baseY;
+                const distance = Math.sqrt(dxStar * dxStar + dyStar * dyStar);
+                if (distance < hoverRadius) {
+                    hoverBoost = (1 - (distance / hoverRadius)) * 0.5;
+                }
+            }
+            starBrightness = Math.min(1, starBrightness + hoverBoost);
+            const alpha = starBrightness * star.maxBrightness;
+            const [r, g, b] = star.color;
+            ctx.beginPath();
+            ctx.arc(star.baseX, star.baseY, star.size, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
+            ctx.fill();
+            if (alpha > 0.6) {
+                ctx.shadowBlur = layerIndex * 10 + 5;
+                ctx.shadowColor = `rgba(${r}, ${g}, ${b}, ${alpha * 0.8})`;
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            }
+        });
+    });
+
+    if (comets.length > 0 || warpJumps.length > 0) {
+        animationFrameId = requestAnimationFrame(animateBackground);
+    }
+}
+
+// 7. Установка состояния обоев и переключатель
+function setWallpaperState(isEnabled) {
+    isLiveWallpaperEnabled = isEnabled;
+    localStorage.setItem('wallpaperEnabled', isEnabled ? 'true' : 'false');
+    if (!isLogoAnimationFinished) return;
+    if (isEnabled || comets.length > 0 || warpJumps.length > 0) {
+        animateBackground();
+    } else {
+        cancelAnimationFrame(animationFrameId);
+        drawStaticBackground(true);
+    }
+}
+
+function initializeWallpaperToggle() {
+    const hasVisited = localStorage.getItem('hasVisited');
+    if (hasVisited === null) {
+        localStorage.setItem('hasVisited', 'true');
+        localStorage.setItem('wallpaperEnabled', 'true');
+        isLiveWallpaperEnabled = true;
+        // NOTE: checkbox style in CSS uses checked=false as ON visually; set accordingly
+        wallpaperToggle.checked = false;
+        animateBackground();
+        animateLogo();
+    } else {
+        const savedState = localStorage.getItem('wallpaperEnabled');
+        isLiveWallpaperEnabled = savedState !== null ? savedState === 'true' : true;
+        isLogoAnimationFinished = true;
+        document.getElementById('logo-screen').classList.remove('active');
+        document.getElementById('main-screen').classList.add('active');
+        document.getElementById('profile-avatar').style.display = 'flex';
+        wallpaperToggle.checked = !isLiveWallpaperEnabled;
+        setWallpaperState(isLiveWallpaperEnabled);
+    }
+
+    wallpaperToggle.addEventListener('change', (e) => {
+        setWallpaperState(!e.target.checked);
+    });
+}
+
+// 8. Модалки и регистрация
+const REG_MODAL = document.getElementById('registration-modal');
+const PROFILE_MODAL = document.getElementById('profile-modal');
+const PROFILE_AVATAR = document.getElementById('profile-avatar');
+const TOGGLE_WALLPAPER = document.getElementById('wallpaper-toggle');
+
+const REG_NAME_INPUT = document.getElementById('reg-name-input');
+const REG_NO_BTN = document.getElementById('reg-no');
+const REG_YES_BTN = document.getElementById('reg-yes');
+
+const PROFILE_NAME_DISPLAY = document.getElementById('profile-name-display');
+const PROFILE_NAME_INPUT = document.getElementById('profile-name-input');
+const EDIT_PROFILE_ICON = document.getElementById('edit-profile-icon');
+const PROFILE_YES_BTN = document.getElementById('profile-yes');
+const PROFILE_NO_BTN = document.getElementById('profile-no');
+
+let isEditingProfile = false;
+
+function getUserName() {
+    return localStorage.getItem('viora_username') || 'Гость';
+}
+
+function setUserName(name) {
+    localStorage.setItem('viora_username', name && name.trim() !== '' ? name.trim() : 'Гость');
+    updateProfileDisplay();
+}
+
+function showModal(modalElement) {
+    modalElement.style.display = 'flex';
+    setTimeout(() => modalElement.classList.add('is-visible'), 10);
+    document.body.classList.add('modal-open');
+}
+
+function hideModal(modalElement) {
+    modalElement.classList.remove('is-visible');
+    setTimeout(() => {
+        modalElement.style.display = 'none';
+        document.body.classList.remove('modal-open');
+    }, 300);
+}
+
+function setupModalCloseOutside(modalElement) {
+    modalElement.addEventListener('click', (e) => {
+        if (e.target === modalElement) {
+            if (modalElement.id === 'profile-modal') {
+                handleProfileNo();
+            } else if (modalElement.id === 'registration-modal') {
+                handleRegNo();
+            }
+        }
+    });
+}
+setupModalCloseOutside(REG_MODAL);
+setupModalCloseOutside(PROFILE_MODAL);
+
+function updateProfileDisplay() {
+    const name = getUserName();
+    PROFILE_NAME_DISPLAY.textContent = name;
+    PROFILE_NAME_INPUT.value = name !== 'Гость' ? name : '';
+    PROFILE_NAME_INPUT.placeholder = 'Введите имя';
+    if (!isEditingProfile) {
+        PROFILE_NAME_DISPLAY.style.display = 'inline';
+        PROFILE_NAME_INPUT.style.display = 'none';
+        PROFILE_YES_BTN.disabled = true;
+    }
+}
+
+function handleRegYes() {
+    const newName = REG_NAME_INPUT.value.trim();
+    setUserName(newName);
+    hideModal(REG_MODAL);
+}
+
+function handleRegNo() {
+    if (REG_NAME_INPUT.value.trim().length === 0) {
+        setUserName('Гость');
+    }
+    hideModal(REG_MODAL);
+}
+
+REG_YES_BTN.addEventListener('click', handleRegYes);
+REG_NO_BTN.addEventListener('click', handleRegNo);
+REG_NAME_INPUT.addEventListener('input', () => {
+     REG_YES_BTN.disabled = REG_NAME_INPUT.value.trim().length < 1;
+});
+
+function toggleProfileEditMode() {
+    isEditingProfile = !isEditingProfile;
+    PROFILE_NAME_DISPLAY.style.display = isEditingProfile ? 'none' : 'inline';
+    PROFILE_NAME_INPUT.style.display = isEditingProfile ? 'inline-block' : 'none';
+    if (isEditingProfile) {
+        PROFILE_NAME_INPUT.value = getUserName() === 'Гость' ? '' : getUserName();
+        PROFILE_NAME_INPUT.focus();
+        const savedName = getUserName();
+        PROFILE_YES_BTN.disabled = PROFILE_NAME_INPUT.value.trim() === savedName;
+        PROFILE_NAME_INPUT.oninput = () => {
+            const currentInput = PROFILE_NAME_INPUT.value.trim();
+            PROFILE_YES_BTN.disabled = currentInput === savedName || currentInput.length < 1;
+        };
+    } else {
+        PROFILE_NAME_INPUT.oninput = null;
+    }
+}
+
+function handleProfileYes() {
+    const newName = PROFILE_NAME_INPUT.value.trim();
+    setUserName(newName);
+    isEditingProfile = false;
+    hideModal(PROFILE_MODAL);
+}
+
+function handleProfileNo() {
+    isEditingProfile = false;
+    updateProfileDisplay();
+    hideModal(PROFILE_MODAL);
+}
+
+PROFILE_AVATAR.addEventListener('click', () => {
+    updateProfileDisplay();
+    showModal(PROFILE_MODAL);
+});
+
+EDIT_PROFILE_ICON.addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleProfileEditMode();
+});
+
+PROFILE_YES_BTN.addEventListener('click', handleProfileYes);
+PROFILE_NO_BTN.addEventListener('click', handleProfileNo);
+
+// Инициализация
+document.addEventListener('DOMContentLoaded', () => {
+    initializeWallpaperToggle();
+    updateProfileDisplay();
+});
+
+// Обработчик клика по логотипу — если хочешь пропустить анимацию
+document.getElementById('viora-logo').addEventListener('click', () => {
+    if (!isLogoAnimationFinished) {
+        startDisintegration();
+    }
+});
+
+/* ---------- конец script.js ---------- */
+    </script>
+</body>
+</html>
