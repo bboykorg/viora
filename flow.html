@@ -179,7 +179,7 @@ document.getElementById('ai-run').addEventListener('click', async ()=>{
   if(!outcome){outBox.innerText='Добавьте хотя бы один исход.'; return;}
   outBox.innerText='Обрабатываем...';
   try{
-    const resp=await fetch('/runAi',{
+    const resp=await fetch('main.py/runAi',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({title,outcomes:[outcome]})
@@ -207,4 +207,5 @@ renderConnections();
 </script>
 </body>
 </html>
+
 
