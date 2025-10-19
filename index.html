@@ -18,7 +18,7 @@
     <canvas id="particles" class="canvas-layer"></canvas>
 
     <!-- Logo screen -->
-    <div id="logo-screen" class="screen active">
+    <div id="logo-screen" class="screen">
         <svg id="viora-logo" viewBox="0 0 550 200" xmlns="http://www.w3.org/2000/svg">
             <defs>
                 <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="0%">
@@ -680,23 +680,26 @@ function setWallpaperState(isEnabled) {
 }
 
 function initializeWallpaperToggle() {
-    const hasVisited = localStorage.getItem('hasVisited');
-    if (hasVisited === null) {
-        localStorage.setItem('hasVisited', 'true');
-        localStorage.setItem('wallpaperEnabled', 'true');
-        isLiveWallpaperEnabled = true;
-        // NOTE: checkbox style in CSS uses checked=false as ON visually; set accordingly
-        wallpaperToggle.checked = false;
+    const nav = performance.getEntriesByType('navigation')[0];
+    const navType = nav ? nav.type : 'navigate';
+    let internalRef = false;
+    if (document.referrer) {
+        try { internalRef = new URL(document.referrer).origin === location.origin; } catch(e) { internalRef = false; }
+    }
+    const shouldIntro = (navType === 'reload') || (navType === 'navigate' && !internalRef);
+
+    const savedState = localStorage.getItem('wallpaperEnabled');
+    isLiveWallpaperEnabled = savedState !== null ? savedState === 'true' : true;
+    wallpaperToggle.checked = !isLiveWallpaperEnabled;
+
+    if (shouldIntro) {
         animateBackground();
         animateLogo();
     } else {
-        const savedState = localStorage.getItem('wallpaperEnabled');
-        isLiveWallpaperEnabled = savedState !== null ? savedState === 'true' : true;
         isLogoAnimationFinished = true;
         document.getElementById('logo-screen').classList.remove('active');
         document.getElementById('main-screen').classList.add('active');
         document.getElementById('profile-avatar').style.display = 'flex';
-        wallpaperToggle.checked = !isLiveWallpaperEnabled;
         setWallpaperState(isLiveWallpaperEnabled);
     }
 
@@ -848,11 +851,7 @@ document.getElementById('viora-logo').addEventListener('click', () => {
     }
 });
 
-/* ---------- конец script.js ---------- */
     </script>
 </body>
 </html>
-
-
-
 
