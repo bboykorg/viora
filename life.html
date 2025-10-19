@@ -269,7 +269,7 @@ document.getElementById('ai-run').addEventListener('click', async ()=>{
   if(!outcomes.length){outBox.innerText='Добавьте варианты решения.'; return;}
   outBox.innerText='Обрабатываем...';
   try{
-    const resp=await fetch('main.py/runAi',{method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({title,outcomes})});
+    const resp=await fetch('/runAi',{method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({title,outcomes})});
     const data=await resp.json();
     outBox.innerText=data.result;
   }catch(err){console.error(err); outBox.innerText='Ошибка при запросе к AI.';}
@@ -286,3 +286,4 @@ updateAIPreview();
 </script>
 </body>
 </html>
+
