@@ -1,45 +1,19 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Поток Кадров — Viora</title>
-<link rel="stylesheet" href="/static/styles.css">
-<style>
-  :root{--bg:rgba(10,10,15,0.45);--panel:rgba(8,8,10,0.6)}
-  .editor-page { width:100vw; height:100vh; display:flex; gap:20px; padding:20px; align-items:stretch; box-sizing:border-box; font-family:Inter, system-ui, sans-serif; }
-  .canvas-area { flex:1 1 auto; border-radius:18px; background: var(--bg); backdrop-filter: blur(8px); position:relative; overflow:auto; padding:40px; min-height:80vh;}
-  .side-panel { width:420px; max-width:40%; background: var(--panel); border-radius:16px; padding:18px; box-shadow:0 8px 30px rgba(0,0,0,0.6); color:#fff; }
-  .node { width:260px; min-height:56px; background: rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:12px; box-sizing:border-box; position:absolute; display:flex; flex-direction:column; gap:8px; cursor:move; }
-  .add-btn { width:28px; height:28px; border-radius:8px; display:inline-flex; align-items:center; justify-content:center; background: rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); cursor:pointer; user-select:none; }
-  .add-btn[disabled] { opacity:0.45; cursor:not-allowed; transform:none; }
-  .remove-btn { width:26px; height:26px; border-radius:8px; display:inline-flex; align-items:center; justify-content:center; background: rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.06); cursor:pointer; }
-  .connector-svg { position:absolute; inset:0; pointer-events:none; }
-  .small-muted { color: rgba(255,255,255,0.6); font-size:13px; }
-  .button-primary { background:var(--color-primary); color:#0a0a0f; padding:10px 12px; border-radius:10px; cursor:pointer; border:none; }
-  .button-ghost { background:transparent; color: #fff; border:1px solid rgba(255,255,255,0.08); padding:10px 12px; border-radius:10px; cursor:pointer; }
-  /* кнопка назад вынесена и зафиксирована в верхний левый угол */
-  .back-link {
-    position: fixed;
-    top: 14px;
-    left: 14px;
-    z-index: 9999;
-    background: rgba(255,255,255,0.06);
-    color: #ffffff;
-    text-decoration: none;
-    display: inline-flex;
-    align-items:center;
-    gap:8px;
-    padding:8px 10px;
-    border-radius:10px;
-    border: 1px solid rgba(255,255,255,0.08);
-    font-weight: 600;
-    box-shadow: 0 6px 20px rgba(0,0,0,0.5);
-  }
-  .title { outline: none; min-height:20px; color:#fff; font-weight:600; }
-  /* placeholder */
-  .title[contenteditable]:empty:before { content: attr(data-placeholder); color: rgba(255,255,255,0.35); display:block; }
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Поток Кадров — Viora</title>
+  <link rel="stylesheet" href="/static/styles.css">
+  <!-- DOMPurify для безопасной вставки HTML -->
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@2.4.0/dist/purify.min.js"></script>
+  <style>
+    /* небольшой локальный CSS для placeholder и кнопок, остальное в styles.css */
+    .title[contenteditable]:empty:before { content: attr(data-placeholder); color: rgba(255,255,255,0.35); display:block; }
+    .ai-box pre { white-space: pre-wrap; word-break: break-word; }
+    .add-btn.blink { animation: blink .35s linear; }
+    @keyframes blink { 0%{transform:scale(1)}50%{transform:scale(1.08)}100%{transform:scale(1)} }
+  </style>
 </head>
 <body>
   <a class="back-link" href="/">← Назад</a>
@@ -47,6 +21,7 @@
   <div class="editor-page">
     <div class="canvas-area" id="canvasArea">
       <svg class="connector-svg" id="connectors" width="100%" height="100%"></svg>
+
       <div class="node" id="node-root" style="left:calc(50% - 130px); top:80px;" data-id="root">
         <div contenteditable class="title" data-placeholder="Опишите главный кадр...">Опишите главный кадр</div>
         <div style="display:flex;justify-content:space-between;align-items:center">
@@ -54,7 +29,6 @@
           <div class="add-btn" title="Добавить исход">+</div>
         </div>
       </div>
-
     </div>
 
     <div class="side-panel">
@@ -63,11 +37,11 @@
 
       <div style="height:12px"></div>
       <div style="font-weight:600">Главный кадр</div>
-      <div id="ai-title" class="small-muted"></div>
+      <div id="ai-title" class="small-muted">—</div>
 
       <div style="height:10px"></div>
       <div style="font-weight:600">Исход (единственный)</div>
-      <div id="ai-outcome" class="small-muted"></div>
+      <div id="ai-outcome" class="small-muted">—</div>
 
       <div style="height:12px"></div>
       <div class="ai-box" id="ai-output">Нажмите «Предложить кадр», чтобы ИИ сгенерировал следующий кадр на основе заданного.</div>
@@ -81,44 +55,79 @@
   </div>
 
 <script>
-// --- JS для flow.html с fetch к Flask ---
+/* --- общие переменные --- */
 const canvas = document.getElementById('canvasArea');
 const connectorsSvg = document.getElementById('connectors');
-const edges = []; // {from, to}
+const edges = [];
 
-function byId(id){ return document.querySelector(`[data-id="${id}"]`); }
+/* helper */
+function byId(id) { return document.querySelector(`[data-id="${id}"]`); }
 
-// делаем элемент перетаскиваемым
+/* Универсальная функция drag (мышь + touch) */
 function makeDraggable(elem) {
-  let dragging=false, dx=0, dy=0;
-  elem.addEventListener('mousedown', (e) => {
-    if (e.target.closest('.add-btn') || e.target.closest('.remove-btn')) return;
-    dragging = true;
+  let dragging = false;
+  let startX = 0, startY = 0;
+  let origLeft = 0, origTop = 0;
+  const canvasRect = () => canvas.getBoundingClientRect();
+
+  function pointerDown(clientX, clientY) {
     const rect = elem.getBoundingClientRect();
-    dx = e.clientX - rect.left;
-    dy = e.clientY - rect.top;
+    startX = clientX;
+    startY = clientY;
+    origLeft = rect.left - canvasRect().left;
+    origTop = rect.top - canvasRect().top;
+    dragging = true;
     elem.style.zIndex = 1000;
-  });
-  document.addEventListener('mousemove', (e) => {
+    elem.classList.add('dragging');
+    document.body.style.overscrollBehavior = 'none';
+  }
+  function pointerMove(clientX, clientY) {
     if (!dragging) return;
-    const rect = canvas.getBoundingClientRect();
-    let nx = e.clientX - rect.left - dx;
-    let ny = e.clientY - rect.top - dy;
-    if (nx < 10) nx = 10;
-    if (ny < 10) ny = 10;
+    const cr = canvasRect();
+    let nx = origLeft + (clientX - startX);
+    let ny = origTop + (clientY - startY);
+    nx = Math.max(8, nx);
+    ny = Math.max(8, ny);
     elem.style.left = nx + 'px';
     elem.style.top = ny + 'px';
-    renderConnections();
+    if (typeof renderConnections === 'function') renderConnections();
+  }
+  function pointerUp() {
+    if (!dragging) return;
+    dragging = false;
+    elem.style.zIndex = '';
+    elem.classList.remove('dragging');
+    document.body.style.overscrollBehavior = '';
+  }
+
+  elem.addEventListener('mousedown', (e) => {
+    if (e.target.closest('.add-btn') || e.target.closest('.remove-btn')) return;
+    e.preventDefault();
+    pointerDown(e.clientX, e.clientY);
   });
-  document.addEventListener('mouseup', () => {
-    if (dragging) {
-      dragging = false;
-      elem.style.zIndex = '';
-    }
-  });
+  document.addEventListener('mousemove', (e) => pointerMove(e.clientX, e.clientY));
+  document.addEventListener('mouseup', () => pointerUp());
+
+  elem.addEventListener('touchstart', (e) => {
+    const t = e.touches && e.touches[0];
+    if (!t) return;
+    const touchTarget = document.elementFromPoint(t.clientX, t.clientY);
+    if (touchTarget && (touchTarget.closest('.add-btn') || touchTarget.closest('.remove-btn'))) return;
+    e.preventDefault();
+    pointerDown(t.clientX, t.clientY);
+  }, {passive:false});
+  document.addEventListener('touchmove', (e) => {
+    if (!document.querySelector('.dragging')) return;
+    const t = e.touches && e.touches[0];
+    if (!t) return;
+    e.preventDefault();
+    pointerMove(t.clientX, t.clientY);
+  }, {passive:false});
+  document.addEventListener('touchend', () => pointerUp());
+  document.addEventListener('touchcancel', () => pointerUp());
 }
 
-// создание нового узла (child)
+/* создание нового узла (child) */
 function createNodeAt(x,y,text,parentId) {
   const id = 'node-' + Date.now() + '-' + Math.floor(Math.random()*1000);
   const div = document.createElement('div');
@@ -153,20 +162,20 @@ function createNodeAt(x,y,text,parentId) {
   return id;
 }
 
-// удаление узла
+/* удаление узла */
 function removeNode(nodeId) {
   const node = byId(nodeId);
   if (!node) return;
   const parentEdgeIndex = edges.findIndex(e=>e.to===nodeId);
   const parentId = parentEdgeIndex!==-1?edges[parentEdgeIndex].from:null;
   const childEdges = [];
-  for (let i=0;i<edges.length;i++){if(edges[i].from===nodeId)childEdges.push({index:i,to:edges[i].to});}
+  for (let i=0;i<edges.length;i++){ if(edges[i].from===nodeId) childEdges.push({index:i,to:edges[i].to}); }
 
   if(parentId && childEdges.length>0){
     const firstChildId = childEdges[0].to;
     edges[parentEdgeIndex].to = firstChildId;
     const parent = byId(parentId);
-    if(parent){parent.dataset.childId = firstChildId; const pbtn = parent.querySelector('.add-btn'); if(pbtn)pbtn.setAttribute('disabled','');}
+    if(parent){ parent.dataset.childId = firstChildId; const pbtn = parent.querySelector('.add-btn'); if(pbtn)pbtn.setAttribute('disabled',''); }
     for(let i=childEdges.length-1;i>=0;i--){
       const ce = childEdges[i];
       if(ce.to!==firstChildId) edges.splice(ce.index,1);
@@ -174,27 +183,27 @@ function removeNode(nodeId) {
     }
   } else {
     if(parentEdgeIndex!==-1) edges.splice(parentEdgeIndex,1);
-    for(let i=edges.length-1;i>=0;i--){if(edges[i].from===nodeId) edges.splice(i,1);}
-    if(parentId){const parent=byId(parentId); if(parent){delete parent.dataset.childId; const btn=parent.querySelector('.add-btn'); if(btn) btn.removeAttribute('disabled');}}
+    for(let i=edges.length-1;i>=0;i--){ if(edges[i].from===nodeId) edges.splice(i,1); }
+    if(parentId){ const parent=byId(parentId); if(parent){ delete parent.dataset.childId; const btn=parent.querySelector('.add-btn'); if(btn) btn.removeAttribute('disabled'); } }
   }
   node.remove();
   renderConnections();
   updateAIPreview();
 }
 
-// отрисовка линий
+/* отрисовка линий */
 function renderConnections(){
   while(connectorsSvg.firstChild) connectorsSvg.removeChild(connectorsSvg.firstChild);
   edges.forEach(e=>{
-    const a=byId(e.from), b=byId(e.to);
-    if(!a||!b) return;
-    const ra=a.getBoundingClientRect(), rb=b.getBoundingClientRect();
-    const cr=canvas.getBoundingClientRect();
-    const x1=ra.left+ra.width/2-cr.left, y1=ra.top+ra.height-cr.top;
-    const x2=rb.left+rb.width/2-cr.left, y2=rb.top-cr.top;
-    const path=document.createElementNS('http://www.w3.org/2000/svg','path');
-    const dx=Math.max(40,Math.abs(x2-x1)/2);
-    path.setAttribute('d',`M ${x1} ${y1} C ${x1} ${y1+dx} ${x2} ${y2-dx} ${x2} ${y2}`);
+    const a = byId(e.from), b = byId(e.to);
+    if(!a || !b) return;
+    const ra = a.getBoundingClientRect(), rb = b.getBoundingClientRect();
+    const cr = canvas.getBoundingClientRect();
+    const x1 = ra.left + ra.width/2 - cr.left, y1 = ra.top + ra.height - cr.top;
+    const x2 = rb.left + rb.width/2 - cr.left, y2 = rb.top - cr.top;
+    const path = document.createElementNS('http://www.w3.org/2000/svg','path');
+    const dx = Math.max(40, Math.abs(x2-x1)/2);
+    path.setAttribute('d', `M ${x1} ${y1} C ${x1} ${y1+dx} ${x2} ${y2-dx} ${x2} ${y2}`);
     path.setAttribute('stroke','rgba(255,255,255,0.12)');
     path.setAttribute('stroke-width','2');
     path.setAttribute('fill','none');
@@ -202,94 +211,99 @@ function renderConnections(){
   });
 }
 
-// настройка кнопок узла
+/* кнопки узла */
 function setupNodeButtons(nodeElem){
-  const addBtn=nodeElem.querySelector('.add-btn');
-  const removeBtn=nodeElem.querySelector('.remove-btn');
-  const titleEl=nodeElem.querySelector('.title');
-  if(nodeElem.dataset.childId) addBtn&&addBtn.setAttribute('disabled',''); else addBtn&&addBtn.removeAttribute('disabled');
+  const addBtn = nodeElem.querySelector('.add-btn');
+  const removeBtn = nodeElem.querySelector('.remove-btn');
+  const titleEl = nodeElem.querySelector('.title');
+  if(nodeElem.dataset.childId) addBtn && addBtn.setAttribute('disabled',''); else addBtn && addBtn.removeAttribute('disabled');
 
-  if(addBtn){addBtn.addEventListener('click',(e)=>{
+  if(addBtn){ addBtn.addEventListener('click',(e)=>{
     e.stopPropagation();
-    if(nodeElem.dataset.childId){addBtn.classList.add('blink'); setTimeout(()=>addBtn.classList.remove('blink'),350); return;}
-    const rect=nodeElem.getBoundingClientRect();
-    const cr=canvas.getBoundingClientRect();
-    const x=rect.left-cr.left+rect.width+40, y=rect.top-cr.top;
+    if(nodeElem.dataset.childId){ addBtn.classList.add('blink'); setTimeout(()=>addBtn.classList.remove('blink'),350); return; }
+    const rect = nodeElem.getBoundingClientRect();
+    const cr = canvas.getBoundingClientRect();
+    const x = rect.left - cr.left + rect.width + 40, y = rect.top - cr.top;
     createNodeAt(x,y,'Следующий кадр...',nodeElem.dataset.id);
   });}
 
-  if(removeBtn){removeBtn.addEventListener('click',(e)=>{e.stopPropagation(); removeNode(nodeElem.dataset.id);});}
+  if(removeBtn){ removeBtn.addEventListener('click',(e)=>{ e.stopPropagation(); removeNode(nodeElem.dataset.id); }); }
 
-  titleEl&&titleEl.addEventListener('input', updateAIPreview);
+  titleEl && titleEl.addEventListener('input', updateAIPreview);
 }
 
-// сбор дерева для AI
+/* сбор дерева для AI */
 function collectTreeForAI(){
-  const root=byId('root');
-  const seen=[];
+  const root = byId('root');
+  const seen = [];
   function traverse(id){
-    const node=byId(id);
+    const node = byId(id);
     if(!node) return;
-    const txt=node.querySelector('.title')?.innerText.trim()||'';
+    const txt = node.querySelector('.title')?.innerText.trim()||'';
     seen.push({id,text:txt});
-    const childId=node.dataset.childId;
+    const childId = node.dataset.childId;
     if(childId) traverse(childId);
   }
   traverse('root');
   return seen;
 }
 
-// обновление панели AI
+/* обновление панели AI */
 function updateAIPreview(){
-  const tree=collectTreeForAI();
-  const title=tree.length?tree[0].text:'';
-  const outcome=tree.length>1?tree[1].text:'';
-  document.getElementById('ai-title').innerText=title||'—';
-  document.getElementById('ai-outcome').innerText=outcome||'—';
+  const tree = collectTreeForAI();
+  const title = tree.length ? tree[0].text : '';
+  const outcome = tree.length>1 ? tree[1].text : '';
+  document.getElementById('ai-title').innerText = title || '—';
+  document.getElementById('ai-outcome').innerText = outcome || '—';
 }
 
-// кнопка AI с fetch
+/* кнопка AI — fetch и безопасная вставка HTML */
 document.getElementById('ai-run').addEventListener('click', async ()=>{
-  const tree=collectTreeForAI();
-  const title=tree.length?tree[0].text:'';
-  const outcome=tree.length>1?tree[1].text:'';
-  const outBox=document.getElementById('ai-output');
-  if(!title){outBox.innerText='Опишите главный кадр.'; return;}
-  if(!outcome){outBox.innerText='Добавьте хотя бы один исход (нажмите + у нужного кадра).'; return;}
-  outBox.innerText='Обрабатываем...';
+  const tree = collectTreeForAI();
+  const title = tree.length ? tree[0].text : '';
+  const outcome = tree.length>1 ? tree[1].text : '';
+  const outBox = document.getElementById('ai-output');
+  if(!title){ outBox.innerText = 'Опишите главный кадр.'; return; }
+  if(!outcome){ outBox.innerText = 'Добавьте хотя бы один исход (нажмите + у нужного кадра).'; return; }
+  outBox.innerText = 'Обрабатываем...';
   try{
-    const resp=await fetch('/runAi',{
+    const resp = await fetch('/runAi',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({title,outcomes:[outcome]})
+      body: JSON.stringify({ title, outcomes: [outcome] })
     });
-    const data=await resp.json();
-    outBox.innerText=data.result;
-  }catch(err){console.error(err); outBox.innerText='Ошибка при запросе к AI.';}
+    if(!resp.ok){ outBox.innerText = 'Ошибка сервера: ' + resp.status; return; }
+    const data = await resp.json();
+    // data.result — предполагается HTML (markdown->html на сервере). Дополнительно очищаем на клиенте.
+    const clean = DOMPurify.sanitize(data.result || '');
+    outBox.innerHTML = clean || '<p>Пустой результат</p>';
+  }catch(err){
+    console.error(err);
+    outBox.innerText = 'Ошибка при запросе к AI.';
+  }
 });
 
-// очистка всех исходов
-document.getElementById('ai-clear').addEventListener('click',()=>{
-  const all=Array.from(document.querySelectorAll('.node')).map(n=>n.dataset.id);
-  for(const id of all){if(id!=='root') removeNode(id);}
-  edges.length=0;
-  const root=byId('root'); if(root){delete root.dataset.childId; const btn=root.querySelector('.add-btn'); if(btn) btn.removeAttribute('disabled');}
+/* очистка всех исходов */
+document.getElementById('ai-clear').addEventListener('click', ()=>{
+  const all = Array.from(document.querySelectorAll('.node')).map(n=>n.dataset.id);
+  for (const id of all){ if (id !== 'root') removeNode(id); }
+  edges.length = 0;
+  const root = byId('root'); if (root){ delete root.dataset.childId; const btn = root.querySelector('.add-btn'); if (btn) btn.removeAttribute('disabled'); }
   renderConnections();
   updateAIPreview();
-  document.getElementById('ai-output').innerText='Все исходы удалены.';
+  document.getElementById('ai-output').innerText = 'Все исходы удалены.';
 });
 
-// инициализация существующих узлов
-document.querySelectorAll('.node').forEach(n=>{makeDraggable(n); setupNodeButtons(n);});
+/* инициализация существующих узлов */
+document.querySelectorAll('.node').forEach(n => { makeDraggable(n); setupNodeButtons(n); });
 
-// ресайз/скролл
-window.addEventListener('resize',renderConnections);
-canvas.addEventListener('scroll',renderConnections);
+/* ресайз/скролл */
+window.addEventListener('resize', renderConnections);
+canvas.addEventListener('scroll', renderConnections);
 
-// начальное обновление
+/* начальное обновление */
 updateAIPreview();
 renderConnections();
 </script>
 </body>
 </html>
-
