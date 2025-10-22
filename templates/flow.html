@@ -13,6 +13,23 @@
     .ai-box pre { white-space: pre-wrap; word-break: break-word; }
     .add-btn.blink { animation: blink .35s linear; }
     @keyframes blink { 0%{transform:scale(1)}50%{transform:scale(1.08)}100%{transform:scale(1)} }
+    .ai-box {
+      max-height: 300px;
+      overflow-y: auto;
+      background: rgba(255,255,255,0.02);
+      padding: 10px;
+      border-radius: 8px;
+      font-size: 14px;
+      line-height: 1.4;
+    }
+    .ai-box .ai-response {
+      margin-bottom: 12px;
+      padding: 8px;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.04);
+      background: rgba(255,255,255,0.02);
+    }
+    .ai-box .ai-response pre { margin: 8px 0 0 0; font-family: inherit; }
   </style>
 </head>
 <body>
@@ -51,6 +68,10 @@
         <button class="button-primary" id="ai-run">Предложить кадр</button>
         <button class="button-ghost" id="ai-clear">Очистить все исходы</button>
       </div>
+
+      <div style="height:10px"></div>
+      <div class="small-muted">Таймер блокировки: <span id="ai-timer">—</span></div>
+
     </div>
   </div>
 
@@ -58,10 +79,40 @@
 /* --- общие переменные --- */
 const canvas = document.getElementById('canvasArea');
 const connectorsSvg = document.getElementById('connectors');
+// edges — модифицируемый массив
 const edges = [];
 
+/* retry/timer config */
+const MAX_RETRIES = 4;
+let isLockedUntil = 0; // ms timestamp
+let timerInterval = null;
+
+function setLock(seconds){
+  isLockedUntil = Date.now() + seconds*1000;
+  updateTimerUI();
+  if(timerInterval) clearInterval(timerInterval);
+  timerInterval = setInterval(updateTimerUI, 250);
+}
+
+function updateTimerUI(){
+  const el = document.getElementById('ai-timer');
+  const btn = document.getElementById('ai-run');
+  const remaining = Math.max(0, Math.ceil((isLockedUntil - Date.now())/1000));
+  if(remaining>0){
+    el.innerText = remaining + 's';
+    btn.disabled = true;
+    btn.style.opacity = '0.6';
+  } else {
+    el.innerText = '—';
+    btn.disabled = false;
+    btn.style.opacity = '';
+    if(timerInterval){ clearInterval(timerInterval); timerInterval = null; }
+    isLockedUntil = 0;
+  }
+}
+
 /* helper */
-function byId(id) { return document.querySelector(`[data-id="${id}"]`); }
+function byId(id){ return document.querySelector(`[data-id="${id}"]`); }
 
 /* Универсальная функция drag (мышь + touch) */
 function makeDraggable(elem) {
@@ -98,10 +149,12 @@ function makeDraggable(elem) {
     elem.style.zIndex = '';
     elem.classList.remove('dragging');
     document.body.style.overscrollBehavior = '';
+    if (typeof saveState === 'function') saveState();
   }
 
   elem.addEventListener('mousedown', (e) => {
     if (e.target.closest('.add-btn') || e.target.closest('.remove-btn')) return;
+    if (e.target.closest('.title') || e.target.isContentEditable) return;
     e.preventDefault();
     pointerDown(e.clientX, e.clientY);
   });
@@ -112,7 +165,8 @@ function makeDraggable(elem) {
     const t = e.touches && e.touches[0];
     if (!t) return;
     const touchTarget = document.elementFromPoint(t.clientX, t.clientY);
-    if (touchTarget && (touchTarget.closest('.add-btn') || touchTarget.closest('.remove-btn'))) return;
+    if (!touchTarget) return;
+    if (touchTarget.closest('.add-btn') || touchTarget.closest('.remove-btn') || touchTarget.closest('.title')) return;
     e.preventDefault();
     pointerDown(t.clientX, t.clientY);
   }, {passive:false});
@@ -128,7 +182,7 @@ function makeDraggable(elem) {
 }
 
 /* создание нового узла (child) */
-function createNodeAt(x,y,text,parentId) {
+function createNodeAt(x,y,text,parentId){
   const id = 'node-' + Date.now() + '-' + Math.floor(Math.random()*1000);
   const div = document.createElement('div');
   div.className = 'node';
@@ -148,14 +202,10 @@ function createNodeAt(x,y,text,parentId) {
   canvas.appendChild(div);
   makeDraggable(div);
   setupNodeButtons(div);
-  if (parentId) {
-    edges.push({from: parentId,to:id});
+  if(parentId){
+    edges.push({from: parentId, to: id});
     const parent = byId(parentId);
-    if (parent) {
-      parent.dataset.childId = id;
-      const btn = parent.querySelector('.add-btn');
-      if (btn) btn.setAttribute('disabled','');
-    }
+    if(parent){ parent.dataset.childId = id; const btn = parent.querySelector('.add-btn'); if(btn) btn.setAttribute('disabled',''); }
   }
   updateAIPreview();
   renderConnections();
@@ -163,24 +213,19 @@ function createNodeAt(x,y,text,parentId) {
 }
 
 /* удаление узла */
-function removeNode(nodeId) {
-  const node = byId(nodeId);
-  if (!node) return;
+function removeNode(nodeId){
+  const node = byId(nodeId); if(!node) return;
   const parentEdgeIndex = edges.findIndex(e=>e.to===nodeId);
   const parentId = parentEdgeIndex!==-1?edges[parentEdgeIndex].from:null;
   const childEdges = [];
-  for (let i=0;i<edges.length;i++){ if(edges[i].from===nodeId) childEdges.push({index:i,to:edges[i].to}); }
+  for(let i=0;i<edges.length;i++){ if(edges[i].from===nodeId) childEdges.push({index:i,to:edges[i].to}); }
 
   if(parentId && childEdges.length>0){
     const firstChildId = childEdges[0].to;
     edges[parentEdgeIndex].to = firstChildId;
     const parent = byId(parentId);
-    if(parent){ parent.dataset.childId = firstChildId; const pbtn = parent.querySelector('.add-btn'); if(pbtn)pbtn.setAttribute('disabled',''); }
-    for(let i=childEdges.length-1;i>=0;i--){
-      const ce = childEdges[i];
-      if(ce.to!==firstChildId) edges.splice(ce.index,1);
-      else edges.splice(ce.index,1);
-    }
+    if(parent){ parent.dataset.childId = firstChildId; const pbtn = parent.querySelector('.add-btn'); if(pbtn) pbtn.setAttribute('disabled',''); }
+    for(let i=childEdges.length-1;i>=0;i--){ const ce = childEdges[i]; if(ce.to!==firstChildId) edges.splice(ce.index,1); else edges.splice(ce.index,1); }
   } else {
     if(parentEdgeIndex!==-1) edges.splice(parentEdgeIndex,1);
     for(let i=edges.length-1;i>=0;i--){ if(edges[i].from===nodeId) edges.splice(i,1); }
@@ -217,7 +262,12 @@ function setupNodeButtons(nodeElem){
   const removeBtn = nodeElem.querySelector('.remove-btn');
   const titleEl = nodeElem.querySelector('.title');
   if(nodeElem.dataset.childId) addBtn && addBtn.setAttribute('disabled',''); else addBtn && addBtn.removeAttribute('disabled');
-
+  if (titleEl) {
+  // чтобы mousedown на заголовке не доходил до контейнера и не стартовал drag
+  titleEl.addEventListener('mousedown', (e) => e.stopPropagation());
+  titleEl.addEventListener('touchstart', (e) => e.stopPropagation(), {passive:false});
+  titleEl.addEventListener('input', () => { updateAIPreview(); if (typeof saveState === 'function') saveState(); });
+  }
   if(addBtn){ addBtn.addEventListener('click',(e)=>{
     e.stopPropagation();
     if(nodeElem.dataset.childId){ addBtn.classList.add('blink'); setTimeout(()=>addBtn.classList.remove('blink'),350); return; }
@@ -225,7 +275,7 @@ function setupNodeButtons(nodeElem){
     const cr = canvas.getBoundingClientRect();
     const x = rect.left - cr.left + rect.width + 40, y = rect.top - cr.top;
     createNodeAt(x,y,'Следующий кадр...',nodeElem.dataset.id);
-  });}
+  }); }
 
   if(removeBtn){ removeBtn.addEventListener('click',(e)=>{ e.stopPropagation(); removeNode(nodeElem.dataset.id); }); }
 
@@ -257,53 +307,110 @@ function updateAIPreview(){
   document.getElementById('ai-outcome').innerText = outcome || '—';
 }
 
+/* отправка с ретраями */
+async function sendAiRequestWithRetries(payload, maxRetries = MAX_RETRIES){
+  let lastError = null;
+  for(let attempt=1; attempt<=maxRetries; attempt++){
+    try{
+      const resp = await fetch('/run-ai',{
+        method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)
+      });
+      if(!resp.ok){ lastError = new Error('HTTP ' + resp.status); }
+      else { const data = await resp.json(); return { success:true, data }; }
+    } catch(err){ lastError = err; }
+    const backoff = 200 * attempt; await new Promise(r=>setTimeout(r, backoff));
+  }
+  return { success:false, error:lastError };
+}
+
 /* кнопка AI — fetch и безопасная вставка HTML */
-document.getElementById('ai-run').addEventListener('click', async ()=>{
+const aiRunBtn = document.getElementById('ai-run');
+const aiClearBtn = document.getElementById('ai-clear');
+
+aiRunBtn.addEventListener('click', async ()=>{
+  // блокировка таймером
+  if(isLockedUntil > Date.now()) return;
+
   const tree = collectTreeForAI();
   const title = tree.length ? tree[0].text : '';
   const outcome = tree.length>1 ? tree[1].text : '';
   const outBox = document.getElementById('ai-output');
   if(!title){ outBox.innerText = 'Опишите главный кадр.'; return; }
   if(!outcome){ outBox.innerText = 'Добавьте хотя бы один исход (нажмите + у нужного кадра).'; return; }
-  outBox.innerText = 'Обрабатываем...';
-  try{
-    const resp = await fetch('/runAi',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ title, outcomes: [outcome] })
-    });
-    if(!resp.ok){ outBox.innerText = 'Ошибка сервера: ' + resp.status; return; }
-    const data = await resp.json();
-    // data.result — предполагается HTML (markdown->html на сервере). Дополнительно очищаем на клиенте.
-    const clean = DOMPurify.sanitize(data.result || '');
-    outBox.innerHTML = clean || '<p>Пустой результат</p>';
-  }catch(err){
-    console.error(err);
-    outBox.innerText = 'Ошибка при запросе к AI.';
+
+  // индикатор загрузки (добавляем)
+  const loading = document.createElement('div');
+  loading.className = 'ai-response';
+  loading.innerHTML = '<b>Запрос отправлен...</b>';
+  outBox.appendChild(loading);
+  outBox.scrollTop = outBox.scrollHeight;
+
+  aiRunBtn.disabled = true; aiRunBtn.style.opacity = '0.6';
+
+  const payload = { title, outcomes: [outcome] };
+  const result = await sendAiRequestWithRetries(payload, MAX_RETRIES);
+
+  if(result.success){
+    // сервер должен вернуть { model1, result1, model2, result2 }
+    const data = result.data || {};
+    const model1 = data.model1 || 'model1';
+    const model2 = data.model2 || 'model2';
+    const result1 = data.result1 || '';
+    const result2 = data.result2 || '';
+
+    // удаляем индикатор загрузки (если он последний)
+    if(outBox.lastElementChild === loading) outBox.removeChild(loading);
+
+    const block = document.createElement('div');
+    block.className = 'ai-response';
+    // используем DOMPurify для безопасной вставки, но сначала экранируем/форматируем текст в <pre>
+    const safe1 = DOMPurify.sanitize('<div><b>' + escapeHtml(model1) + ':</b></div><pre>' + escapeHtml(result1) + '</pre>');
+    const safe2 = DOMPurify.sanitize('<div><b>' + escapeHtml(model2) + ':</b></div><pre>' + escapeHtml(result2) + '</pre>');
+    block.innerHTML = safe1 + '<div style="height:8px"></div>' + safe2;
+
+    outBox.appendChild(block);
+    outBox.scrollTop = outBox.scrollHeight;
+
+    // ставим блокировку на 60 секунд
+    setLock(60);
+  } else {
+    if(outBox.lastElementChild === loading){
+      loading.innerHTML = '<b>Ошибка при запросе к AI. Попытки исчерпаны.</b>';
+    } else {
+      const err = document.createElement('div');
+      err.className = 'ai-response';
+      err.innerText = 'Ошибка при запросе к AI. Попытки исчерпаны.';
+      outBox.appendChild(err);
+    }
+    console.error('AI request failed after retries:', result.error);
+    aiRunBtn.disabled = false; aiRunBtn.style.opacity = '';
   }
 });
 
-/* очистка всех исходов */
-document.getElementById('ai-clear').addEventListener('click', ()=>{
+aiClearBtn.addEventListener('click', ()=>{
   const all = Array.from(document.querySelectorAll('.node')).map(n=>n.dataset.id);
-  for (const id of all){ if (id !== 'root') removeNode(id); }
+  for(const id of all){ if(id !== 'root') removeNode(id); }
   edges.length = 0;
-  const root = byId('root'); if (root){ delete root.dataset.childId; const btn = root.querySelector('.add-btn'); if (btn) btn.removeAttribute('disabled'); }
-  renderConnections();
-  updateAIPreview();
-  document.getElementById('ai-output').innerText = 'Все исходы удалены.';
+  const root = byId('root'); if(root){ delete root.dataset.childId; const btn = root.querySelector('.add-btn'); if(btn) btn.removeAttribute('disabled'); }
+  renderConnections(); updateAIPreview(); document.getElementById('ai-output').innerText = 'Все исходы удалены.';
 });
 
 /* инициализация существующих узлов */
-document.querySelectorAll('.node').forEach(n => { makeDraggable(n); setupNodeButtons(n); });
-
-/* ресайз/скролл */
-window.addEventListener('resize', renderConnections);
-canvas.addEventListener('scroll', renderConnections);
-
+document.querySelectorAll('.node').forEach(n=>{ makeDraggable(n); setupNodeButtons(n); });
+window.addEventListener('resize', renderConnections); canvas.addEventListener('scroll', renderConnections);
 /* начальное обновление */
-updateAIPreview();
-renderConnections();
+updateAIPreview(); renderConnections(); updateTimerUI();
+
+/* небольшой helper для экранирования перед вставкой в HTML */
+function escapeHtml(str){
+  if(!str && str !== 0) return '';
+  return String(str)
+    .replaceAll('&','&amp;')
+    .replaceAll('<','&lt;')
+    .replaceAll('>','&gt;')
+    .replaceAll('"','&quot;')
+    .replaceAll("'",'&#39;');
+}
 </script>
 </body>
 </html>
