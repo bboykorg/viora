@@ -6,350 +6,588 @@
 <title>Путь Жизни — Viora</title>
 <link rel="stylesheet" href="/static/styles.css">
 <style>
-.editor-page {
-  width: 100vw;
-  height: 100vh;
-  display:flex;
-  gap: 20px;
-  padding: 20px;
-  align-items: stretch;
-  box-sizing: border-box;
-}
-.canvas-area {
-  flex: 1 1 auto;
-  border-radius: 18px;
-  background: rgba(10,10,15,0.45);
-  backdrop-filter: blur(8px);
-  position: relative;
-  overflow: auto;
-  padding: 40px;
-  min-height: 80vh;
-}
-.side-panel {
-  width: 420px;
-  max-width: 40%;
-  background: rgba(8,8,10,0.6);
-  border-radius: 16px;
-  padding: 18px;
-  box-shadow: 0 8px 30px rgba(0,0,0,0.6);
-  color: #fff;
-}
-.node {
-  width: 220px;
-  min-height: 56px;
-  background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 14px;
-  padding: 12px;
-  box-sizing: border-box;
-  position: absolute;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  cursor: move;
-}
-.node .title {
-  font-weight: 600;
-  font-size: 14px;
-  color: #fff;
-  outline: none;
-  min-height: 20px;
-}
-.node { width:260px;
-   min-height:56px;
-   background: rgba(255,255,255,0.03);
-   border:1px solid rgba(255,255,255,0.08);
-   border-radius:14px;
-   padding:12px;
-   box-sizing:border-box;
-   position:absolute;
-   display:flex;
-   flex-direction:column;
-   gap:8px;
-   cursor:move;
- }
-.add-btn {
-  width:28px;
-  height:28px;
-  border-radius:8px;
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.06);
-  cursor:pointer;
-  transition: transform .12s;
-}
-.add-btn:hover { transform: scale(1.05); }
-.connector-svg {
-  position:absolute;
-  inset:0;
-  pointer-events:none;
-}
-.small-muted { color: rgba(255,255,255,0.5); font-size:13px; }
-.back-link {
-    position: fixed;
-    top: 14px;
-    left: 14px;
-    z-index: 9999;
-    background: rgba(255, 255, 255, 0.06);
-    color: #ffffff;
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 10px;
-    border-radius: 10px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    font-weight: 600;
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
-}
-.ai-box { background: rgba(255,255,255,0.02); padding:12px; border-radius:10px; min-height:120px; overflow:auto; }
+:root { --panel-bg: rgba(8,8,10,0.6); --accent: #7dd3fc; }
+body { margin:0; font-family: Inter, Arial, sans-serif; background:#09090b; color:#fff; }
+.editor-page { width:100vw; height:100vh; display:flex; gap:20px; padding:20px; box-sizing:border-box; align-items:stretch; position:relative; }
+.canvas-area { flex:1 1 auto; border-radius:18px; background: rgba(10,10,15,0.45); backdrop-filter: blur(8px); position:relative; overflow:auto; padding:40px; min-height:80vh; }
+.side-panel { position:absolute; right:20px; top:20px; width:420px; height:calc(100vh - 80px); max-width:80vw; background:var(--panel-bg); border-radius:12px; padding:12px; box-shadow:0 12px 40px rgba(0,0,0,0.6); display:flex; flex-direction:column; box-sizing:border-box; z-index:1000; }
+.side-header { cursor:grab; user-select:none; display:flex; align-items:center; justify-content:space-between; padding:8px 10px; border-bottom:1px solid rgba(255,255,255,0.04); margin-bottom:8px; border-radius:8px; }
+.side-title { font-weight:700; font-size:16px; }
+.side-sub { font-size:12px; color:rgba(255,255,255,0.7); }
+.panel-left-handle { position:absolute; left:-8px; top:8px; bottom:8px; width:12px; cursor:ew-resize; border-radius:6px; }
+.node { width:260px; min-height:56px; background: rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:12px; position:absolute; display:flex; flex-direction:column; gap:8px; cursor:move; }
+.node .title { font-weight:600; font-size:14px; color:#fff; outline:none; min-height:20px; background:transparent; border:none; width:100%; }
+.controls { display:flex; align-items:center; justify-content:space-between; margin-top:8px; }
+.buttons-container { display:flex; gap:6px; align-items:center; }
+.add-btn, .remove-btn { width:28px; height:28px; border-radius:8px; display:inline-flex; align-items:center; justify-content:center; background: rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); color:#fff; cursor:pointer; }
+.add-btn { font-weight:700; font-size:16px; }
+.remove-btn { font-size:14px; }
+.small-muted { color: rgba(255,255,255,0.55); font-size:13px; }
+.connector-svg { position:absolute; inset:0; pointer-events:none; z-index:1; }
+.ai-box { background: rgba(255,255,255,0.02); padding:12px; border-radius:10px; min-height:120px; overflow:auto; max-height:360px; font-size:14px; line-height:1.45; }
+.ai-box .ai-response { margin-bottom:12px; padding:10px; background: rgba(255,255,255,0.02); border-radius:8px; border:1px solid rgba(255,255,255,0.04); }
+.ai-box .ai-response .meta { font-size:13px; color:rgba(255,255,255,0.85); }
+.ai-box .ai-response pre { white-space:pre-wrap; word-break:break-word; margin:6px 0 0 0; font-family:inherit; font-size:13px; }
 .action-row { display:flex; gap:10px; margin-top:12px; }
-.button-primary { background:var(--color-primary); color:#0a0a0f; padding:10px 12px; border-radius:10px; cursor:pointer; border:none; }
-.button-ghost { background:transparent; color: #fff; border:1px solid rgba(255,255,255,0.08); padding:10px 12px; border-radius:10px; cursor:pointer; }
-
+.button-primary { background: var(--accent); color:#0a0a0f; padding:10px 12px; border-radius:10px; cursor:pointer; border:none; }
+.button-ghost { background:transparent; color:#fff; border:1px solid rgba(255,255,255,0.08); padding:10px 12px; border-radius:10px; cursor:pointer; }
+.title[contenteditable]:empty:before { content: attr(data-placeholder); color: rgba(255,255,255,0.35); display:block; }
+.result-highlight { border-left: 3px solid var(--accent); padding-left:8px; margin-bottom:8px; }
+.back-link { position:fixed; top:14px; left:14px; z-index:1100; background: rgba(255,255,255,0.06); color:#fff; text-decoration:none; display:inline-flex; gap:8px; padding:8px 10px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); font-weight:600; }
 </style>
 </head>
 <body>
   <a class="back-link" href="/">← Назад</a>
-  <div class="editor-page">
+
+  <div class="editor-page" id="editorPage">
     <div class="canvas-area" id="canvasArea">
       <svg class="connector-svg" id="connectors" width="100%" height="100%"></svg>
 
-      <!-- initial main node -->
       <div class="node" id="node-root" style="left: calc(50% - 110px); top: 80px;" data-id="root">
         <div contenteditable class="title" data-placeholder="Опишите проблему...">Нажмите и впишите проблему</div>
         <div class="controls">
           <div class="small-muted">Главный пункт</div>
-          <div class="add-btn" title="Добавить исход" data-add>+</div>
+          <div class="buttons-container">
+            <div class="add-btn" title="Добавить исход" data-add>+</div>
+          </div>
         </div>
       </div>
     </div>
 
-    <div class="side-panel">
-      <h3>ИИ-помощник</h3>
-      <div class="small-muted">Он читает заголовок (проблему) и все исходы, а затем предлагает наиболее комфортный вариант.</div>
-
-      <div style="height:14px"></div>
+    <!-- side panel now absolute so can move/resize -->
+    <div class="side-panel" id="sidePanel" role="region" aria-label="ИИ-панель">
+      <div class="panel-left-handle" id="panelHandle" title="Перетащите чтобы изменить ширину"></div>
+      <div class="side-header" id="sideHeader">
+        <div>
+          <div class="side-title">ИИ-помощник</div>
+          <div class="side-sub">Перетащите заголовок чтобы переместить панель; потяните слева чтобы изменить ширину.</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button id="panelCollapseBtn" class="button-ghost" title="Свернуть/развернуть">↔</button>
+          <button id="panelCloseBtn" class="button-ghost" title="Скрыть панель">✕</button>
+        </div>
+      </div>
 
       <div style="font-weight:600">Заголовок (проблема)</div>
-      <div id="ai-title" class="small-muted" style="min-height:34px"></div>
+      <div id="ai-title" class="small-muted" style="min-height:34px">—</div>
 
       <div style="height:10px"></div>
       <div style="font-weight:600">Исходы (варианты решения)</div>
-      <div id="ai-outcomes" class="small-muted" style="min-height:60px"></div>
+      <div id="ai-outcomes" class="small-muted" style="min-height:60px">—</div>
 
       <div style="height:12px"></div>
-      <div class="ai-box" id="ai-output">Нажмите «Предложить», чтобы ИИ проанализировал варианты.</div>
+      <div class="ai-box" id="ai-output">Нажмите «Предложить», чтобы ИИ проанализировал варианты и добавил плюсы/минусы как ноды.</div>
 
-      <div class="action-row">
+      <div class="action-row" style="margin-top:12px">
         <button class="button-primary" id="ai-run">Предложить</button>
-        <button class="button-ghost" id="ai-reset">Сбросить подсказку</button>
+        <button class="button-ghost" id="ai-reset">Сбросить ответы</button>
       </div>
 
-      <div style="height:10px"></div>
-      <div class="small-muted">Поддержка: узлы редактируемы, перетаскивайте их, нажмите «+» на узле чтобы создать исход. У исходов есть та же логика.</div>
+      <div style="height:8px"></div>
+      <div class="small-muted">Таймер блокировки: <span id="ai-timer">—</span></div>
     </div>
   </div>
 
 <script>
-// --- JS для life.html с fetch к Flask ---
-let nodeCounter = 1;
+/* ---------- state / config ---------- */
+const STORAGE_KEY = 'viora_state_v1';
 const canvas = document.getElementById('canvasArea');
 const connectorsSvg = document.getElementById('connectors');
-const edges = [];
+const sidePanel = document.getElementById('sidePanel');
+const panelHandle = document.getElementById('panelHandle');
+const sideHeader = document.getElementById('sideHeader');
+const panelCollapseBtn = document.getElementById('panelCollapseBtn');
+const panelCloseBtn = document.getElementById('panelCloseBtn');
 
-// Создание нового узла
-function createNode(x = 100, y = 200, text = 'Новый исход', parentId = null) {
-  const id = 'node-' + (++nodeCounter);
+let edges = [];
+let nodeCounter = 1;
+const MAX_RETRIES = 4;
+let isLockedUntil = 0;
+let timerInterval = null;
+let _saveTimeout = null;
+
+/* ---------- save/load ---------- */
+function saveState(debounceMs = 200){
+  if(_saveTimeout) clearTimeout(_saveTimeout);
+  _saveTimeout = setTimeout(()=> {
+    try {
+      const state = serializeState();
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    } catch(e){ console.error('saveState', e); }
+  }, debounceMs);
+}
+function serializeState(){
+  const nodes = Array.from(document.querySelectorAll('.node[data-id]')).map(n => ({
+    id: n.dataset.id,
+    left: parseFloat(n.style.left) || 0,
+    top: parseFloat(n.style.top) || 0,
+    title: n.querySelector('.title')?.innerText || ''
+  }));
+  const panelRect = sidePanel.getBoundingClientRect();
+  const editorRect = document.getElementById('editorPage').getBoundingClientRect();
+  const panelState = {
+    left: panelRect.left - editorRect.left,
+    top: panelRect.top - editorRect.top,
+    width: panelRect.width,
+    height: panelRect.height,
+    collapsed: sidePanel.dataset.collapsed === '1' ? true : false
+  };
+  return { version:1, nodes, edges, nodeCounter, aiOutput: document.getElementById('ai-output')?.innerHTML || '', isLockedUntil, canvasScroll:{left:canvas.scrollLeft, top:canvas.scrollTop}, panelState };
+}
+function loadState(){
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(!raw) return;
+    const s = JSON.parse(raw);
+    if(!s) return;
+    if(typeof s.nodeCounter === 'number') nodeCounter = s.nodeCounter;
+
+    // restore root node pos & title
+    const root = document.querySelector('[data-id="root"]');
+    if(root){
+      const savedRoot = (s.nodes || []).find(n=>n.id === 'root');
+      if(savedRoot){
+        root.style.left = (savedRoot.left||0)+'px';
+        root.style.top = (savedRoot.top||0)+'px';
+        const t = root.querySelector('.title');
+        if(t) t.innerText = savedRoot.title || '';
+      }
+    }
+
+    // clear existing non-root nodes
+    document.querySelectorAll('.node').forEach(n => { if(n.dataset.id !== 'root') n.remove(); });
+    edges = [];
+
+    if(Array.isArray(s.nodes)){
+      s.nodes.forEach(n => {
+        if(n.id === 'root') return;
+        recreateNode(n.id, n.left || 100, n.top || 100, n.title || 'Новый исход');
+      });
+    }
+    if(Array.isArray(s.edges)) edges = s.edges.slice();
+    if(s.aiOutput !== undefined) document.getElementById('ai-output').innerHTML = s.aiOutput || '';
+
+    // restore panel
+    if(s.panelState){
+      const editorRect = document.getElementById('editorPage').getBoundingClientRect();
+      const left = (s.panelState.left || 0) + editorRect.left;
+      const top = (s.panelState.top || 0) + editorRect.top;
+      sidePanel.style.left = (s.panelState.left || 0) + 'px';
+      sidePanel.style.top = (s.panelState.top || 0) + 'px';
+      sidePanel.style.right = 'auto';
+      if(s.panelState.width) sidePanel.style.width = s.panelState.width + 'px';
+      if(s.panelState.height) sidePanel.style.height = s.panelState.height + 'px';
+      if(s.panelState.collapsed) sidePanel.dataset.collapsed = '1';
+    }
+
+    if(s.isLockedUntil){
+      isLockedUntil = s.isLockedUntil;
+      updateTimerUI();
+      if(isLockedUntil > Date.now()){
+        timerInterval && clearInterval(timerInterval);
+        timerInterval = setInterval(updateTimerUI, 250);
+      }
+    }
+    if(s.canvasScroll) requestAnimationFrame(()=>{ canvas.scrollLeft = s.canvasScroll.left || 0; canvas.scrollTop = s.canvasScroll.top || 0; renderConnections(); });
+
+    renderConnections();
+    updateAIPreview();
+  } catch(e){ console.error('loadState', e); }
+}
+
+/* ---------- timer ---------- */
+function setLock(seconds){
+  isLockedUntil = Date.now() + seconds*1000;
+  updateTimerUI();
+  timerInterval && clearInterval(timerInterval);
+  timerInterval = setInterval(updateTimerUI, 250);
+  saveState();
+}
+function updateTimerUI(){
+  const el = document.getElementById('ai-timer');
+  const runBtn = document.getElementById('ai-run');
+  const remaining = Math.max(0, Math.ceil((isLockedUntil - Date.now()) / 1000));
+  if(remaining > 0){ el.innerText = `${remaining}s`; runBtn.disabled = true; runBtn.style.opacity='0.6'; }
+  else { el.innerText = '—'; runBtn.disabled = false; runBtn.style.opacity=''; if(timerInterval){ clearInterval(timerInterval); timerInterval=null; } if(isLockedUntil !== 0){ isLockedUntil = 0; saveState(); } }
+}
+
+/* ---------- nodes & UI ---------- */
+function byId(id){ return document.querySelector(`[data-id="${id}"]`); }
+function genId(){ nodeCounter = (nodeCounter||0) + 1; saveState(); return 'node-' + nodeCounter; }
+
+function recreateNode(id, x=100, y=200, text='Новый исход'){
   const div = document.createElement('div');
   div.className = 'node';
   div.style.left = x + 'px';
   div.style.top = y + 'px';
   div.dataset.id = id;
-
   div.innerHTML = `
     <div contenteditable class="title">${text}</div>
     <div class="controls">
-      <div class="small-muted">Исход</div>
-      <div class="add-btn" title="Добавить исход" data-add>+</div>
-      <div class="remove-btn" title="Удалить узел">✕</div>
+      <div class="small-muted">${id==='root' ? 'Главный пункт' : 'Исход'}</div>
+      <div class="buttons-container">
+        <div class="add-btn" title="Добавить исход" data-add>+</div>
+        ${id==='root' ? '' : '<div class="remove-btn" title="Удалить узел">✕</div>'}
+      </div>
     </div>
   `;
   canvas.appendChild(div);
   makeDraggable(div);
   setupNodeButtons(div);
-
-  if (parentId) addEdge(parentId, id);
+  const t = div.querySelector('.title');
+  if(t) t.addEventListener('input', ()=>{ updateAIPreview(); saveState(); });
+  return id;
+}
+function createNode(x=100,y=200,text='Новый исход', parentId=null){
+  const id = genId();
+  recreateNode(id, x, y, text);
+  if(parentId) addEdge(parentId, id);
   updateAIPreview();
   renderConnections();
+  saveState();
   return id;
 }
 
-// Драг-н-дроп узлов
-function makeDraggable(elem) {
-  let dragging = false, dx = 0, dy = 0;
-  elem.addEventListener('mousedown', (e) => {
-    if (e.target.dataset.add !== undefined || e.target.classList.contains('remove-btn')) return;
+function makeDraggable(elem){
+  let dragging=false, startX=0, startY=0, origLeft=0, origTop=0;
+  const canvasRect = ()=>canvas.getBoundingClientRect();
+
+  elem.addEventListener('mousedown', e=>{
+    if(e.target.closest('[data-add]') || e.target.closest('.remove-btn')) return;
+    if(e.target.closest('.title') || e.target.isContentEditable) return;
+    const rect = elem.getBoundingClientRect();
+    startX = e.clientX; startY = e.clientY;
+    origLeft = rect.left - canvasRect().left; origTop = rect.top - canvasRect().top;
     dragging = true;
-    dx = e.clientX - elem.getBoundingClientRect().left;
-    dy = e.clientY - elem.getBoundingClientRect().top;
     elem.style.zIndex = 1000;
   });
-  document.addEventListener('mousemove', (e) => {
-    if (!dragging) return;
-    const rect = canvas.getBoundingClientRect();
-    elem.style.left = (e.clientX - rect.left - dx) + 'px';
-    elem.style.top = (e.clientY - rect.top - dy) + 'px';
+  document.addEventListener('mousemove', e=>{
+    if(!dragging) return;
+    const cr = canvasRect();
+    let nx = origLeft + (e.clientX - startX), ny = origTop + (e.clientY - startY);
+    nx = Math.max(8, nx); ny = Math.max(8, ny);
+    elem.style.left = nx + 'px'; elem.style.top = ny + 'px';
     renderConnections();
   });
-  document.addEventListener('mouseup', () => {
-    if (dragging) {
-      dragging = false;
-      elem.style.zIndex = '';
-    }
+  document.addEventListener('mouseup', ()=>{
+    if(dragging){ dragging=false; elem.style.zIndex=''; saveState(); }
   });
+
+  // touch
+  elem.addEventListener('touchstart', e=>{
+    const t = e.touches && e.touches[0]; if(!t) return;
+    const target = document.elementFromPoint(t.clientX, t.clientY);
+    if(!target) return;
+    if(target.closest('[data-add]') || target.closest('.remove-btn') || target.closest('.title')) return;
+    const rect = elem.getBoundingClientRect();
+    startX = t.clientX; startY = t.clientY; origLeft = rect.left - canvas.getBoundingClientRect().left; origTop = rect.top - canvas.getBoundingClientRect().top;
+    dragging=true; elem.style.zIndex=1000; e.preventDefault();
+  }, {passive:false});
+  document.addEventListener('touchmove', e=>{
+    if(!dragging) return;
+    const t = e.touches && e.touches[0]; if(!t) return;
+    const rect = canvas.getBoundingClientRect();
+    let nx = origLeft + (t.clientX - startX), ny = origTop + (t.clientY - startY);
+    nx = Math.max(8, nx); ny = Math.max(8, ny);
+    elem.style.left = nx + 'px'; elem.style.top = ny + 'px';
+    renderConnections(); e.preventDefault();
+  }, {passive:false});
+  document.addEventListener('touchend', ()=>{ if(dragging){ dragging=false; elem.style.zIndex=''; saveState(); } });
 }
 
-// Добавление ребра
-function addEdge(fromId, toId) {
-  edges.push({from: fromId, to: toId});
-  renderConnections();
-}
-
-// Рисуем линии между узлами
-function renderConnections() {
-  connectorsSvg.innerHTML = '';
-  edges.forEach(e => {
-    const a = document.querySelector(`[data-id="${e.from}"]`);
-    const b = document.querySelector(`[data-id="${e.to}"]`);
-    if (!a || !b) return;
-    const ra = a.getBoundingClientRect();
-    const rb = b.getBoundingClientRect();
-    const canvasRect = canvas.getBoundingClientRect();
-    const x1 = ra.left + ra.width/2 - canvasRect.left;
-    const y1 = ra.top + ra.height - canvasRect.top;
-    const x2 = rb.left + rb.width/2 - canvasRect.left;
-    const y2 = rb.top - canvasRect.top;
-    const dx = Math.max(40, Math.abs(x2-x1)/2);
-    const path = document.createElementNS('http://www.w3.org/2000/svg','path');
-    path.setAttribute('d', `M ${x1} ${y1} C ${x1} ${y1+dx} ${x2} ${y2-dx} ${x2} ${y2}`);
-    path.setAttribute('stroke','rgba(255,255,255,0.12)');
-    path.setAttribute('stroke-width','2');
-    path.setAttribute('fill','none');
-    connectorsSvg.appendChild(path);
-  });
-}
-
-// Настройка кнопок узла
-function setupNodeButtons(nodeElem) {
+function setupNodeButtons(nodeElem){
   const addBtn = nodeElem.querySelector('[data-add]');
   const removeBtn = nodeElem.querySelector('.remove-btn');
   const title = nodeElem.querySelector('.title');
 
-  addBtn && addBtn.addEventListener('click', (e) => {
+  if(title){
+    title.addEventListener('mousedown', e=>e.stopPropagation());
+    title.addEventListener('touchstart', e=>e.stopPropagation(), {passive:false});
+    title.addEventListener('input', ()=>{ updateAIPreview(); saveState(); });
+  }
+
+  if(addBtn) addBtn.addEventListener('click', e=>{
     e.stopPropagation();
-    const rect = nodeElem.getBoundingClientRect();
-    const canvasRect = canvas.getBoundingClientRect();
-    const newId = createNode(
-      rect.left - canvasRect.left + rect.width + 40,
-      rect.top - canvasRect.top,
-      'Вариант решения...',
-      nodeElem.dataset.id
-    );
+    const rect = nodeElem.getBoundingClientRect(), cr = canvas.getBoundingClientRect();
+    const childCount = edges.filter(en => en.from === nodeElem.dataset.id).length;
+    const newY = rect.top - cr.top + childCount * 80;
+    const newId = createNode(rect.left - cr.left + rect.width + 40, newY, 'Вариант решения...', nodeElem.dataset.id);
     document.querySelector(`[data-id="${newId}"] .title`)?.focus();
   });
 
-  removeBtn && removeBtn.addEventListener('click', (e) => {
+  if(removeBtn) removeBtn.addEventListener('click', e=>{
     e.stopPropagation();
     removeNode(nodeElem.dataset.id);
   });
-
-  title.addEventListener('input', updateAIPreview);
 }
 
-// Собрать данные для AI
-function collectTreeText() {
-  const root = document.querySelector('[data-id="root"]');
+function removeNode(nodeId){
+  const node = byId(nodeId); if(!node) return;
+  edges = edges.filter(e => e.from !== nodeId && e.to !== nodeId);
+  node.remove();
+  renderConnections(); updateAIPreview(); saveState();
+}
+
+function addEdge(from,to){ if(!edges.some(e=>e.from===from && e.to===to)){ edges.push({from,to}); renderConnections(); saveState(); } }
+
+function renderConnections(){
+  connectorsSvg.innerHTML = '';
+  edges.forEach(e=>{
+    const a = byId(e.from), b = byId(e.to);
+    if(!a || !b) return;
+    const ra = a.getBoundingClientRect(), rb = b.getBoundingClientRect(), cr = canvas.getBoundingClientRect();
+    const x1 = ra.left + ra.width/2 - cr.left, y1 = ra.top + ra.height - cr.top;
+    const x2 = rb.left + rb.width/2 - cr.left, y2 = rb.top - cr.top;
+    const dx = Math.max(40, Math.abs(x2-x1)/2);
+    const path = document.createElementNS('http://www.w3.org/2000/svg','path');
+    path.setAttribute('d', `M ${x1} ${y1} C ${x1} ${y1+dx} ${x2} ${y2-dx} ${x2} ${y2}`);
+    path.setAttribute('stroke','rgba(255,255,255,0.12)'); path.setAttribute('stroke-width','2'); path.setAttribute('fill','none');
+    connectorsSvg.appendChild(path);
+  });
+}
+
+/* ---------- AI & parsing pros/cons (same parser as before) ---------- */
+function collectTreeText(){
+  const root = byId('root');
   const title = root ? root.querySelector('.title').innerText.trim() : '';
   const outcomes = Array.from(document.querySelectorAll('.node[data-id]:not([data-id="root"])'))
-    .map(n => n.querySelector('.title').innerText.trim())
-    .filter(Boolean);
+                    .map(n => n.querySelector('.title').innerText.trim()).filter(Boolean);
   return { title, outcomes };
 }
+function updateAIPreview(){ const {title,outcomes} = collectTreeText(); document.getElementById('ai-title').innerText = title || '—'; document.getElementById('ai-outcomes').innerText = outcomes.length ? ('• ' + outcomes.join('\n• ')) : '—'; }
 
-// Обновление AI-превью
-function updateAIPreview() {
-  const { title, outcomes } = collectTreeText();
-  document.getElementById('ai-title').innerText = title || '—';
-  document.getElementById('ai-outcomes').innerText = outcomes.length ? ('• ' + outcomes.join('\n• ')) : '—';
-}
-
-// Удаление узла
-function removeNode(nodeId) {
-  const node = document.querySelector(`[data-id="${nodeId}"]`);
-  if (!node) return;
-  const parentEdgeIndex = edges.findIndex(e => e.to === nodeId);
-  const parentId = parentEdgeIndex !== -1 ? edges[parentEdgeIndex].from : null;
-  const childEdges = edges.filter(e => e.from === nodeId);
-
-  if (parentId) {
-    childEdges.forEach(ce => {
-      if (!edges.some(e => e.from === parentId && e.to === ce.to)) edges.push({from: parentId, to: ce.to});
-    });
-    for (let i = edges.length-1; i>=0; i--) {
-      if (edges[i].from === nodeId) edges.splice(i,1);
-    }
-    if (parentEdgeIndex !== -1) edges.splice(parentEdgeIndex,1);
-  } else {
-    for (let i = edges.length-1; i>=0; i--) {
-      if (edges[i].from === nodeId) edges.splice(i,1);
-    }
-    if (parentEdgeIndex !== -1) edges.splice(parentEdgeIndex,1);
+function parseProsConsFromText(text){
+  if(!text) return { pros:[], cons:[] };
+  const normalized = text.replace(/\r\n/g,'\n').replace(/\r/g,'\n');
+  const lines = normalized.split('\n').map(l=>l.trim()).filter(Boolean);
+  let pros=[], cons=[];
+  lines.forEach(ln=>{
+    const l = ln.replace(/^[-\u2022\*\s]+/, '');
+    if(/^(?i:плюс(?:ы)?)[:\s]/i.test(l)){ const after = l.replace(/^(?i:плюс(?:ы)?)[:\s]*/i,''); pros = pros.concat(splitToItems(after)); }
+    else if(/^(?i:минус(?:ы)?)[:\s]/i.test(l)){ const after = l.replace(/^(?i:минус(?:ы)?)[:\s]*/i,''); cons = cons.concat(splitToItems(after)); }
+  });
+  if(pros.length===0 && cons.length===0){
+    const m = normalized.match(/(?i:плюс(?:ы)?)[^:\n]*[:\s]*([^;\n]+)(?:[\n\r\s\S]*?(?i:минус(?:ы)?)[^:\n]*[:\s]*([^;\n]+))?/i);
+    if(m){ if(m[1]) pros=pros.concat(splitToItems(m[1])); if(m[2]) cons=cons.concat(splitToItems(m[2])); }
   }
+  if(pros.length===0 || cons.length===0){
+    lines.forEach(l=>{
+      if(/^[+\u2713]/.test(l) && pros.length===0) pros.push(l.replace(/^[+\-\u2022*]+\s*/,''));
+      if(/^\-/.test(l) && cons.length===0) cons.push(l.replace(/^[+\-\u2022*]+\s*/,''));
+    });
+  }
+  pros = uniqAndTrim(pros).slice(0,10);
+  cons = uniqAndTrim(cons).slice(0,10);
+  return {pros, cons};
+}
+function splitToItems(s){ if(!s) return []; return s.split(/\s*[;,]\s*|\s*\/\s*/).map(p=>p.trim()).filter(Boolean); }
+function uniqAndTrim(arr){ const seen=new Set(); const out=[]; arr.forEach(a=>{ const t=a.replace(/^[\-\u2022\*]+\s*/,'').trim(); if(!t) return; if(!seen.has(t.toLowerCase())){ seen.add(t.toLowerCase()); out.push(t); } }); return out; }
 
-  node.remove();
-  renderConnections();
-  updateAIPreview();
+function createProConNodesForOutcome(outcomeText, pros, cons){
+  const nodes = Array.from(document.querySelectorAll('.node[data-id]'));
+  let outcomeNode = nodes.find(n => (n.querySelector('.title')?.innerText || '').trim() === outcomeText);
+  if(!outcomeNode){
+    const root = byId('root'); const rootRect = root.getBoundingClientRect(); const cr = canvas.getBoundingClientRect();
+    const x = rootRect.left - cr.left + rootRect.width + 40; const y = rootRect.top - cr.top;
+    createNode(x,y,outcomeText,'root');
+    outcomeNode = Array.from(document.querySelectorAll('.node[data-id]')).find(n => (n.querySelector('.title')?.innerText || '').trim() === outcomeText);
+  }
+  if(!outcomeNode) return;
+  const parentId = outcomeNode.dataset.id;
+  const rect = outcomeNode.getBoundingClientRect(); const cr = canvas.getBoundingClientRect();
+  let yOffsetBase = rect.top - cr.top + rect.height + 20;
+  const spacing = 90;
+  pros.forEach((p, idx) => {
+    const x = rect.left - cr.left + rect.width + 40;
+    const y = yOffsetBase + idx * spacing;
+    const newId = createNode(x, y, `Плюс: ${p}`, parentId);
+    const n = byId(newId); if(n) n.dataset.type='pro';
+  });
+  const consStart = yOffsetBase + pros.length * spacing + 10;
+  cons.forEach((c, idx) => {
+    const x = rect.left - cr.left + rect.width + 40;
+    const y = consStart + idx * spacing;
+    const newId = createNode(x, y, `Минус: ${c}`, parentId);
+    const n = byId(newId); if(n) n.dataset.type='con';
+  });
+  renderConnections(); saveState();
 }
 
-// --- AI fetch ---
-document.getElementById('ai-run').addEventListener('click', async () => {
+/* ---------- server comms ---------- */
+async function sendAiRequestWithRetries(payload, maxRetries=MAX_RETRIES){
+  let lastError = null;
+  for(let attempt=1; attempt<=maxRetries; attempt++){
+    try{
+      const res = await fetch('/run-ai', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+      if(!res.ok){ lastError = new Error('HTTP ' + res.status); }
+      else { const data = await res.json(); return { success:true, data }; }
+    } catch(err){ lastError = err; }
+    const backoff = 200 * attempt; await new Promise(r=>setTimeout(r, backoff));
+  }
+  return { success:false, error:lastError };
+}
+
+/* ---------- AI UI ---------- */
+const aiRunBtn = document.getElementById('ai-run');
+const aiResetBtn = document.getElementById('ai-reset');
+
+aiRunBtn.addEventListener('click', async ()=>{
+  if(isLockedUntil > Date.now()) return;
   const { title, outcomes } = collectTreeText();
   const outBox = document.getElementById('ai-output');
-  if (!title) return outBox.innerText = 'Пожалуйста, опишите проблему.';
-  if (!outcomes.length) return outBox.innerText = 'Добавьте варианты решения.';
+  if(!title){ outBox.innerText = 'Пожалуйста, опишите проблему.'; return; }
+  if(!outcomes.length){ outBox.innerText = 'Добавьте варианты решения.'; return; }
 
-  outBox.innerText = 'Обрабатываем...';
+  outBox.innerHTML = '';
+  const loading = document.createElement('div'); loading.className='ai-response'; loading.innerHTML = `<div class="meta"><b>Отправлено, ожидаем ответ...</b></div>`; outBox.appendChild(loading); outBox.scrollTop = outBox.scrollHeight;
+  aiRunBtn.disabled = true; aiRunBtn.style.opacity = '0.6';
 
-  try {
-    const response = await fetch('/runAi', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title, outcomes })
-    });
-    const data = await response.json();
-    outBox.innerText = data.result;
-  } catch(err) {
-    outBox.innerText = 'Ошибка при запросе к AI.';
-    console.error(err);
+  const payload = { title, outcomes };
+  const result = await sendAiRequestWithRetries(payload, MAX_RETRIES);
+
+  if(result.success){
+    const data = result.data || {};
+    const results = Array.isArray(data.results) ? data.results : [];
+    if(outBox.lastElementChild === loading) outBox.removeChild(loading);
+    if(results.length === 0){
+      const empty = document.createElement('div'); empty.className='ai-response'; empty.innerText = 'Пустой результат от сервера.'; outBox.appendChild(empty);
+    } else {
+      results.forEach(item=>{
+        const block = document.createElement('div'); block.className='ai-response result-highlight';
+        const outcomeText = item.outcome || '';
+        const resultText = item.result || '';
+        block.innerHTML = `<div class="meta"><b>Исход ${escapeHtml(item.index||'')}:</b> ${escapeHtml(outcomeText)}</div><pre>${escapeHtml(resultText)}</pre>`;
+        outBox.appendChild(block);
+        const { pros, cons } = parseProsConsFromText(resultText);
+        if((pros && pros.length) || (cons && cons.length)) createProConNodesForOutcome(outcomeText, pros, cons);
+      });
+    }
+    setLock(60);
+    saveState();
+  } else {
+    if(outBox.lastElementChild === loading) loading.innerHTML = `<div class="meta"><b>Ошибка при запросе к AI. Попытки исчерпаны.</b></div>`;
+    else { const err = document.createElement('div'); err.className='ai-response'; err.innerText = 'Ошибка при запросе к AI. Попытки исчерпаны.'; outBox.appendChild(err); }
+    console.error('AI request failed', result.error);
   }
+
+  aiRunBtn.disabled = false; aiRunBtn.style.opacity = '';
 });
 
-document.getElementById('ai-reset').addEventListener('click', () => {
-  document.getElementById('ai-output').innerText = 'Сброшено.';
+aiResetBtn.addEventListener('click', ()=>{
+  document.getElementById('ai-output').innerHTML = '';
+  saveState();
 });
 
-// Инициализация существующих узлов
-document.querySelectorAll('.node').forEach(n => {
-  makeDraggable(n);
-  setupNodeButtons(n);
-});
+/* ---------- panel drag & resize ---------- */
+/* move by header */
+(function(){
+  let dragging=false, startX=0, startY=0, origLeft=0, origTop=0;
+  sideHeader.addEventListener('mousedown', e=>{
+    if(e.target === panelCollapseBtn || e.target === panelCloseBtn) return;
+    dragging=true;
+    const rect = sidePanel.getBoundingClientRect();
+    const editorRect = document.getElementById('editorPage').getBoundingClientRect();
+    startX = e.clientX; startY = e.clientY;
+    origLeft = rect.left - editorRect.left; origTop = rect.top - editorRect.top;
+    sideHeader.style.cursor = 'grabbing';
+    document.body.style.userSelect = 'none';
+  });
+  document.addEventListener('mousemove', e=>{
+    if(!dragging) return;
+    const editorRect = document.getElementById('editorPage').getBoundingClientRect();
+    let nx = origLeft + (e.clientX - startX), ny = origTop + (e.clientY - startY);
+    // clamp inside editor
+    nx = Math.max(8, Math.min(editorRect.width - 120, nx));
+    ny = Math.max(8, Math.min(editorRect.height - 60, ny));
+    sidePanel.style.left = nx + 'px';
+    sidePanel.style.top = ny + 'px';
+    sidePanel.style.right = 'auto';
+  });
+  document.addEventListener('mouseup', ()=>{
+    if(dragging){ dragging=false; sideHeader.style.cursor='grab'; document.body.style.userSelect=''; saveState(); }
+  });
 
+  // touch
+  sideHeader.addEventListener('touchstart', e=>{
+    const t = e.touches && e.touches[0]; if(!t) return;
+    dragging=true;
+    const rect = sidePanel.getBoundingClientRect(); const editorRect = document.getElementById('editorPage').getBoundingClientRect();
+    startX = t.clientX; startY = t.clientY; origLeft = rect.left - editorRect.left; origTop = rect.top - editorRect.top;
+    e.preventDefault();
+  }, {passive:false});
+  document.addEventListener('touchmove', e=>{
+    if(!dragging) return;
+    const t = e.touches && e.touches[0]; if(!t) return;
+    const editorRect = document.getElementById('editorPage').getBoundingClientRect();
+    let nx = origLeft + (t.clientX - startX), ny = origTop + (t.clientY - startY);
+    nx = Math.max(8, Math.min(editorRect.width - 120, nx));
+    ny = Math.max(8, Math.min(editorRect.height - 60, ny));
+    sidePanel.style.left = nx + 'px'; sidePanel.style.top = ny + 'px'; sidePanel.style.right='auto';
+    e.preventDefault();
+  }, {passive:false});
+  document.addEventListener('touchend', ()=>{ if(dragging){ dragging=false; saveState(); } });
+})();
+
+/* resize by left handle */
+(function(){
+  let resizing=false, startX=0, startWidth=0;
+  panelHandle.addEventListener('mousedown', e=>{
+    resizing=true; startX = e.clientX; startWidth = sidePanel.getBoundingClientRect().width;
+    document.body.style.userSelect='none';
+  });
+  document.addEventListener('mousemove', e=>{
+    if(!resizing) return;
+    const dx = startX - e.clientX; // dragging left handle: moving mouse left -> increase width
+    const newWidth = Math.max(240, Math.min(window.innerWidth - 80, startWidth + dx));
+    sidePanel.style.width = newWidth + 'px';
+    sidePanel.style.right = 'auto';
+    renderConnections();
+  });
+  document.addEventListener('mouseup', ()=>{
+    if(resizing){ resizing=false; document.body.style.userSelect=''; saveState(); }
+  });
+
+  // touch
+  panelHandle.addEventListener('touchstart', e=>{
+    const t = e.touches && e.touches[0]; if(!t) return;
+    resizing=true; startX=t.clientX; startWidth = sidePanel.getBoundingClientRect().width; e.preventDefault();
+  }, {passive:false});
+  document.addEventListener('touchmove', e=>{
+    if(!resizing) return;
+    const t = e.touches && e.touches[0]; if(!t) return;
+    const dx = startX - t.clientX; const newWidth = Math.max(240, Math.min(window.innerWidth - 80, startWidth + dx));
+    sidePanel.style.width = newWidth + 'px'; sidePanel.style.right='auto'; renderConnections(); e.preventDefault();
+  }, {passive:false});
+  document.addEventListener('touchend', ()=>{ if(resizing){ resizing=false; saveState(); } });
+})();
+
+/* collapse & close */
+panelCollapseBtn.addEventListener('click', ()=>{
+  if(sidePanel.dataset.collapsed === '1'){
+    sidePanel.dataset.collapsed = '0';
+    sidePanel.style.height = sidePanel.dataset.prevHeight || '';
+  } else {
+    sidePanel.dataset.prevHeight = sidePanel.style.height || '';
+    sidePanel.dataset.collapsed = '1';
+    sidePanel.style.height = '36px';
+  }
+  saveState();
+});
+panelCloseBtn.addEventListener('click', ()=>{ sidePanel.style.display = 'none'; saveState(); });
+
+/* ---------- misc helpers ---------- */
+function escapeHtml(s){ if(!s && s!==0) return ''; return String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#39;'); }
+
+/* ---------- init ---------- */
+document.querySelectorAll('.node').forEach(n => { makeDraggable(n); setupNodeButtons(n); const t = n.querySelector('.title'); if(t) t.addEventListener('input', ()=>{ updateAIPreview(); saveState(); }); });
+canvas.addEventListener('scroll', ()=>{ saveState(); renderConnections(); });
 window.addEventListener('resize', renderConnections);
-canvas.addEventListener('scroll', renderConnections);
+window.addEventListener('beforeunload', ()=>{ try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(serializeState())); }catch(e){} });
+
 updateAIPreview();
+renderConnections();
+updateTimerUI();
+loadState();
 </script>
 </body>
 </html>
