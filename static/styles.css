@@ -974,7 +974,7 @@ html,body {
   width: 28px; height: 28px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center;
   background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06); cursor: pointer;
 }
-.add-btn[disabled] { opacity: .45; cursor: not-allowed; }
+.add-btn[disabled]{ opacity: .45; cursor: not-allowed; }
 .add-btn:hover { transform: scale(1.06); }
 .remove-btn:hover { background: rgba(255,68,68,0.12); border-color: rgba(239,68,68,0.3); }
 
