@@ -6,10 +6,10 @@
 <title>Путь Жизни — Viora</title>
 <link rel="stylesheet" href="/static/styles.css">
 <style>
-:root { --panel-bg: rgba(8,8,10,0.6); --accent: #7dd3fc; }
+:root { --panel-bg: rgba(8,8,10,0.6); --accent: #7dd3fc; --neon: rgba(0,217,255,0.70); }
 body { margin:0; font-family: Inter, Arial, sans-serif; background:#09090b; color:#fff; }
 .editor-page { width:100vw; height:100vh; display:flex; gap:20px; padding:20px; box-sizing:border-box; align-items:stretch; position:relative; }
-.canvas-area { flex:1 1 auto; border-radius:18px; background: rgba(10,10,15,0.45); backdrop-filter: blur(8px); position:relative; overflow:auto; padding:40px; min-height:80vh; }
+.canvas-area { flex:1 1 auto; border-radius:18px; background: rgba(10,10,15,0.45); backdrop-filter: blur(8px); position:relative; overflow:auto; padding:40px; min-height:80vh; touch-action: none; }
 .side-panel { position:absolute; right:20px; top:20px; width:420px; height:calc(100vh - 80px); max-width:80vw; background:var(--panel-bg); border-radius:12px; padding:12px; box-shadow:0 12px 40px rgba(0,0,0,0.6); display:flex; flex-direction:column; box-sizing:border-box; z-index:1000; }
 .side-header { cursor:grab; user-select:none; display:flex; align-items:center; justify-content:space-between; padding:8px 10px; border-bottom:1px solid rgba(255,255,255,0.04); margin-bottom:8px; border-radius:8px; }
 .side-title { font-weight:700; font-size:16px; }
@@ -19,7 +19,7 @@ body { margin:0; font-family: Inter, Arial, sans-serif; background:#09090b; colo
 .node .title { font-weight:600; font-size:14px; color:#fff; outline:none; min-height:20px; background:transparent; border:none; width:100%; }
 .controls { display:flex; align-items:center; justify-content:space-between; margin-top:8px; }
 .buttons-container { display:flex; gap:6px; align-items:center; }
-.add-btn, .remove-btn { width:28px; height:28px; border-radius:8px; display:inline-flex; align-items:center; justify-content:center; background: rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); color:#fff; cursor:pointer; }
+.add-btn, .remove-btn { width:28px; height:28px; border-radius:8px; display:inline-flex; align-items:center; justify-content:center; background: rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); color:#fff; cursor:pointer; user-select:none; }
 .add-btn { font-weight:700; font-size:16px; }
 .remove-btn { font-size:14px; }
 .small-muted { color: rgba(255,255,255,0.55); font-size:13px; }
@@ -34,13 +34,35 @@ body { margin:0; font-family: Inter, Arial, sans-serif; background:#09090b; colo
 .title[contenteditable]:empty:before { content: attr(data-placeholder); color: rgba(255,255,255,0.35); display:block; }
 .result-highlight { border-left: 3px solid var(--accent); padding-left:8px; margin-bottom:8px; }
 .back-link { position:fixed; top:14px; left:14px; z-index:1100; background: rgba(255,255,255,0.06); color:#fff; text-decoration:none; display:inline-flex; gap:8px; padding:8px 10px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); font-weight:600; }
+
+.connector-svg path {
+  stroke: var(--neon) !important;
+  stroke-width: 3 !important;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
+  opacity: 0.98;
+  filter: drop-shadow(0 0 8px rgba(0,217,255,0.25));
+}
+
+.canvas-pan-cursor { cursor: grab; }
+.canvas-panning { cursor: grabbing !important; }
+
+.node-pro { border-left: 4px solid #10b981; }
+.node-con { border-left: 4px solid #ef4444; }
+.node-pros-container, .node-cons-container {
+  background: rgba(255,255,255,0.02);
+  border-radius: 8px;
+  padding: 8px;
+  margin-top: 8px;
+}
 </style>
 </head>
 <body>
   <a class="back-link" href="/">← Назад</a>
 
   <div class="editor-page" id="editorPage">
-    <div class="canvas-area" id="canvasArea">
+    <div class="canvas-area canvas-pan-cursor" id="canvasArea">
       <svg class="connector-svg" id="connectors" width="100%" height="100%"></svg>
 
       <div class="node" id="node-root" style="left: calc(50% - 110px); top: 80px;" data-id="root">
@@ -54,7 +76,6 @@ body { margin:0; font-family: Inter, Arial, sans-serif; background:#09090b; colo
       </div>
     </div>
 
-    <!-- side panel now absolute so can move/resize -->
     <div class="side-panel" id="sidePanel" role="region" aria-label="ИИ-панель">
       <div class="panel-left-handle" id="panelHandle" title="Перетащите чтобы изменить ширину"></div>
       <div class="side-header" id="sideHeader">
@@ -106,6 +127,84 @@ let isLockedUntil = 0;
 let timerInterval = null;
 let _saveTimeout = null;
 
+/* ---------- PANNING ---------- */
+let isPanning = false;
+let panStartX = 0;
+let panStartY = 0;
+let startScrollLeft = 0;
+let startScrollTop = 0;
+
+canvas.addEventListener('mousedown', (e) => {
+  const target = e.target;
+  if (target.closest('.node') || target.closest('.add-btn') || target.closest('.remove-btn') || target.closest('.title')) return;
+  if (e.button !== 0) return;
+  isPanning = true;
+  panStartX = e.clientX;
+  panStartY = e.clientY;
+  startScrollLeft = canvas.scrollLeft;
+  startScrollTop = canvas.scrollTop;
+  canvas.classList.add('canvas-panning');
+  document.body.style.userSelect = 'none';
+});
+
+document.addEventListener('mousemove', (e) => {
+  if (!isPanning) return;
+  const dx = e.clientX - panStartX;
+  const dy = e.clientY - panStartY;
+  canvas.scrollLeft = startScrollLeft - dx;
+  canvas.scrollTop = startScrollTop - dy;
+  renderConnections();
+});
+
+document.addEventListener('mouseup', (e) => {
+  if (!isPanning) return;
+  isPanning = false;
+  canvas.classList.remove('canvas-panning');
+  document.body.style.userSelect = '';
+  saveState();
+  renderConnections();
+});
+
+/* Touch panning */
+let touchPanId = null;
+canvas.addEventListener('touchstart', (e) => {
+  if (e.touches.length !== 1) return;
+  const t = e.touches[0];
+  const target = document.elementFromPoint(t.clientX, t.clientY);
+  if (!target) return;
+  if (target.closest('.node') || target.closest('[data-add]') || target.closest('.remove-btn') || target.closest('.title')) return;
+  touchPanId = t.identifier;
+  isPanning = true;
+  panStartX = t.clientX;
+  panStartY = t.clientY;
+  startScrollLeft = canvas.scrollLeft;
+  startScrollTop = canvas.scrollTop;
+  canvas.classList.add('canvas-panning');
+}, { passive: false });
+
+canvas.addEventListener('touchmove', (e) => {
+  if (!isPanning) return;
+  const t = Array.from(e.touches).find(tt => tt.identifier === touchPanId);
+  if (!t) return;
+  const dx = t.clientX - panStartX;
+  const dy = t.clientY - panStartY;
+  canvas.scrollLeft = startScrollLeft - dx;
+  canvas.scrollTop = startScrollTop - dy;
+  renderConnections();
+  e.preventDefault();
+}, { passive: false });
+
+canvas.addEventListener('touchend', (e) => {
+  if (!isPanning) return;
+  const still = Array.from(e.touches).find(tt => tt.identifier === touchPanId);
+  if (still) return;
+  isPanning = false;
+  touchPanId = null;
+  canvas.classList.remove('canvas-panning');
+  saveState();
+  renderConnections();
+});
+
 /* ---------- save/load ---------- */
 function saveState(debounceMs = 200){
   if(_saveTimeout) clearTimeout(_saveTimeout);
@@ -116,12 +215,14 @@ function saveState(debounceMs = 200){
     } catch(e){ console.error('saveState', e); }
   }, debounceMs);
 }
+
 function serializeState(){
   const nodes = Array.from(document.querySelectorAll('.node[data-id]')).map(n => ({
     id: n.dataset.id,
     left: parseFloat(n.style.left) || 0,
     top: parseFloat(n.style.top) || 0,
-    title: n.querySelector('.title')?.innerText || ''
+    title: n.querySelector('.title')?.innerText || '',
+    type: n.dataset.type || ''
   }));
   const panelRect = sidePanel.getBoundingClientRect();
   const editorRect = document.getElementById('editorPage').getBoundingClientRect();
@@ -132,8 +233,18 @@ function serializeState(){
     height: panelRect.height,
     collapsed: sidePanel.dataset.collapsed === '1' ? true : false
   };
-  return { version:1, nodes, edges, nodeCounter, aiOutput: document.getElementById('ai-output')?.innerHTML || '', isLockedUntil, canvasScroll:{left:canvas.scrollLeft, top:canvas.scrollTop}, panelState };
+  return {
+    version: 1,
+    nodes,
+    edges,
+    nodeCounter,
+    aiOutput: document.getElementById('ai-output')?.innerHTML || '',
+    isLockedUntil,
+    canvasScroll: {left: canvas.scrollLeft, top: canvas.scrollTop},
+    panelState
+  };
 }
+
 function loadState(){
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -142,7 +253,7 @@ function loadState(){
     if(!s) return;
     if(typeof s.nodeCounter === 'number') nodeCounter = s.nodeCounter;
 
-    // restore root node pos & title
+    // restore root node
     const root = document.querySelector('[data-id="root"]');
     if(root){
       const savedRoot = (s.nodes || []).find(n=>n.id === 'root');
@@ -158,20 +269,21 @@ function loadState(){
     document.querySelectorAll('.node').forEach(n => { if(n.dataset.id !== 'root') n.remove(); });
     edges = [];
 
+    // recreate all nodes with their types
     if(Array.isArray(s.nodes)){
       s.nodes.forEach(n => {
         if(n.id === 'root') return;
-        recreateNode(n.id, n.left || 100, n.top || 100, n.title || 'Новый исход');
+        const node = recreateNode(n.id, n.left || 100, n.top || 100, n.title || 'Новый исход');
+        if(n.type) node.dataset.type = n.type;
       });
     }
+
     if(Array.isArray(s.edges)) edges = s.edges.slice();
     if(s.aiOutput !== undefined) document.getElementById('ai-output').innerHTML = s.aiOutput || '';
 
     // restore panel
     if(s.panelState){
       const editorRect = document.getElementById('editorPage').getBoundingClientRect();
-      const left = (s.panelState.left || 0) + editorRect.left;
-      const top = (s.panelState.top || 0) + editorRect.top;
       sidePanel.style.left = (s.panelState.left || 0) + 'px';
       sidePanel.style.top = (s.panelState.top || 0) + 'px';
       sidePanel.style.right = 'auto';
@@ -188,7 +300,12 @@ function loadState(){
         timerInterval = setInterval(updateTimerUI, 250);
       }
     }
-    if(s.canvasScroll) requestAnimationFrame(()=>{ canvas.scrollLeft = s.canvasScroll.left || 0; canvas.scrollTop = s.canvasScroll.top || 0; renderConnections(); });
+
+    if(s.canvasScroll) requestAnimationFrame(()=>{
+      canvas.scrollLeft = s.canvasScroll.left || 0;
+      canvas.scrollTop = s.canvasScroll.top || 0;
+      renderConnections();
+    });
 
     renderConnections();
     updateAIPreview();
@@ -203,12 +320,28 @@ function setLock(seconds){
   timerInterval = setInterval(updateTimerUI, 250);
   saveState();
 }
+
 function updateTimerUI(){
   const el = document.getElementById('ai-timer');
   const runBtn = document.getElementById('ai-run');
   const remaining = Math.max(0, Math.ceil((isLockedUntil - Date.now()) / 1000));
-  if(remaining > 0){ el.innerText = `${remaining}s`; runBtn.disabled = true; runBtn.style.opacity='0.6'; }
-  else { el.innerText = '—'; runBtn.disabled = false; runBtn.style.opacity=''; if(timerInterval){ clearInterval(timerInterval); timerInterval=null; } if(isLockedUntil !== 0){ isLockedUntil = 0; saveState(); } }
+  if(remaining > 0){
+    el.innerText = `${remaining}s`;
+    runBtn.disabled = true;
+    runBtn.style.opacity='0.6';
+  } else {
+    el.innerText = '—';
+    runBtn.disabled = false;
+    runBtn.style.opacity='';
+    if(timerInterval){
+      clearInterval(timerInterval);
+      timerInterval=null;
+    }
+    if(isLockedUntil !== 0){
+      isLockedUntil = 0;
+      saveState();
+    }
+  }
 }
 
 /* ---------- nodes & UI ---------- */
@@ -236,11 +369,13 @@ function recreateNode(id, x=100, y=200, text='Новый исход'){
   setupNodeButtons(div);
   const t = div.querySelector('.title');
   if(t) t.addEventListener('input', ()=>{ updateAIPreview(); saveState(); });
-  return id;
+  return div;
 }
-function createNode(x=100,y=200,text='Новый исход', parentId=null){
+
+function createNode(x=100,y=200,text='Новый исход', parentId=null, type=null){
   const id = genId();
-  recreateNode(id, x, y, text);
+  const node = recreateNode(id, x, y, text);
+  if(type) node.dataset.type = type;
   if(parentId) addEdge(parentId, id);
   updateAIPreview();
   renderConnections();
@@ -261,6 +396,7 @@ function makeDraggable(elem){
     dragging = true;
     elem.style.zIndex = 1000;
   });
+
   document.addEventListener('mousemove', e=>{
     if(!dragging) return;
     const cr = canvasRect();
@@ -269,20 +405,24 @@ function makeDraggable(elem){
     elem.style.left = nx + 'px'; elem.style.top = ny + 'px';
     renderConnections();
   });
+
   document.addEventListener('mouseup', ()=>{
     if(dragging){ dragging=false; elem.style.zIndex=''; saveState(); }
   });
 
-  // touch
+  // touch events
   elem.addEventListener('touchstart', e=>{
     const t = e.touches && e.touches[0]; if(!t) return;
     const target = document.elementFromPoint(t.clientX, t.clientY);
     if(!target) return;
     if(target.closest('[data-add]') || target.closest('.remove-btn') || target.closest('.title')) return;
     const rect = elem.getBoundingClientRect();
-    startX = t.clientX; startY = t.clientY; origLeft = rect.left - canvas.getBoundingClientRect().left; origTop = rect.top - canvas.getBoundingClientRect().top;
+    startX = t.clientX; startY = t.clientY;
+    origLeft = rect.left - canvas.getBoundingClientRect().left;
+    origTop = rect.top - canvas.getBoundingClientRect().top;
     dragging=true; elem.style.zIndex=1000; e.preventDefault();
   }, {passive:false});
+
   document.addEventListener('touchmove', e=>{
     if(!dragging) return;
     const t = e.touches && e.touches[0]; if(!t) return;
@@ -292,7 +432,10 @@ function makeDraggable(elem){
     elem.style.left = nx + 'px'; elem.style.top = ny + 'px';
     renderConnections(); e.preventDefault();
   }, {passive:false});
-  document.addEventListener('touchend', ()=>{ if(dragging){ dragging=false; elem.style.zIndex=''; saveState(); } });
+
+  document.addEventListener('touchend', ()=>{
+    if(dragging){ dragging=false; elem.style.zIndex=''; saveState(); }
+  });
 }
 
 function setupNodeButtons(nodeElem){
@@ -309,9 +452,24 @@ function setupNodeButtons(nodeElem){
   if(addBtn) addBtn.addEventListener('click', e=>{
     e.stopPropagation();
     const rect = nodeElem.getBoundingClientRect(), cr = canvas.getBoundingClientRect();
+
+    // Calculate position for new node - чередуем стороны
     const childCount = edges.filter(en => en.from === nodeElem.dataset.id).length;
-    const newY = rect.top - cr.top + childCount * 80;
-    const newId = createNode(rect.left - cr.left + rect.width + 40, newY, 'Вариант решения...', nodeElem.dataset.id);
+    const isRightSide = childCount % 2 === 0; // Четные - справа, нечетные - слева
+
+    let newX, newY;
+    if (isRightSide) {
+      // Справа от родителя
+      newX = rect.left - cr.left + rect.width + 40;
+    } else {
+      // Слева от родителя
+      newX = rect.left - cr.left - 300; // 260px ширина + 40px отступ
+    }
+
+    // Располагаем по вертикали с отступом
+    newY = rect.top - cr.top + childCount * 100;
+
+    const newId = createNode(newX, newY, 'Вариант решения...', nodeElem.dataset.id);
     document.querySelector(`[data-id="${newId}"] .title`)?.focus();
   });
 
@@ -322,109 +480,295 @@ function setupNodeButtons(nodeElem){
 }
 
 function removeNode(nodeId){
-  const node = byId(nodeId); if(!node) return;
+  const node = byId(nodeId);
+  if(!node) return;
+
+  const parents = edges.filter(e => e.to === nodeId).map(e => e.from);
+  const children = edges.filter(e => e.from === nodeId).map(e => e.to);
+
+  if(parents.length && children.length){
+    parents.forEach(parentId => {
+      children.forEach(childId => {
+        if(!edges.some(en => en.from === parentId && en.to === childId) && parentId !== childId){
+          edges.push({ from: parentId, to: childId });
+          const parentNode = byId(parentId);
+          if(parentNode){
+            parentNode.dataset.childId = childId;
+            const btn = parentNode.querySelector('[data-add]') || parentNode.querySelector('.add-btn');
+            if(btn) btn.setAttribute('disabled','');
+          }
+        }
+      });
+    });
+  } else {
+    parents.forEach(parentId => {
+      const p = byId(parentId);
+      if(p){
+        delete p.dataset.childId;
+        const btn = p.querySelector('[data-add]') || p.querySelector('.add-btn');
+        if(btn) btn.removeAttribute('disabled');
+      }
+    });
+  }
+
   edges = edges.filter(e => e.from !== nodeId && e.to !== nodeId);
   node.remove();
-  renderConnections(); updateAIPreview(); saveState();
+  renderConnections();
+  updateAIPreview();
+  saveState();
 }
 
-function addEdge(from,to){ if(!edges.some(e=>e.from===from && e.to===to)){ edges.push({from,to}); renderConnections(); saveState(); } }
+function addEdge(from,to){
+  if(!edges.some(e=>e.from===from && e.to===to)){
+    edges.push({from,to});
+    const parent = byId(from);
+    if(parent){
+      parent.dataset.childId = to;
+      const btn = parent.querySelector('[data-add]') || parent.querySelector('.add-btn');
+      if(btn) btn.setAttribute('disabled','');
+    }
+    renderConnections(); saveState();
+  }
+}
 
 function renderConnections(){
   connectorsSvg.innerHTML = '';
   edges.forEach(e=>{
     const a = byId(e.from), b = byId(e.to);
     if(!a || !b) return;
-    const ra = a.getBoundingClientRect(), rb = b.getBoundingClientRect(), cr = canvas.getBoundingClientRect();
-    const x1 = ra.left + ra.width/2 - cr.left, y1 = ra.top + ra.height - cr.top;
-    const x2 = rb.left + rb.width/2 - cr.left, y2 = rb.top - cr.top;
+
+    // Используем getBoundingClientRect() относительно документа, а не viewport
+    const ra = a.getBoundingClientRect();
+    const rb = b.getBoundingClientRect();
+    const canvasRect = canvas.getBoundingClientRect();
+
+    // Рассчитываем координаты относительно canvas с учетом скролла
+    const x1 = ra.left + ra.width/2 - canvasRect.left + canvas.scrollLeft;
+    const y1 = ra.top + ra.height - canvasRect.top + canvas.scrollTop;
+    const x2 = rb.left + rb.width/2 - canvasRect.left + canvas.scrollLeft;
+    const y2 = rb.top - canvasRect.top + canvas.scrollTop;
+
     const dx = Math.max(40, Math.abs(x2-x1)/2);
+    const d = `M ${x1} ${y1} C ${x1} ${y1+dx} ${x2} ${y2-dx} ${x2} ${y2}`;
+
+    const glow = document.createElementNS('http://www.w3.org/2000/svg','path');
+    glow.setAttribute('d', d);
+    glow.setAttribute('stroke', 'rgba(0,217,255,0.12)');
+    glow.setAttribute('stroke-width', '8');
+    glow.setAttribute('fill', 'none');
+    glow.setAttribute('stroke-linecap','round');
+    glow.setAttribute('stroke-linejoin','round');
+    glow.style.filter = 'blur(6px)';
+    glow.style.opacity = '0.6';
+    connectorsSvg.appendChild(glow);
+
     const path = document.createElementNS('http://www.w3.org/2000/svg','path');
-    path.setAttribute('d', `M ${x1} ${y1} C ${x1} ${y1+dx} ${x2} ${y2-dx} ${x2} ${y2}`);
-    path.setAttribute('stroke','rgba(255,255,255,0.12)'); path.setAttribute('stroke-width','2'); path.setAttribute('fill','none');
+    path.setAttribute('d', d);
+    path.setAttribute('stroke','rgba(0,217,255,0.7)');
+    path.setAttribute('stroke-width','3');
+    path.setAttribute('fill','none');
+    path.setAttribute('stroke-linecap','round');
+    path.setAttribute('stroke-linejoin','round');
+    path.style.filter = 'drop-shadow(0 0 8px rgba(0,217,255,0.25))';
+    path.style.opacity = '0.98';
     connectorsSvg.appendChild(path);
   });
 }
 
-/* ---------- AI & parsing pros/cons (same parser as before) ---------- */
+/* ---------- IMPROVED AI & parsing ---------- */
 function collectTreeText(){
   const root = byId('root');
   const title = root ? root.querySelector('.title').innerText.trim() : '';
+
+  // Фильтруем только исходы (исключаем плюсы/минусы)
   const outcomes = Array.from(document.querySelectorAll('.node[data-id]:not([data-id="root"])'))
-                    .map(n => n.querySelector('.title').innerText.trim()).filter(Boolean);
+                    .filter(n => {
+                      const nodeType = n.dataset.type;
+                      // Исключаем узлы с типами pro, con, pros-container, cons-container
+                      return !nodeType || (!nodeType.includes('pro') && !nodeType.includes('con'));
+                    })
+                    .map(n => n.querySelector('.title').innerText.trim())
+                    .filter(Boolean);
+
   return { title, outcomes };
 }
-function updateAIPreview(){ const {title,outcomes} = collectTreeText(); document.getElementById('ai-title').innerText = title || '—'; document.getElementById('ai-outcomes').innerText = outcomes.length ? ('• ' + outcomes.join('\n• ')) : '—'; }
+
+function updateAIPreview(){
+  const {title,outcomes} = collectTreeText();
+  document.getElementById('ai-title').innerText = title || '—';
+  document.getElementById('ai-outcomes').innerText = outcomes.length ? ('• ' + outcomes.join('\n• ')) : '—';
+}
 
 function parseProsConsFromText(text){
-  if(!text) return { pros:[], cons:[] };
+  if(!text) return { pros: [], cons: [] };
+
   const normalized = text.replace(/\r\n/g,'\n').replace(/\r/g,'\n');
-  const lines = normalized.split('\n').map(l=>l.trim()).filter(Boolean);
-  let pros=[], cons=[];
-  lines.forEach(ln=>{
-    const l = ln.replace(/^[-\u2022\*\s]+/, '');
-    if(/^(?i:плюс(?:ы)?)[:\s]/i.test(l)){ const after = l.replace(/^(?i:плюс(?:ы)?)[:\s]*/i,''); pros = pros.concat(splitToItems(after)); }
-    else if(/^(?i:минус(?:ы)?)[:\s]/i.test(l)){ const after = l.replace(/^(?i:минус(?:ы)?)[:\s]*/i,''); cons = cons.concat(splitToItems(after)); }
+  const lines = normalized.split('\n').map(l => l.trim()).filter(Boolean);
+
+  let pros = [], cons = [];
+  let currentSection = null;
+
+  lines.forEach(line => {
+    const lowerLine = line.toLowerCase();
+
+    // Detect section headers
+    if (lowerLine.includes('плюс') || lowerLine.includes('преимуществ') || lowerLine.includes('достоинств')) {
+      currentSection = 'pros';
+      return;
+    }
+
+    if (lowerLine.includes('минус') || lowerLine.includes('недостат') || lowerLine.includes('риск')) {
+      currentSection = 'cons';
+      return;
+    }
+
+    // Skip empty lines and section markers
+    if (!line || line.match(/^[+-:\u2022\*]\s*$/)) return;
+
+    // Parse list items
+    if (line.match(/^[+\u2713\u2022\*]\s/) || (currentSection === 'pros' && !line.includes(':'))) {
+      const item = line.replace(/^[+\u2713\u2022\*]\s*/, '').trim();
+      if (item && currentSection === 'pros') pros.push(item);
+    }
+
+    if (line.match(/^[-]\s/) || (currentSection === 'cons' && !line.includes(':'))) {
+      const item = line.replace(/^[-]\s*/, '').trim();
+      if (item && currentSection === 'cons') cons.push(item);
+    }
+
+    // Try to extract from text without markers
+    if (!pros.length && !cons.length) {
+      const proMatch = line.match(/(?:плюс|преимущество)[:\s]*([^.;]+)/i);
+      const conMatch = line.match(/(?:минус|недостаток)[:\s]*([^.;]+)/i);
+
+      if (proMatch) pros = splitToItems(proMatch[1]);
+      if (conMatch) cons = splitToItems(conMatch[1]);
+    }
   });
-  if(pros.length===0 && cons.length===0){
-    const m = normalized.match(/(?i:плюс(?:ы)?)[^:\n]*[:\s]*([^;\n]+)(?:[\n\r\s\S]*?(?i:минус(?:ы)?)[^:\n]*[:\s]*([^;\n]+))?/i);
-    if(m){ if(m[1]) pros=pros.concat(splitToItems(m[1])); if(m[2]) cons=cons.concat(splitToItems(m[2])); }
-  }
-  if(pros.length===0 || cons.length===0){
-    lines.forEach(l=>{
-      if(/^[+\u2713]/.test(l) && pros.length===0) pros.push(l.replace(/^[+\-\u2022*]+\s*/,''));
-      if(/^\-/.test(l) && cons.length===0) cons.push(l.replace(/^[+\-\u2022*]+\s*/,''));
+
+  // Fallback: if no structured data found, try to split by common separators
+  if (pros.length === 0 && cons.length === 0) {
+    const sections = normalized.split(/(?=минус|плюс|недостат|преимуществ)/i);
+
+    sections.forEach(section => {
+      const lowerSection = section.toLowerCase();
+      if (lowerSection.includes('плюс') || lowerSection.includes('преимуществ')) {
+        const content = section.replace(/.*?(?::|\n)/, '').trim();
+        pros = splitToItems(content);
+      } else if (lowerSection.includes('минус') || lowerSection.includes('недостат')) {
+        const content = section.replace(/.*?(?::|\n)/, '').trim();
+        cons = splitToItems(content);
+      }
     });
   }
-  pros = uniqAndTrim(pros).slice(0,10);
-  cons = uniqAndTrim(cons).slice(0,10);
-  return {pros, cons};
+
+  pros = uniqAndTrim(pros).slice(0, 8);
+  cons = uniqAndTrim(cons).slice(0, 8);
+
+  return { pros, cons };
 }
-function splitToItems(s){ if(!s) return []; return s.split(/\s*[;,]\s*|\s*\/\s*/).map(p=>p.trim()).filter(Boolean); }
-function uniqAndTrim(arr){ const seen=new Set(); const out=[]; arr.forEach(a=>{ const t=a.replace(/^[\-\u2022\*]+\s*/,'').trim(); if(!t) return; if(!seen.has(t.toLowerCase())){ seen.add(t.toLowerCase()); out.push(t); } }); return out; }
+
+function splitToItems(s){
+  if(!s) return [];
+  return s.split(/\s*[;,]\s*|\s+и\s+|\s*\/\s*/)
+          .map(p => p.trim())
+          .filter(p => p && p.length > 3); // filter out very short items
+}
+
+function uniqAndTrim(arr){
+  const seen = new Set();
+  const out = [];
+  arr.forEach(a => {
+    const t = a.replace(/^[\-\u2022\*]+\s*/, '').trim();
+    if(!t || t.length < 2) return;
+    const key = t.toLowerCase().replace(/[^\w\u0400-\u04FF]/g, '');
+    if(!seen.has(key)){
+      seen.add(key);
+      out.push(t);
+    }
+  });
+  return out;
+}
 
 function createProConNodesForOutcome(outcomeText, pros, cons){
   const nodes = Array.from(document.querySelectorAll('.node[data-id]'));
   let outcomeNode = nodes.find(n => (n.querySelector('.title')?.innerText || '').trim() === outcomeText);
+
   if(!outcomeNode){
-    const root = byId('root'); const rootRect = root.getBoundingClientRect(); const cr = canvas.getBoundingClientRect();
-    const x = rootRect.left - cr.left + rootRect.width + 40; const y = rootRect.top - cr.top;
-    createNode(x,y,outcomeText,'root');
-    outcomeNode = Array.from(document.querySelectorAll('.node[data-id]')).find(n => (n.querySelector('.title')?.innerText || '').trim() === outcomeText);
+    const root = byId('root');
+    const rootRect = root.getBoundingClientRect();
+    const cr = canvas.getBoundingClientRect();
+    const x = rootRect.left - cr.left + rootRect.width + 40;
+    const y = rootRect.top - cr.top;
+    createNode(x, y, outcomeText, 'root');
+
+    // Find the newly created node
+    outcomeNode = Array.from(document.querySelectorAll('.node[data-id]'))
+      .find(n => (n.querySelector('.title')?.innerText || '').trim() === outcomeText);
   }
+
   if(!outcomeNode) return;
+
   const parentId = outcomeNode.dataset.id;
-  const rect = outcomeNode.getBoundingClientRect(); const cr = canvas.getBoundingClientRect();
-  let yOffsetBase = rect.top - cr.top + rect.height + 20;
-  const spacing = 90;
-  pros.forEach((p, idx) => {
-    const x = rect.left - cr.left + rect.width + 40;
-    const y = yOffsetBase + idx * spacing;
-    const newId = createNode(x, y, `Плюс: ${p}`, parentId);
-    const n = byId(newId); if(n) n.dataset.type='pro';
-  });
-  const consStart = yOffsetBase + pros.length * spacing + 10;
-  cons.forEach((c, idx) => {
-    const x = rect.left - cr.left + rect.width + 40;
-    const y = consStart + idx * spacing;
-    const newId = createNode(x, y, `Минус: ${c}`, parentId);
-    const n = byId(newId); if(n) n.dataset.type='con';
-  });
-  renderConnections(); saveState();
+  const rect = outcomeNode.getBoundingClientRect();
+  const cr = canvas.getBoundingClientRect();
+
+  // Create pros container node
+  if(pros.length > 0) {
+    const prosX = rect.left - cr.left + rect.width + 40;
+    const prosY = rect.top - cr.top;
+    const prosId = createNode(prosX, prosY, `Плюсы: ${outcomeText}`, parentId, 'pros-container');
+    const prosNode = byId(prosId);
+
+    // Create individual pro nodes under the pros container
+    pros.forEach((pro, idx) => {
+      const proX = prosX + 40;
+      const proY = prosY + 60 + idx * 70;
+      createNode(proX, proY, pro, prosId, 'pro');
+    });
+  }
+
+  // Create cons container node
+  if(cons.length > 0) {
+    const consX = rect.left - cr.left + rect.width + 40;
+    const consY = rect.top - cr.top + Math.max(pros.length * 70, 100) + 40;
+    const consId = createNode(consX, consY, `Минусы: ${outcomeText}`, parentId, 'cons-container');
+
+    // Create individual con nodes under the cons container
+    cons.forEach((con, idx) => {
+      const conX = consX + 40;
+      const conY = consY + 60 + idx * 70;
+      createNode(conX, conY, con, consId, 'con');
+    });
+  }
+
+  renderConnections();
+  saveState();
 }
 
 /* ---------- server comms ---------- */
-async function sendAiRequestWithRetries(payload, maxRetries=MAX_RETRIES){
+async function sendAiRequestWithRetries(payload, maxRetries = MAX_RETRIES){
   let lastError = null;
-  for(let attempt=1; attempt<=maxRetries; attempt++){
+  for(let attempt = 1; attempt <= maxRetries; attempt++){
     try{
-      const res = await fetch('/run-ai', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
-      if(!res.ok){ lastError = new Error('HTTP ' + res.status); }
-      else { const data = await res.json(); return { success:true, data }; }
+      const res = await fetch('/run-ai', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload)
+      });
+
+      if(!res.ok){
+        lastError = new Error('HTTP ' + res.status);
+      } else {
+        const data = await res.json();
+        return { success: true, data };
+      }
     } catch(err){ lastError = err; }
-    const backoff = 200 * attempt; await new Promise(r=>setTimeout(r, backoff));
+
+    const backoff = 200 * attempt;
+    await new Promise(r => setTimeout(r, backoff));
   }
-  return { success:false, error:lastError };
+  return { success: false, error: lastError };
 }
 
 /* ---------- AI UI ---------- */
@@ -433,14 +777,29 @@ const aiResetBtn = document.getElementById('ai-reset');
 
 aiRunBtn.addEventListener('click', async ()=>{
   if(isLockedUntil > Date.now()) return;
+
   const { title, outcomes } = collectTreeText();
   const outBox = document.getElementById('ai-output');
-  if(!title){ outBox.innerText = 'Пожалуйста, опишите проблему.'; return; }
-  if(!outcomes.length){ outBox.innerText = 'Добавьте варианты решения.'; return; }
+
+  if(!title){
+    outBox.innerText = 'Пожалуйста, опишите проблему.';
+    return;
+  }
+
+  if(!outcomes.length){
+    outBox.innerText = 'Добавьте варианты решения.';
+    return;
+  }
 
   outBox.innerHTML = '';
-  const loading = document.createElement('div'); loading.className='ai-response'; loading.innerHTML = `<div class="meta"><b>Отправлено, ожидаем ответ...</b></div>`; outBox.appendChild(loading); outBox.scrollTop = outBox.scrollHeight;
-  aiRunBtn.disabled = true; aiRunBtn.style.opacity = '0.6';
+  const loading = document.createElement('div');
+  loading.className = 'ai-response';
+  loading.innerHTML = `<div class="meta"><b>Анализируем ${outcomes.length} исходов...</b></div>`;
+  outBox.appendChild(loading);
+  outBox.scrollTop = outBox.scrollHeight;
+
+  aiRunBtn.disabled = true;
+  aiRunBtn.style.opacity = '0.6';
 
   const payload = { title, outcomes };
   const result = await sendAiRequestWithRetries(payload, MAX_RETRIES);
@@ -448,29 +807,51 @@ aiRunBtn.addEventListener('click', async ()=>{
   if(result.success){
     const data = result.data || {};
     const results = Array.isArray(data.results) ? data.results : [];
+
     if(outBox.lastElementChild === loading) outBox.removeChild(loading);
+
     if(results.length === 0){
-      const empty = document.createElement('div'); empty.className='ai-response'; empty.innerText = 'Пустой результат от сервера.'; outBox.appendChild(empty);
+      const empty = document.createElement('div');
+      empty.className = 'ai-response';
+      empty.innerText = 'Пустой результат от сервера.';
+      outBox.appendChild(empty);
     } else {
-      results.forEach(item=>{
-        const block = document.createElement('div'); block.className='ai-response result-highlight';
-        const outcomeText = item.outcome || '';
+      // Process ALL outcomes, not just the first one
+      results.forEach((item, index) => {
+        const block = document.createElement('div');
+        block.className = 'ai-response result-highlight';
+        const outcomeText = item.outcome || outcomes[index] || `Исход ${index + 1}`;
         const resultText = item.result || '';
-        block.innerHTML = `<div class="meta"><b>Исход ${escapeHtml(item.index||'')}:</b> ${escapeHtml(outcomeText)}</div><pre>${escapeHtml(resultText)}</pre>`;
+
+        block.innerHTML = `
+          <div class="meta"><b>Исход ${index + 1}:</b> ${escapeHtml(outcomeText)}</div>
+          <pre>${escapeHtml(resultText)}</pre>
+        `;
         outBox.appendChild(block);
+
         const { pros, cons } = parseProsConsFromText(resultText);
-        if((pros && pros.length) || (cons && cons.length)) createProConNodesForOutcome(outcomeText, pros, cons);
+        if(pros.length > 0 || cons.length > 0) {
+          createProConNodesForOutcome(outcomeText, pros, cons);
+        }
       });
     }
+
     setLock(60);
     saveState();
   } else {
-    if(outBox.lastElementChild === loading) loading.innerHTML = `<div class="meta"><b>Ошибка при запросе к AI. Попытки исчерпаны.</b></div>`;
-    else { const err = document.createElement('div'); err.className='ai-response'; err.innerText = 'Ошибка при запросе к AI. Попытки исчерпаны.'; outBox.appendChild(err); }
+    if(outBox.lastElementChild === loading) {
+      loading.innerHTML = `<div class="meta"><b>Ошибка при запросе к AI. Попытки исчерпаны.</b></div>`;
+    } else {
+      const err = document.createElement('div');
+      err.className = 'ai-response';
+      err.innerText = 'Ошибка при запросе к AI. Попытки исчерпаны.';
+      outBox.appendChild(err);
+    }
     console.error('AI request failed', result.error);
   }
 
-  aiRunBtn.disabled = false; aiRunBtn.style.opacity = '';
+  aiRunBtn.disabled = false;
+  aiRunBtn.style.opacity = '';
 });
 
 aiResetBtn.addEventListener('click', ()=>{
@@ -479,7 +860,6 @@ aiResetBtn.addEventListener('click', ()=>{
 });
 
 /* ---------- panel drag & resize ---------- */
-/* move by header */
 (function(){
   let dragging=false, startX=0, startY=0, origLeft=0, origTop=0;
   sideHeader.addEventListener('mousedown', e=>{
@@ -492,29 +872,39 @@ aiResetBtn.addEventListener('click', ()=>{
     sideHeader.style.cursor = 'grabbing';
     document.body.style.userSelect = 'none';
   });
+
   document.addEventListener('mousemove', e=>{
     if(!dragging) return;
     const editorRect = document.getElementById('editorPage').getBoundingClientRect();
     let nx = origLeft + (e.clientX - startX), ny = origTop + (e.clientY - startY);
-    // clamp inside editor
     nx = Math.max(8, Math.min(editorRect.width - 120, nx));
     ny = Math.max(8, Math.min(editorRect.height - 60, ny));
     sidePanel.style.left = nx + 'px';
     sidePanel.style.top = ny + 'px';
     sidePanel.style.right = 'auto';
   });
+
   document.addEventListener('mouseup', ()=>{
-    if(dragging){ dragging=false; sideHeader.style.cursor='grab'; document.body.style.userSelect=''; saveState(); }
+    if(dragging){
+      dragging=false;
+      sideHeader.style.cursor='grab';
+      document.body.style.userSelect='';
+      saveState();
+    }
   });
 
-  // touch
+  // touch events for panel dragging
   sideHeader.addEventListener('touchstart', e=>{
     const t = e.touches && e.touches[0]; if(!t) return;
     dragging=true;
-    const rect = sidePanel.getBoundingClientRect(); const editorRect = document.getElementById('editorPage').getBoundingClientRect();
-    startX = t.clientX; startY = t.clientY; origLeft = rect.left - editorRect.left; origTop = rect.top - editorRect.top;
+    const rect = sidePanel.getBoundingClientRect();
+    const editorRect = document.getElementById('editorPage').getBoundingClientRect();
+    startX = t.clientX; startY = t.clientY;
+    origLeft = rect.left - editorRect.left;
+    origTop = rect.top - editorRect.top;
     e.preventDefault();
   }, {passive:false});
+
   document.addEventListener('touchmove', e=>{
     if(!dragging) return;
     const t = e.touches && e.touches[0]; if(!t) return;
@@ -522,10 +912,15 @@ aiResetBtn.addEventListener('click', ()=>{
     let nx = origLeft + (t.clientX - startX), ny = origTop + (t.clientY - startY);
     nx = Math.max(8, Math.min(editorRect.width - 120, nx));
     ny = Math.max(8, Math.min(editorRect.height - 60, ny));
-    sidePanel.style.left = nx + 'px'; sidePanel.style.top = ny + 'px'; sidePanel.style.right='auto';
+    sidePanel.style.left = nx + 'px';
+    sidePanel.style.top = ny + 'px';
+    sidePanel.style.right='auto';
     e.preventDefault();
   }, {passive:false});
-  document.addEventListener('touchend', ()=>{ if(dragging){ dragging=false; saveState(); } });
+
+  document.addEventListener('touchend', ()=>{
+    if(dragging){ dragging=false; saveState(); }
+  });
 })();
 
 /* resize by left handle */
@@ -535,30 +930,40 @@ aiResetBtn.addEventListener('click', ()=>{
     resizing=true; startX = e.clientX; startWidth = sidePanel.getBoundingClientRect().width;
     document.body.style.userSelect='none';
   });
+
   document.addEventListener('mousemove', e=>{
     if(!resizing) return;
-    const dx = startX - e.clientX; // dragging left handle: moving mouse left -> increase width
+    const dx = startX - e.clientX;
     const newWidth = Math.max(240, Math.min(window.innerWidth - 80, startWidth + dx));
     sidePanel.style.width = newWidth + 'px';
     sidePanel.style.right = 'auto';
     renderConnections();
   });
+
   document.addEventListener('mouseup', ()=>{
     if(resizing){ resizing=false; document.body.style.userSelect=''; saveState(); }
   });
 
-  // touch
+  // touch events for resizing
   panelHandle.addEventListener('touchstart', e=>{
     const t = e.touches && e.touches[0]; if(!t) return;
     resizing=true; startX=t.clientX; startWidth = sidePanel.getBoundingClientRect().width; e.preventDefault();
   }, {passive:false});
+
   document.addEventListener('touchmove', e=>{
     if(!resizing) return;
     const t = e.touches && e.touches[0]; if(!t) return;
-    const dx = startX - t.clientX; const newWidth = Math.max(240, Math.min(window.innerWidth - 80, startWidth + dx));
-    sidePanel.style.width = newWidth + 'px'; sidePanel.style.right='auto'; renderConnections(); e.preventDefault();
+    const dx = startX - t.clientX;
+    const newWidth = Math.max(240, Math.min(window.innerWidth - 80, startWidth + dx));
+    sidePanel.style.width = newWidth + 'px';
+    sidePanel.style.right='auto';
+    renderConnections();
+    e.preventDefault();
   }, {passive:false});
-  document.addEventListener('touchend', ()=>{ if(resizing){ resizing=false; saveState(); } });
+
+  document.addEventListener('touchend', ()=>{
+    if(resizing){ resizing=false; saveState(); }
+  });
 })();
 
 /* collapse & close */
@@ -573,21 +978,66 @@ panelCollapseBtn.addEventListener('click', ()=>{
   }
   saveState();
 });
-panelCloseBtn.addEventListener('click', ()=>{ sidePanel.style.display = 'none'; saveState(); });
+
+panelCloseBtn.addEventListener('click', ()=>{
+  sidePanel.style.display = 'none';
+  saveState();
+});
 
 /* ---------- misc helpers ---------- */
-function escapeHtml(s){ if(!s && s!==0) return ''; return String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#39;'); }
+function escapeHtml(s){
+  if(!s && s!==0) return '';
+  return String(s)
+    .replaceAll('&','&amp;')
+    .replaceAll('<','&lt;')
+    .replaceAll('>','&gt;')
+    .replaceAll('"','&quot;')
+    .replaceAll("'",'&#39;');
+}
 
 /* ---------- init ---------- */
-document.querySelectorAll('.node').forEach(n => { makeDraggable(n); setupNodeButtons(n); const t = n.querySelector('.title'); if(t) t.addEventListener('input', ()=>{ updateAIPreview(); saveState(); }); });
-canvas.addEventListener('scroll', ()=>{ saveState(); renderConnections(); });
-window.addEventListener('resize', renderConnections);
-window.addEventListener('beforeunload', ()=>{ try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(serializeState())); }catch(e){} });
+document.querySelectorAll('.node').forEach(n => {
+  makeDraggable(n);
+  setupNodeButtons(n);
+  const t = n.querySelector('.title');
+  if(t) t.addEventListener('input', ()=>{
+    updateAIPreview();
+    saveState();
+  });
+});
 
+canvas.addEventListener('scroll', ()=>{
+  saveState();
+  renderConnections();
+});
+
+window.addEventListener('resize', renderConnections);
+window.addEventListener('beforeunload', ()=>{
+  try{
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(serializeState()));
+  } catch(e){}
+});
+
+// Apply node type styling
+function applyNodeStyling() {
+  document.querySelectorAll('.node').forEach(node => {
+    const type = node.dataset.type;
+    node.classList.remove('node-pro', 'node-con');
+
+    if (type === 'pro') node.classList.add('node-pro');
+    if (type === 'con') node.classList.add('node-con');
+  });
+}
+
+// Initialize
 updateAIPreview();
 renderConnections();
 updateTimerUI();
+applyNodeStyling();
 loadState();
+
+// Re-apply styling after load
+setTimeout(applyNodeStyling, 100);
 </script>
 </body>
 </html>
