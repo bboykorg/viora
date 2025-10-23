@@ -50,6 +50,7 @@ def build_prompt(title, outcome, strict=True):
         f"Проблема/кадр: {title}\n"
         f"Исход: {outcome}\n\n"
         "Дай ответ как единый абзац — без списков, без нумерации, без маркеров.\n"
+        "Напиши 5 плюсов и 5 минусов"
     )
     return prompt
 
@@ -129,4 +130,4 @@ def run_ai():
     return jsonify({"title": title, "results": results}), 200
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=True, port=5001)
