@@ -5,41 +5,128 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Поток Кадров — Viora</title>
   <link rel="stylesheet" href="/static/styles.css">
-  <!-- DOMPurify для безопасной вставки HTML -->
   <script src="https://cdn.jsdelivr.net/npm/dompurify@2.4.0/dist/purify.min.js"></script>
   <style>
-    /* небольшой локальный CSS для placeholder и кнопок, остальное в styles.css */
     .title[contenteditable]:empty:before { content: attr(data-placeholder); color: rgba(255,255,255,0.35); display:block; }
     .ai-box pre { white-space: pre-wrap; word-break: break-word; }
     .add-btn.blink { animation: blink .35s linear; }
     @keyframes blink { 0%{transform:scale(1)}50%{transform:scale(1.08)}100%{transform:scale(1)} }
-    .ai-box {
-      max-height: 300px;
-      overflow-y: auto;
-      background: rgba(255,255,255,0.02);
-      padding: 10px;
-      border-radius: 8px;
-      font-size: 14px;
-      line-height: 1.4;
-    }
-    .ai-box .ai-response {
-      margin-bottom: 12px;
-      padding: 8px;
-      border-radius: 8px;
-      border: 1px solid rgba(255,255,255,0.04);
-      background: rgba(255,255,255,0.02);
-    }
-    .ai-box .ai-response pre { margin: 8px 0 0 0; font-family: inherit; }
-    /* визуальные отличия для плюсов/минусов нод */
+    .ai-box { max-height: 300px; overflow-y: auto; background: rgba(255,255,255,0.02); padding: 10px; border-radius: 8px; font-size: 14px; line-height: 1.4; }
+    .ai-box .ai-response { margin-bottom: 12px; padding: 8px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.04); background: rgba(255,255,255,0.02); }
     .node[data-type="pro"] { box-shadow: 0 6px 18px rgba(45, 212, 191, 0.06); border-color: rgba(45,212,191,0.15); }
     .node[data-type="con"] { box-shadow: 0 6px 18px rgba(249,115,22,0.06); border-color: rgba(249,115,22,0.15); }
+
+    /* neon connectors */
+    .connector-svg path { stroke: rgba(0, 217, 255, 0.6) !important; stroke-width: 3 !important; stroke-linecap: round; stroke-linejoin: round; fill: none; opacity: 0.98; filter: drop-shadow(0 0 8px rgba(0,217,255,0.25)); }
+
+    /* pan cursor states */
+    .canvas-panning { cursor: grabbing; cursor: -webkit-grabbing; }
+    .canvas-grab { cursor: grab; cursor: -webkit-grab; }
+
+    /* Floating panel styles like in first file */
+    .side-panel {
+      position: absolute;
+      right: 20px;
+      top: 20px;
+      width: 420px;
+      height: calc(100vh - 80px);
+      max-width: 80vw;
+      background: rgba(8,8,10,0.6);
+      border-radius: 12px;
+      padding: 12px;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.6);
+      display: flex;
+      flex-direction: column;
+      box-sizing: border-box;
+      z-index: 1000;
+    }
+    .side-header {
+      cursor: grab;
+      user-select: none;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 10px;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      margin-bottom: 8px;
+      border-radius: 8px;
+    }
+    .side-title { font-weight: 700; font-size: 16px; }
+    .side-sub { font-size: 12px; color: rgba(255,255,255,0.7); }
+    .panel-left-handle {
+      position: absolute;
+      left: -8px;
+      top: 8px;
+      bottom: 8px;
+      width: 12px;
+      cursor: ew-resize;
+      border-radius: 6px;
+    }
+    .button-primary { background: #7dd3fc; color: #0a0a0f; padding: 10px 12px; border-radius: 10px; cursor: pointer; border: none; }
+    .button-ghost { background: transparent; color: #fff; border: 1px solid rgba(255,255,255,0.08); padding: 10px 12px; border-radius: 10px; cursor: pointer; }
+
+    /* Добавляем стили для editor-page */
+    .editor-page {
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      gap: 20px;
+      padding: 20px;
+      box-sizing: border-box;
+      align-items: stretch;
+      position: relative;
+    }
+    .canvas-area {
+      flex: 1 1 auto;
+      border-radius: 18px;
+      background: rgba(10,10,15,0.45);
+      backdrop-filter: blur(8px);
+      position: relative;
+      overflow: auto;
+      padding: 40px;
+      min-height: 80vh;
+      touch-action: none;
+    }
+    .node {
+      width: 260px;
+      min-height: 56px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 14px;
+      padding: 12px;
+      position: absolute;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      cursor: move;
+    }
+    .small-muted {
+      color: rgba(255,255,255,0.55);
+      font-size: 13px;
+    }
+    .back-link {
+      position: fixed;
+      top: 14px;
+      left: 14px;
+      z-index: 1100;
+      background: rgba(255,255,255,0.06);
+      color: #fff;
+      text-decoration: none;
+      display: inline-flex;
+      gap: 8px;
+      padding: 8px 10px;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.08);
+      font-weight: 600;
+    }
   </style>
 </head>
 <body>
   <a class="back-link" href="/">← Назад</a>
 
-  <div class="editor-page">
-    <div class="canvas-area" id="canvasArea">
+  <!-- Добавляем id editorPage для корректной работы -->
+  <div class="editor-page" id="editorPage">
+    <div class="canvas-area" id="canvasArea" tabindex="0">
       <svg class="connector-svg" id="connectors" width="100%" height="100%"></svg>
 
       <div class="node" id="node-root" style="left:calc(50% - 130px); top:80px;" data-id="root">
@@ -51,9 +138,19 @@
       </div>
     </div>
 
-    <div class="side-panel">
-      <h3>ИИ-режиссёр (Поток кадров)</h3>
-      <div class="small-muted">У каждого кадра допускается только один следующий кадр (один исход). Чтобы заменить исход — сначала удалите существующий у крестика на нём.</div>
+    <!-- Floating panel like in first file -->
+    <div class="side-panel" id="sidePanel" role="region" aria-label="ИИ-панель">
+      <div class="panel-left-handle" id="panelHandle" title="Перетащите чтобы изменить ширину"></div>
+      <div class="side-header" id="sideHeader">
+        <div>
+          <div class="side-title">ИИ-режиссёр (Поток кадров)</div>
+          <div class="side-sub">Перетащите заголовок чтобы переместить панель; потяните слева чтобы изменить ширину.</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button id="panelCollapseBtn" class="button-ghost" title="Свернуть/развернуть">↔</button>
+          <button id="panelCloseBtn" class="button-ghost" title="Скрыть панель">✕</button>
+        </div>
+      </div>
 
       <div style="height:12px"></div>
       <div style="font-weight:600">Главный кадр</div>
@@ -74,147 +171,130 @@
 
       <div style="height:10px"></div>
       <div class="small-muted">Таймер блокировки: <span id="ai-timer">—</span></div>
-
     </div>
   </div>
 
 <script>
-/* ========== Конфигурация и state ========== */
+/* ========== state ========== */
 const STORAGE_KEY = 'viora_flow_state_v1';
 const canvas = document.getElementById('canvasArea');
 const connectorsSvg = document.getElementById('connectors');
-let edges = []; // [{from,to},...]
+const sidePanel = document.getElementById('sidePanel');
+const panelHandle = document.getElementById('panelHandle');
+const sideHeader = document.getElementById('sideHeader');
+const panelCollapseBtn = document.getElementById('panelCollapseBtn');
+const panelCloseBtn = document.getElementById('panelCloseBtn');
+
+let edges = [];
 let nodeCounter = 1;
 const MAX_RETRIES = 4;
 let isLockedUntil = 0;
 let timerInterval = null;
 let _saveTimeout = null;
 
-/* ---------- Сохранение/загрузка состояния (localStorage) ---------- */
+/* PAN state */
+let isSpaceDown = false;
+let isPanning = false;
+let panStart = { x: 0, y: 0, left: 0, top: 0 };
+
+/* ---------- storage ---------- */
 function saveState(debounceMs = 200) {
   if (_saveTimeout) clearTimeout(_saveTimeout);
   _saveTimeout = setTimeout(() => {
     try {
       const state = serializeState();
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-      //console.log('saved', state);
-    } catch (e) {
-      console.error('saveState error', e);
-    }
+    } catch (e) { console.error('saveState error', e); }
   }, debounceMs);
 }
-
 function serializeState() {
-  const nodes = Array.from(document.querySelectorAll('.node[data-id]')).map(n => ({
+  const nodes = Array.from(document.querySelectorAll('.node[data-id]')).map(n=>({
     id: n.dataset.id,
     left: parseFloat(n.style.left) || 0,
     top: parseFloat(n.style.top) || 0,
     title: n.querySelector('.title')?.innerText || '',
     type: n.dataset.type || ''
   }));
+
+  const panelRect = sidePanel.getBoundingClientRect();
+  const editorRect = document.getElementById('editorPage').getBoundingClientRect();
+  const panelState = {
+    left: panelRect.left - editorRect.left,
+    top: panelRect.top - editorRect.top,
+    width: panelRect.width,
+    height: panelRect.height,
+    collapsed: sidePanel.dataset.collapsed === '1' ? true : false
+  };
+
   return {
-    version: 1,
+    version:1,
     nodes,
     edges,
     nodeCounter,
     aiOutput: document.getElementById('ai-output')?.innerHTML || '',
     isLockedUntil,
-    canvasScroll: { left: canvas.scrollLeft, top: canvas.scrollTop }
+    canvasScroll:{left: canvas.scrollLeft, top: canvas.scrollTop},
+    panelState
   };
 }
-
 function loadState() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return;
     const state = JSON.parse(raw);
     if (!state) return;
-
     if (typeof state.nodeCounter === 'number') nodeCounter = state.nodeCounter;
 
-    // restore root
     const root = document.querySelector('[data-id="root"]');
     if (root) {
       const savedRoot = (state.nodes || []).find(n => n.id === 'root');
       if (savedRoot) {
         root.style.left = (savedRoot.left || 0) + 'px';
         root.style.top = (savedRoot.top || 0) + 'px';
-        const t = root.querySelector('.title');
-        if (t) t.innerText = savedRoot.title || '';
+        const t = root.querySelector('.title'); if (t) t.innerText = savedRoot.title || '';
       }
     }
 
-    // remove other nodes
     document.querySelectorAll('.node').forEach(n => { if (n.dataset.id !== 'root') n.remove(); });
     edges = [];
-
-    // recreate nodes
     if (Array.isArray(state.nodes)) {
-      state.nodes.forEach(n => {
-        if (n.id === 'root') return;
-        recreateNode(n.id, n.left || 100, n.top || 100, n.title || 'Новый исход', n.type || '');
-      });
+      state.nodes.forEach(n => { if (n.id === 'root') return; recreateNode(n.id, n.left || 100, n.top || 100, n.title || 'Новый исход', n.type || ''); });
     }
-
     if (Array.isArray(state.edges)) edges = state.edges.slice();
     if (state.aiOutput !== undefined) document.getElementById('ai-output').innerHTML = state.aiOutput || '';
 
+    // Restore panel state
+    if(state.panelState){
+      const editorRect = document.getElementById('editorPage').getBoundingClientRect();
+      sidePanel.style.left = (state.panelState.left || 0) + 'px';
+      sidePanel.style.top = (state.panelState.top || 0) + 'px';
+      sidePanel.style.right = 'auto';
+      if(state.panelState.width) sidePanel.style.width = state.panelState.width + 'px';
+      if(state.panelState.height) sidePanel.style.height = state.panelState.height + 'px';
+      if(state.panelState.collapsed) sidePanel.dataset.collapsed = '1';
+    }
+
     if (state.isLockedUntil) {
-      isLockedUntil = state.isLockedUntil;
-      updateTimerUI();
-      if (isLockedUntil > Date.now()) {
-        if (timerInterval) clearInterval(timerInterval);
-        timerInterval = setInterval(updateTimerUI, 250);
-      }
+      isLockedUntil = state.isLockedUntil; updateTimerUI();
+      if (isLockedUntil > Date.now()) { if (timerInterval) clearInterval(timerInterval); timerInterval = setInterval(updateTimerUI,250); }
     }
-
     if (state.canvasScroll) {
-      requestAnimationFrame(() => {
-        canvas.scrollLeft = state.canvasScroll.left || 0;
-        canvas.scrollTop = state.canvasScroll.top || 0;
-        renderConnections();
-      });
+      requestAnimationFrame(()=>{ canvas.scrollLeft = state.canvasScroll.left || 0; canvas.scrollTop = state.canvasScroll.top || 0; renderConnections(); });
     }
-
-    renderConnections();
-    updateAIPreview();
-  } catch (e) {
-    console.error('loadState error', e);
-  }
+    renderConnections(); updateAIPreview();
+  } catch(e){ console.error('loadState', e); }
 }
 
-/* ---------- Таймер блокировки ========== */
-function setLock(seconds) {
-  isLockedUntil = Date.now() + seconds * 1000;
-  updateTimerUI();
-  if (timerInterval) clearInterval(timerInterval);
-  timerInterval = setInterval(updateTimerUI, 250);
-  saveState();
-}
+/* ---------- timer ---------- */
+function setLock(seconds){ isLockedUntil = Date.now() + seconds*1000; updateTimerUI(); if (timerInterval) clearInterval(timerInterval); timerInterval = setInterval(updateTimerUI,250); saveState(); }
+function updateTimerUI(){ const timerEl = document.getElementById('ai-timer'); const runBtn = document.getElementById('ai-run'); const remaining = Math.max(0, Math.ceil((isLockedUntil - Date.now())/1000)); if (remaining>0){ timerEl.innerText = `${remaining}s`; runBtn.disabled = true; runBtn.style.opacity='0.6'; } else { timerEl.innerText='—'; runBtn.disabled = false; runBtn.style.opacity=''; if (timerInterval){ clearInterval(timerInterval); timerInterval = null; } if (isLockedUntil !== 0){ isLockedUntil = 0; saveState(); } } }
 
-function updateTimerUI() {
-  const timerEl = document.getElementById('ai-timer');
-  const runBtn = document.getElementById('ai-run');
-  const remaining = Math.max(0, Math.ceil((isLockedUntil - Date.now()) / 1000));
-  if (remaining > 0) {
-    timerEl.innerText = `${remaining}s`;
-    runBtn.disabled = true;
-    runBtn.style.opacity = '0.6';
-  } else {
-    timerEl.innerText = '—';
-    runBtn.disabled = false;
-    runBtn.style.opacity = '';
-    if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
-    if (isLockedUntil !== 0) { isLockedUntil = 0; saveState(); }
-  }
-}
+/* ---------- helpers ---------- */
+function byId(id){ return document.querySelector(`[data-id="${id}"]`); }
+function nextId(){ nodeCounter = (nodeCounter||0)+1; saveState(); return 'node-' + Date.now() + '-' + Math.floor(Math.random()*1000) + '-' + nodeCounter; }
 
-/* ---------- Помощники (DOM) ---------- */
-function byId(id) { return document.querySelector(`[data-id="${id}"]`); }
-function nextId() { nodeCounter = (nodeCounter || 0) + 1; saveState(); return 'node-' + Date.now() + '-' + Math.floor(Math.random()*1000) + '-' + nodeCounter; }
-
-/* ---------- Создание / воссоздание нод ---------- */
-function recreateNode(id, x = 100, y = 200, text = 'Новый исход', type = '') {
+/* ---------- nodes ---------- */
+function recreateNode(id, x=100, y=200, text='Новый исход', type='') {
   const div = document.createElement('div');
   div.className = 'node';
   div.style.left = x + 'px';
@@ -224,48 +304,40 @@ function recreateNode(id, x = 100, y = 200, text = 'Новый исход', type
   div.innerHTML = `
     <div contenteditable class="title">${text}</div>
     <div style="display:flex;justify-content:space-between;align-items:center">
-      <div class="small-muted">${id === 'root' ? 'Главный кадр' : 'Кадр'}</div>
+      <div class="small-muted">${id==='root' ? 'Главный кадр' : 'Кадр'}</div>
       <div style="display:flex;gap:8px;align-items:center">
         <div class="add-btn" title="Добавить исход">+</div>
-        ${id === 'root' ? '' : '<div class="remove-btn" title="Удалить узел">✕</div>'}
+        ${id==='root' ? '' : '<div class="remove-btn" title="Удалить узел">✕</div>'}
       </div>
     </div>
   `;
   canvas.appendChild(div);
   makeDraggable(div);
   setupNodeButtons(div);
-  const t = div.querySelector('.title');
-  if (t) t.addEventListener('input', () => { updateAIPreview(); saveState(); });
+  const t = div.querySelector('.title'); if (t) t.addEventListener('input', ()=>{ updateAIPreview(); saveState(); });
   return id;
 }
-
-function createNodeAt(x, y, text, parentId) {
+function createNodeAt(x,y,text,parentId){
   const id = nextId();
-  recreateNode(id, x, y, text, '');
-  if (parentId) {
-    edges.push({ from: parentId, to: id });
-    const parent = byId(parentId);
-    if (parent) { parent.dataset.childId = id; const btn = parent.querySelector('.add-btn'); if (btn) btn.setAttribute('disabled', ''); }
-  }
-  updateAIPreview();
-  renderConnections();
-  saveState();
-  return id;
+  recreateNode(id,x,y,text,'');
+  if (parentId){ edges.push({from: parentId, to: id}); const parent = byId(parentId); if (parent){ parent.dataset.childId = id; const btn = parent.querySelector('.add-btn'); if (btn) btn.setAttribute('disabled',''); } }
+  updateAIPreview(); renderConnections(); saveState(); return id;
 }
 
-/* ---------- Drag (мышь/тач) ---------- */
-function makeDraggable(elem) {
-  let dragging = false, startX = 0, startY = 0, origLeft = 0, origTop = 0;
-  const canvasRect = () => canvas.getBoundingClientRect();
+/* ---------- draggable nodes ---------- */
+function makeDraggable(elem){
+  let dragging=false, startX=0, startY=0, origLeft=0, origTop=0;
+  const canvasRect = ()=>canvas.getBoundingClientRect();
 
   elem.addEventListener('mousedown', (e) => {
     if (e.target.closest('.add-btn') || e.target.closest('.remove-btn')) return;
     if (e.target.closest('.title') || e.target.isContentEditable) return;
+    // don't start node-drag if space is down (we want pan)
+    if (isSpaceDown) return;
     const rect = elem.getBoundingClientRect();
     startX = e.clientX; startY = e.clientY;
     origLeft = rect.left - canvasRect().left; origTop = rect.top - canvasRect().top;
-    dragging = true;
-    elem.style.zIndex = 1000;
+    dragging = true; elem.style.zIndex = 1000;
   });
 
   document.addEventListener('mousemove', (e) => {
@@ -277,11 +349,9 @@ function makeDraggable(elem) {
     renderConnections();
   });
 
-  document.addEventListener('mouseup', () => {
-    if (dragging) { dragging = false; elem.style.zIndex = ''; saveState(); }
-  });
+  document.addEventListener('mouseup', () => { if (dragging){ dragging = false; elem.style.zIndex=''; saveState(); } });
 
-  // touch
+  // touch: node drag vs pan: if touch starts on title or node element we drag node
   elem.addEventListener('touchstart', (e) => {
     const t = e.touches && e.touches[0]; if (!t) return;
     const target = document.elementFromPoint(t.clientX, t.clientY); if (!target) return;
@@ -301,220 +371,172 @@ function makeDraggable(elem) {
     renderConnections(); e.preventDefault();
   }, { passive: false });
 
-  document.addEventListener('touchend', () => { if (dragging) { dragging = false; elem.style.zIndex = ''; saveState(); } });
+  document.addEventListener('touchend', () => { if (dragging){ dragging = false; elem.style.zIndex=''; saveState(); } });
 }
 
-/* ---------- Кнопки нод (add/remove) ---------- */
-function setupNodeButtons(nodeElem) {
+/* ---------- node buttons ---------- */
+function setupNodeButtons(nodeElem){
   const addBtn = nodeElem.querySelector('.add-btn');
   const removeBtn = nodeElem.querySelector('.remove-btn');
   const titleEl = nodeElem.querySelector('.title');
-
-  if (titleEl) {
-    titleEl.addEventListener('mousedown', (e) => e.stopPropagation());
-    titleEl.addEventListener('touchstart', (e) => e.stopPropagation(), { passive: false });
-    titleEl.addEventListener('input', () => { updateAIPreview(); saveState(); });
+  if (titleEl){
+    titleEl.addEventListener('mousedown', (e)=> e.stopPropagation());
+    titleEl.addEventListener('touchstart', (e)=> e.stopPropagation(), { passive:false });
+    titleEl.addEventListener('input', ()=>{ updateAIPreview(); saveState(); });
   }
-
-  if (addBtn) addBtn.addEventListener('click', (e) => {
+  if (addBtn) addBtn.addEventListener('click', (e)=> {
     e.stopPropagation();
-    if (nodeElem.dataset.childId) { addBtn.classList.add('blink'); setTimeout(() => addBtn.classList.remove('blink'), 350); return; }
+    if (nodeElem.dataset.childId) { addBtn.classList.add('blink'); setTimeout(()=>addBtn.classList.remove('blink'),350); return; }
     const rect = nodeElem.getBoundingClientRect(); const cr = canvas.getBoundingClientRect();
     const x = rect.left - cr.left + rect.width + 40; const y = rect.top - cr.top;
-    createNodeAt(x, y, 'Следующий кадр...', nodeElem.dataset.id);
+    createNodeAt(x,y,'Следующий кадр...', nodeElem.dataset.id);
   });
-
-  if (removeBtn) removeBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    removeNode(nodeElem.dataset.id);
-  });
+  if (removeBtn) removeBtn.addEventListener('click', (e)=> { e.stopPropagation(); removeNode(nodeElem.dataset.id); });
 }
 
-/* ---------- Удаление нод (с пересоединением детей) ---------- */
-function removeNode(nodeId) {
+/* ---------- remove node with reconnect ---------- */
+function removeNode(nodeId){
   const node = byId(nodeId); if (!node) return;
-  // remove edges that reference node
-  for (let i = edges.length - 1; i >= 0; i--) {
-    if (edges[i].from === nodeId || edges[i].to === nodeId) edges.splice(i, 1);
+  const parents = edges.filter(e => e.to === nodeId).map(e => e.from);
+  const children = edges.filter(e => e.from === nodeId).map(e => e.to);
+
+  if (parents.length && children.length) {
+    parents.forEach(parentId => {
+      children.forEach(childId => {
+        if (!edges.some(en => en.from === parentId && en.to === childId) && parentId !== childId) {
+          edges.push({ from: parentId, to: childId });
+          const parentNode = byId(parentId);
+          if (parentNode) {
+            parentNode.dataset.childId = childId;
+            const btn = parentNode.querySelector('.add-btn');
+            if (btn) btn.setAttribute('disabled', '');
+          }
+        }
+      });
+    });
+  } else {
+    parents.forEach(parentId => {
+      const p = byId(parentId);
+      if (p) { delete p.dataset.childId; const btn = p.querySelector('.add-btn'); if (btn) btn.removeAttribute('disabled'); }
+    });
   }
+
+  edges = edges.filter(e => e.from !== nodeId && e.to !== nodeId);
   node.remove();
-  renderConnections();
-  updateAIPreview();
-  saveState();
+  renderConnections(); updateAIPreview(); saveState();
 }
 
-/* ---------- Отрисовка связей ---------- */
-function renderConnections() {
+/* ---------- render connections (neon) ---------- */
+function renderConnections(){
   connectorsSvg.innerHTML = '';
   edges.forEach(e => {
     const a = byId(e.from), b = byId(e.to);
     if (!a || !b) return;
-    const ra = a.getBoundingClientRect(), rb = b.getBoundingClientRect();
-    const cr = canvas.getBoundingClientRect();
+    const ra = a.getBoundingClientRect(), rb = b.getBoundingClientRect(), cr = canvas.getBoundingClientRect();
     const x1 = ra.left + ra.width/2 - cr.left, y1 = ra.top + ra.height - cr.top;
     const x2 = rb.left + rb.width/2 - cr.left, y2 = rb.top - cr.top;
-    const dx = Math.max(40, Math.abs(x2 - x1) / 2);
-    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    path.setAttribute('d', `M ${x1} ${y1} C ${x1} ${y1+dx} ${x2} ${y2-dx} ${x2} ${y2}`);
-    path.setAttribute('stroke', 'rgba(255,255,255,0.12)');
-    path.setAttribute('stroke-width', '2');
-    path.setAttribute('fill', 'none');
-    connectorsSvg.appendChild(path);
+    const dx = Math.max(40, Math.abs(x2 - x1)/2);
+    const d = `M ${x1} ${y1} C ${x1} ${y1+dx} ${x2} ${y2-dx} ${x2} ${y2}`;
+
+    const glow = document.createElementNS('http://www.w3.org/2000/svg','path');
+    glow.setAttribute('d', d); glow.setAttribute('stroke', 'rgba(0,217,255,0.12)'); glow.setAttribute('stroke-width','8');
+    glow.setAttribute('fill','none'); glow.setAttribute('stroke-linecap','round'); glow.setAttribute('stroke-linejoin','round');
+    glow.style.filter = 'blur(6px)'; glow.style.opacity = '0.6'; connectorsSvg.appendChild(glow);
+
+    const path = document.createElementNS('http://www.w3.org/2000/svg','path');
+    path.setAttribute('d', d); path.setAttribute('stroke','rgba(0,217,255,0.6)'); path.setAttribute('stroke-width','3');
+    path.setAttribute('fill','none'); path.setAttribute('stroke-linecap','round'); path.setAttribute('stroke-linejoin','round');
+    path.style.filter = 'drop-shadow(0 0 8px rgba(0,217,255,0.25))'; path.style.opacity='0.98'; connectorsSvg.appendChild(path);
   });
 }
 
-/* ---------- Сбор дерева для AI (линейный поток: root -> child -> child ...) ---------- */
-function collectTreeForAI() {
+/* ---------- collect linear tree for AI ---------- */
+function collectTreeForAI(){
   const root = byId('root');
   const seen = [];
-  function traverse(id) {
-    const node = byId(id);
-    if (!node) return;
+  function traverse(id){
+    const node = byId(id); if (!node) return;
     const txt = node.querySelector('.title')?.innerText.trim() || '';
     seen.push({ id, text: txt });
-    // ищем child edge
     const childEdge = edges.find(e => e.from === id);
     if (childEdge && childEdge.to) traverse(childEdge.to);
   }
-  traverse('root');
-  return seen;
+  traverse('root'); return seen;
 }
+function updateAIPreview(){ const tree = collectTreeForAI(); const title = tree.length ? tree[0].text : ''; const outcome = tree.length>1 ? tree[1].text : ''; document.getElementById('ai-title').innerText = title || '—'; document.getElementById('ai-outcome').innerText = outcome || '—'; }
 
-function updateAIPreview() {
-  const tree = collectTreeForAI();
-  const title = tree.length ? tree[0].text : '';
-  const outcome = tree.length > 1 ? tree[1].text : '';
-  document.getElementById('ai-title').innerText = title || '—';
-  document.getElementById('ai-outcome').innerText = outcome || '—';
-}
-
-/* ---------- Парсер плюсов/минусов из текста ИИ ---------- */
-function parseProsConsFromText(text) {
+/* ---------- parse pros/cons ---------- */
+function parseProsConsFromText(text){
   if (!text) return { pros: [], cons: [] };
-  const normalized = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-  const lines = normalized.split('\n').map(l => l.trim()).filter(Boolean);
+  const normalized = text.replace(/\r\n/g,'\n').replace(/\r/g,'\n');
+  const lines = normalized.split('\n').map(l=>l.trim()).filter(Boolean);
   const pros = [], cons = [];
   lines.forEach(l => {
-    // убираем маркеры
-    const clean = l.replace(/^[\-\u2022\*\d\.\)\s]+/, '').trim();
-    // простые эвристики: "Плюс", "Минус", "+", "-"
-    if (/^(плюс|плюсы|плюс:)/i.test(l) || /^\+/.test(l)) {
-      const value = clean.replace(/^(плюс[:\s]*)/i, '').trim();
-      if (value) pros.push(value);
-    } else if (/^(минус|минусы|минус:)/i.test(l) || /^\-/.test(l)) {
-      const value = clean.replace(/^(минус[:\s]*)/i, '').trim();
-      if (value) cons.push(value);
-    }
+    const clean = l.replace(/^[\-\u2022\*\d\.\)\s]+/,'').trim();
+    if (/^(плюс|плюсы|плюс:)/i.test(l) || /^\+/.test(l)) { const value = clean.replace(/^(плюс[:\s]*)/i,'').trim(); if (value) pros.push(value); }
+    else if (/^(минус|минусы|минус:)/i.test(l) || /^\-/.test(l)) { const value = clean.replace(/^(минус[:\s]*)/i,'').trim(); if (value) cons.push(value); }
   });
-
-  // если не найдено явно — попытаемся найти в одном абзаце "Плюсы: ... Минусы: ..."
-  if (pros.length === 0 && cons.length === 0) {
+  if (pros.length===0 && cons.length===0) {
     const m = normalized.match(/плюс(?:ы)?[:\s]*([\s\S]*?)(?:минус|$)/i);
-    if (m && m[1]) pros.push(...m[1].split(/[;\/]\s*|\n/).map(s => s.trim()).filter(Boolean));
+    if (m && m[1]) pros.push(...m[1].split(/[;\/]\s*|\n/).map(s=>s.trim()).filter(Boolean));
     const m2 = normalized.match(/минус(?:ы)?[:\s]*([\s\S]*?)(?:$)/i);
-    if (m2 && m2[1]) cons.push(...m2[1].split(/[;\/]\s*|\n/).map(s => s.trim()).filter(Boolean));
+    if (m2 && m2[1]) cons.push(...m2[1].split(/[;\/]\s*|\n/).map(s=>s.trim()).filter(Boolean));
   }
-
-  // fallback: несколько предложений — берем первое предложение как плюс, второе как минус (очень грубая эвристика)
-  if (pros.length === 0 && cons.length === 0) {
-    const sentences = normalized.split(/[.\n]/).map(s => s.trim()).filter(Boolean);
-    if (sentences.length >= 1) pros.push(sentences[0]);
-    if (sentences.length >= 2) cons.push(sentences[1]);
+  if (pros.length===0 && cons.length===0) {
+    const sentences = normalized.split(/[.\n]/).map(s=>s.trim()).filter(Boolean);
+    if (sentences.length>=1) pros.push(sentences[0]); if (sentences.length>=2) cons.push(sentences[1]);
   }
-
-  // уникальность и трим
-  const uniq = arr => Array.from(new Set(arr.map(s => s.trim()))).slice(0, 10);
+  const uniq = arr => Array.from(new Set(arr.map(s=>s.trim()))).slice(0,10);
   return { pros: uniq(pros), cons: uniq(cons) };
 }
 
-/* ---------- Создание нод плюсов/минусов рядом с исходом ---------- */
-function createProConNodesForOutcome(outcomeText, pros, cons) {
-  // найдем ноду с текстом исхода
+/* ---------- create pro/con nodes ---------- */
+function createProConNodesForOutcome(outcomeText, pros, cons){
   const nodes = Array.from(document.querySelectorAll('.node[data-id]'));
   let outcomeNode = nodes.find(n => (n.querySelector('.title')?.innerText || '').trim() === outcomeText.trim());
-  // если не нашли — создадим новую исход-ноду рядом с корнем
-  if (!outcomeNode) {
-    const root = byId('root');
-    const rr = root.getBoundingClientRect(); const cr = canvas.getBoundingClientRect();
+  if (!outcomeNode){
+    const root = byId('root'); const rr = root.getBoundingClientRect(); const cr = canvas.getBoundingClientRect();
     const x = rr.left - cr.left + rr.width + 40; const y = rr.top - cr.top;
-    const newId = createNodeAt(x, y, outcomeText, 'root');
-    outcomeNode = byId(newId);
+    const newId = createNodeAt(x,y,outcomeText,'root'); outcomeNode = byId(newId);
   }
   if (!outcomeNode) return;
-
   const parentId = outcomeNode.dataset.id;
   const rect = outcomeNode.getBoundingClientRect(); const cr = canvas.getBoundingClientRect();
-  const baseX = rect.left - cr.left + rect.width + 40;
-  let yBase = rect.top - cr.top + rect.height + 18;
-  const gap = 84;
-
-  // плюсы сверху, минусы ниже
-  pros.forEach((p, idx) => {
-    const x = baseX;
-    const y = yBase + idx * gap;
-    const id = createNodeAt(x, y, 'Плюс: ' + p, parentId);
-    const n = byId(id); if (n) n.dataset.type = 'pro';
-  });
-  const consStart = yBase + (pros.length) * gap + 6;
-  cons.forEach((c, idx) => {
-    const x = baseX;
-    const y = consStart + idx * gap;
-    const id = createNodeAt(x, y, 'Минус: ' + c, parentId);
-    const n = byId(id); if (n) n.dataset.type = 'con';
-  });
-
-  renderConnections();
-  saveState();
+  const baseX = rect.left - cr.left + rect.width + 40; let yBase = rect.top - cr.top + rect.height + 18; const gap = 84;
+  pros.forEach((p,idx)=>{ const x = baseX; const y = yBase + idx*gap; const id = createNodeAt(x,y,'Плюс: ' + p, parentId); const n = byId(id); if (n) n.dataset.type='pro'; });
+  const consStart = yBase + pros.length*gap + 6;
+  cons.forEach((c,idx)=>{ const x = baseX; const y = consStart + idx*gap; const id = createNodeAt(x,y,'Минус: ' + c, parentId); const n = byId(id); if (n) n.dataset.type='con'; });
+  renderConnections(); saveState();
 }
 
-/* ---------- Взаимодействие с сервером (fetch + ретраи) ---------- */
+/* ---------- server comms with retries ---------- */
 async function sendAiRequestWithRetries(payload, maxRetries = MAX_RETRIES) {
   let lastError = null;
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      const res = await fetch('/run-ai', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      if (!res.ok) {
-        lastError = new Error('HTTP ' + res.status);
-      } else {
-        const data = await res.json();
-        return { success: true, data };
-      }
-    } catch (err) {
-      lastError = err;
-    }
-    const backoff = 200 * attempt;
-    await new Promise(r => setTimeout(r, backoff));
+      const res = await fetch('/run-ai', { method:'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+      if (!res.ok) { lastError = new Error('HTTP ' + res.status); }
+      else { const data = await res.json(); return { success: true, data }; }
+    } catch(err) { lastError = err; }
+    const backoff = 200 * attempt; await new Promise(r=>setTimeout(r, backoff));
   }
-  return { success: false, error: lastError };
+  return { success:false, error:lastError };
 }
 
-/* ---------- Кнопки AI ---------- */
+/* ---------- AI buttons ---------- */
 const aiRunBtn = document.getElementById('ai-run');
 const aiClearBtn = document.getElementById('ai-clear');
 
 aiRunBtn.addEventListener('click', async () => {
   if (isLockedUntil > Date.now()) return;
-
   const tree = collectTreeForAI();
   const title = tree.length ? tree[0].text : '';
-  const outcome = tree.length > 1 ? tree[1].text : '';
+  const outcome = tree.length>1 ? tree[1].text : '';
   const outBox = document.getElementById('ai-output');
-
   if (!title) { outBox.innerText = 'Опишите главный кадр.'; return; }
   if (!outcome) { outBox.innerText = 'Добавьте хотя бы один исход (нажмите + у нужного кадра).'; return; }
 
-  // очищаем окно ответов ТУТ (как вы просили), показываем индикатор
-  outBox.innerHTML = '';
-  const loading = document.createElement('div');
-  loading.className = 'ai-response';
-  loading.innerText = 'Запрос отправлен...';
-  outBox.appendChild(loading);
-  outBox.scrollTop = outBox.scrollHeight;
-
+  outBox.innerHTML = ''; const loading = document.createElement('div'); loading.className='ai-response'; loading.innerText = 'Запрос отправлен...'; outBox.appendChild(loading); outBox.scrollTop = outBox.scrollHeight;
   aiRunBtn.disabled = true; aiRunBtn.style.opacity = '0.6';
 
   const payload = { title, outcomes: [outcome] };
@@ -522,104 +544,239 @@ aiRunBtn.addEventListener('click', async () => {
 
   if (result.success) {
     const data = result.data || {};
-    // поддерживаем разные форматы ответа сервера:
-    // 1) old style: { model1, result1, model2, result2 }
-    // 2) new style: { title, results: [{ index, outcome, result }, ...] }
-    if (Array.isArray(data.results) && data.results.length > 0) {
-      // множественные результаты
+    if (Array.isArray(data.results) && data.results.length>0){
       outBox.innerHTML = '';
-      data.results.forEach(item => {
-        const block = document.createElement('div');
-        block.className = 'ai-response';
-        const resText = item.result || '';
-        const outText = item.outcome || '';
-        block.innerHTML = `<div><b>Исход ${escapeHtml(item.index || '')}:</b> ${escapeHtml(outText)}</div><pre>${escapeHtml(resText)}</pre>`;
-        outBox.appendChild(block);
-        // парсим плюсы/минусы и создаём ноды
-        const { pros, cons } = parseProsConsFromText(resText);
-        if ((pros && pros.length) || (cons && cons.length)) createProConNodesForOutcome(outText, pros, cons);
-      });
-    } else if (typeof data.result1 === 'string' || typeof data.result2 === 'string') {
-      // legacy style
-      outBox.innerHTML = '';
-      const r1 = String(data.result1 || '');
-      const r2 = String(data.result2 || '');
-      const block = document.createElement('div'); block.className = 'ai-response';
-      block.innerHTML = `${DOMPurify.sanitize('<div><b>' + escapeHtml(data.model1 || 'model1') + ':</b></div><pre>' + escapeHtml(r1) + '</pre>')}
-                         <div style="height:8px"></div>
-                         ${DOMPurify.sanitize('<div><b>' + escapeHtml(data.model2 || 'model2') + ':</b></div><pre>' + escapeHtml(r2) + '</pre>')}`;
-      outBox.appendChild(block);
-
-      // попробуем применить парсер к первому непустому result
-      const combined = r1 || r2 || '';
-      const parsed = parseProsConsFromText(combined);
-      if ((parsed.pros.length || parsed.cons.length)) createProConNodesForOutcome(outcome, parsed.pros, parsed.cons);
+      data.results.forEach(item=> { const block = document.createElement('div'); block.className='ai-response'; const resText = item.result || ''; const outText = item.outcome || ''; block.innerHTML = `<div><b>Исход ${escapeHtml(item.index||'')}:</b> ${escapeHtml(outText)}</div><pre>${escapeHtml(resText)}</pre>`; outBox.appendChild(block); const {pros,cons} = parseProsConsFromText(resText); if ((pros && pros.length) || (cons && cons.length)) createProConNodesForOutcome(outText, pros, cons); });
+    } else if (typeof data.result1 === 'string' || typeof data.result2 === 'string'){
+      outBox.innerHTML = ''; const r1 = String(data.result1 || ''); const r2 = String(data.result2 || ''); const block = document.createElement('div'); block.className='ai-response'; block.innerHTML = `${DOMPurify.sanitize('<div><b>' + escapeHtml(data.model1 || 'model1') + ':</b></div><pre>' + escapeHtml(r1) + '</pre>')}<div style="height:8px"></div>${DOMPurify.sanitize('<div><b>' + escapeHtml(data.model2 || 'model2') + ':</b></div><pre>' + escapeHtml(r2) + '</pre>')}`; outBox.appendChild(block); const combined = r1 || r2 || ''; const parsed = parseProsConsFromText(combined); if ((parsed.pros.length || parsed.cons.length)) createProConNodesForOutcome(outcome, parsed.pros, parsed.cons);
     } else {
-      // неожиданный формат — если есть поле 'result' используем его
       const singleText = data.result || (data.results && data.results[0] && data.results[0].result) || '';
-      outBox.innerHTML = '';
-      const block = document.createElement('div'); block.className = 'ai-response';
-      block.innerHTML = `<pre>${escapeHtml(String(singleText))}</pre>`;
-      outBox.appendChild(block);
-      const parsed = parseProsConsFromText(String(singleText));
-      if ((parsed.pros.length || parsed.cons.length)) createProConNodesForOutcome(outcome, parsed.pros, parsed.cons);
+      outBox.innerHTML = ''; const block = document.createElement('div'); block.className='ai-response'; block.innerHTML = `<pre>${escapeHtml(String(singleText))}</pre>`; outBox.appendChild(block); const parsed = parseProsConsFromText(String(singleText)); if ((parsed.pros.length || parsed.cons.length)) createProConNodesForOutcome(outcome, parsed.pros, parsed.cons);
     }
-
-    // скроллим и ставим блокировку
-    outBox.scrollTop = outBox.scrollHeight;
-    setLock(60);
-    saveState();
+    outBox.scrollTop = outBox.scrollHeight; setLock(60); saveState();
   } else {
-    // ошибка
-    if (outBox.lastElementChild === loading) {
-      loading.innerText = 'Ошибка при запросе к AI. Попытки исчерпаны.';
-    } else {
-      const err = document.createElement('div'); err.className = 'ai-response'; err.innerText = 'Ошибка при запросе к AI. Попытки исчерпаны.'; outBox.appendChild(err);
-    }
+    if (outBox.lastElementChild && outBox.lastElementChild.classList.contains('ai-response')) outBox.lastElementChild.innerText = 'Ошибка при запросе к AI. Попытки исчерпаны.'; else { const err = document.createElement('div'); err.className='ai-response'; err.innerText = 'Ошибка при запросе к AI. Попытки исчерпаны.'; outBox.appendChild(err); }
     console.error('AI request failed after retries:', result.error);
   }
-
   aiRunBtn.disabled = false; aiRunBtn.style.opacity = '';
 });
 
-/* ---------- Очистка исходов (удалить все ноды кроме root) ---------- */
+/* ---------- clear all outcomes ---------- */
 aiClearBtn.addEventListener('click', () => {
-  const all = Array.from(document.querySelectorAll('.node')).map(n => n.dataset.id);
-  for (const id of all) { if (id !== 'root') {
-    const n = byId(id);
-    if (n) n.remove();
-  } }
+  const all = Array.from(document.querySelectorAll('.node')).map(n=>n.dataset.id);
+  for (const id of all) { if (id !== 'root') { const n = byId(id); if (n) n.remove(); } }
   edges = [];
   const root = byId('root'); if (root) { delete root.dataset.childId; const btn = root.querySelector('.add-btn'); if (btn) btn.removeAttribute('disabled'); }
   renderConnections(); updateAIPreview(); document.getElementById('ai-output').innerText = 'Все исходы удалены.'; saveState();
 });
 
-/* ---------- Малые утилиты ---------- */
-function escapeHtml(str) {
-  if (!str && str !== 0) return '';
-  return String(str).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
-}
+/* ---------- utils ---------- */
+function escapeHtml(str){ if (!str && str !== 0) return ''; return String(str).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#39;'); }
 
-/* ---------- Инициализация UI / события ---------- */
-document.querySelectorAll('.node').forEach(n => {
-  makeDraggable(n);
-  setupNodeButtons(n);
-  const titleEl = n.querySelector('.title');
-  if (titleEl) titleEl.addEventListener('input', () => { updateAIPreview(); saveState(); });
+/* ========== FLOATING PANEL DRAG & RESIZE ========== */
+/* Panel dragging by header */
+(function(){
+  let dragging=false, startX=0, startY=0, origLeft=0, origTop=0;
+  sideHeader.addEventListener('mousedown', e=>{
+    if(e.target === panelCollapseBtn || e.target === panelCloseBtn) return;
+    dragging=true;
+    const rect = sidePanel.getBoundingClientRect();
+    const editorRect = document.getElementById('editorPage').getBoundingClientRect();
+    startX = e.clientX; startY = e.clientY;
+    origLeft = rect.left - editorRect.left; origTop = rect.top - editorRect.top;
+    sideHeader.style.cursor = 'grabbing';
+    document.body.style.userSelect = 'none';
+  });
+
+  document.addEventListener('mousemove', e=>{
+    if(!dragging) return;
+    const editorRect = document.getElementById('editorPage').getBoundingClientRect();
+    let nx = origLeft + (e.clientX - startX), ny = origTop + (e.clientY - startY);
+    nx = Math.max(8, Math.min(editorRect.width - 120, nx));
+    ny = Math.max(8, Math.min(editorRect.height - 60, ny));
+    sidePanel.style.left = nx + 'px';
+    sidePanel.style.top = ny + 'px';
+    sidePanel.style.right = 'auto';
+  });
+
+  document.addEventListener('mouseup', ()=>{
+    if(dragging){
+      dragging=false;
+      sideHeader.style.cursor='grab';
+      document.body.style.userSelect='';
+      saveState();
+    }
+  });
+
+  // touch events for panel dragging
+  sideHeader.addEventListener('touchstart', e=>{
+    const t = e.touches && e.touches[0]; if(!t) return;
+    dragging=true;
+    const rect = sidePanel.getBoundingClientRect();
+    const editorRect = document.getElementById('editorPage').getBoundingClientRect();
+    startX = t.clientX; startY = t.clientY;
+    origLeft = rect.left - editorRect.left;
+    origTop = rect.top - editorRect.top;
+    e.preventDefault();
+  }, {passive:false});
+
+  document.addEventListener('touchmove', e=>{
+    if(!dragging) return;
+    const t = e.touches && e.touches[0]; if(!t) return;
+    const editorRect = document.getElementById('editorPage').getBoundingClientRect();
+    let nx = origLeft + (t.clientX - startX), ny = origTop + (t.clientY - startY);
+    nx = Math.max(8, Math.min(editorRect.width - 120, nx));
+    ny = Math.max(8, Math.min(editorRect.height - 60, ny));
+    sidePanel.style.left = nx + 'px';
+    sidePanel.style.top = ny + 'px';
+    sidePanel.style.right='auto';
+    e.preventDefault();
+  }, {passive:false});
+
+  document.addEventListener('touchend', ()=>{
+    if(dragging){ dragging=false; saveState(); }
+  });
+})();
+
+/* Panel resize by left handle */
+(function(){
+  let resizing=false, startX=0, startWidth=0;
+  panelHandle.addEventListener('mousedown', e=>{
+    resizing=true; startX = e.clientX; startWidth = sidePanel.getBoundingClientRect().width;
+    document.body.style.userSelect='none';
+  });
+
+  document.addEventListener('mousemove', e=>{
+    if(!resizing) return;
+    const dx = startX - e.clientX;
+    const newWidth = Math.max(240, Math.min(window.innerWidth - 80, startWidth + dx));
+    sidePanel.style.width = newWidth + 'px';
+    sidePanel.style.right = 'auto';
+    renderConnections();
+  });
+
+  document.addEventListener('mouseup', ()=>{
+    if(resizing){ resizing=false; document.body.style.userSelect=''; saveState(); }
+  });
+
+  // touch events for resizing
+  panelHandle.addEventListener('touchstart', e=>{
+    const t = e.touches && e.touches[0]; if(!t) return;
+    resizing=true; startX=t.clientX; startWidth = sidePanel.getBoundingClientRect().width; e.preventDefault();
+  }, {passive:false});
+
+  document.addEventListener('touchmove', e=>{
+    if(!resizing) return;
+    const t = e.touches && e.touches[0]; if(!t) return;
+    const dx = startX - t.clientX;
+    const newWidth = Math.max(240, Math.min(window.innerWidth - 80, startWidth + dx));
+    sidePanel.style.width = newWidth + 'px';
+    sidePanel.style.right='auto';
+    renderConnections();
+    e.preventDefault();
+  }, {passive:false});
+
+  document.addEventListener('touchend', ()=>{
+    if(resizing){ resizing=false; saveState(); }
+  });
+})();
+
+/* Panel collapse & close */
+panelCollapseBtn.addEventListener('click', ()=>{
+  if(sidePanel.dataset.collapsed === '1'){
+    sidePanel.dataset.collapsed = '0';
+    sidePanel.style.height = sidePanel.dataset.prevHeight || '';
+  } else {
+    sidePanel.dataset.prevHeight = sidePanel.style.height || '';
+    sidePanel.dataset.collapsed = '1';
+    sidePanel.style.height = '36px';
+  }
+  saveState();
 });
 
-// save scroll
-canvas.addEventListener('scroll', () => { saveState(); renderConnections(); });
+panelCloseBtn.addEventListener('click', ()=>{
+  sidePanel.style.display = 'none';
+  saveState();
+});
+
+/* ========== PANNING IMPLEMENTATION ========== */
+// Start panning when:
+//  - spacebar is held and left mouse is pressed on canvas-area (not on node)
+//  - middle mouse button pressed on canvas-area
+// Touch: one-finger drag on canvas area (if not started on node)
+canvas.classList.add('canvas-grab');
+
+document.addEventListener('keydown', (e) => {
+  if (e.code === 'Space' && !isSpaceDown) { isSpaceDown = true; canvas.classList.add('canvas-grab'); e.preventDefault(); }
+});
+document.addEventListener('keyup', (e) => {
+  if (e.code === 'Space') { isSpaceDown = false; canvas.classList.remove('canvas-panning'); canvas.classList.add('canvas-grab'); }
+});
+
+canvas.addEventListener('mousedown', (e) => {
+  // middle button (button===1) OR space + left button
+  const targetNode = e.target.closest('.node');
+  if (targetNode) return; // node interactions have precedence
+  if (e.button === 1 || (isSpaceDown && e.button === 0)) {
+    isPanning = true;
+    panStart.x = e.clientX; panStart.y = e.clientY;
+    panStart.left = canvas.scrollLeft; panStart.top = canvas.scrollTop;
+    canvas.classList.add('canvas-panning');
+    canvas.classList.remove('canvas-grab');
+    e.preventDefault();
+  }
+});
+
+document.addEventListener('mousemove', (e) => {
+  if (!isPanning) return;
+  const dx = e.clientX - panStart.x;
+  const dy = e.clientY - panStart.y;
+  canvas.scrollLeft = panStart.left - dx;
+  canvas.scrollTop = panStart.top - dy;
+  renderConnections();
+});
+
+document.addEventListener('mouseup', (e) => {
+  if (isPanning) { isPanning = false; canvas.classList.remove('canvas-panning'); canvas.classList.add('canvas-grab'); saveState(); }
+});
+
+// enable panning with touch on empty canvas
+canvas.addEventListener('touchstart', (e) => {
+  if (e.touches.length !== 1) return;
+  const t = e.touches[0];
+  const targetNode = document.elementFromPoint(t.clientX, t.clientY)?.closest?.('.node');
+  if (targetNode) return; // node touch should drag node
+  isPanning = true;
+  panStart.x = t.clientX; panStart.y = t.clientY;
+  panStart.left = canvas.scrollLeft; panStart.top = canvas.scrollTop;
+  canvas.classList.add('canvas-panning'); canvas.classList.remove('canvas-grab');
+}, { passive:false });
+
+canvas.addEventListener('touchmove', (e) => {
+  if (!isPanning) return;
+  const t = e.touches[0];
+  const dx = t.clientX - panStart.x;
+  const dy = t.clientY - panStart.y;
+  canvas.scrollLeft = panStart.left - dx;
+  canvas.scrollTop = panStart.top - dy;
+  renderConnections();
+  e.preventDefault();
+}, { passive:false });
+
+canvas.addEventListener('touchend', (e) => {
+  if (isPanning) { isPanning = false; canvas.classList.remove('canvas-panning'); canvas.classList.add('canvas-grab'); saveState(); }
+});
+
+/* prevent middle click autoscroll default */
+canvas.addEventListener('auxclick', (e) => { if (e.button === 1) e.preventDefault(); });
+
+/* ---------- init ---------- */
+document.querySelectorAll('.node').forEach(n => { makeDraggable(n); setupNodeButtons(n); const t = n.querySelector('.title'); if (t) t.addEventListener('input', ()=>{ updateAIPreview(); saveState(); }); });
+canvas.addEventListener('scroll', ()=>{ saveState(); renderConnections(); });
 window.addEventListener('resize', renderConnections);
-window.addEventListener('beforeunload', () => {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(serializeState())); } catch (e) {}
-});
+window.addEventListener('beforeunload', ()=>{ try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(serializeState())); } catch(e){} });
 
-// initial render & load saved
-updateAIPreview();
-renderConnections();
-updateTimerUI();
-loadState();
+updateAIPreview(); renderConnections(); updateTimerUI(); loadState();
 </script>
 </body>
 </html>
