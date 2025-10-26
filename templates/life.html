@@ -1,116 +1,836 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Путь Жизни — Viora</title>
-<link rel="stylesheet" href="/static/styles.css">
-<style>
-:root { --panel-bg: rgba(8,8,10,0.6); --accent: #7dd3fc; --neon: rgba(0,217,255,0.70); }
-body { margin:0; font-family: Inter, Arial, sans-serif; background:#09090b; color:#fff; }
-.editor-page { width:100vw; height:100vh; display:flex; gap:20px; padding:20px; box-sizing:border-box; align-items:stretch; position:relative; }
-.canvas-area { flex:1 1 auto; border-radius:18px; background: rgba(10,10,15,0.45); backdrop-filter: blur(8px); position:relative; overflow:auto; padding:40px; min-height:80vh; touch-action: none; }
-.side-panel { position:absolute; right:20px; top:20px; width:420px; height:calc(100vh - 80px); max-width:80vw; background:var(--panel-bg); border-radius:12px; padding:12px; box-shadow:0 12px 40px rgba(0,0,0,0.6); display:flex; flex-direction:column; box-sizing:border-box; z-index:1000; }
-.side-header { cursor:grab; user-select:none; display:flex; align-items:center; justify-content:space-between; padding:8px 10px; border-bottom:1px solid rgba(255,255,255,0.04); margin-bottom:8px; border-radius:8px; }
-.side-title { font-weight:700; font-size:16px; }
-.side-sub { font-size:12px; color:rgba(255,255,255,0.7); }
-.panel-left-handle { position:absolute; left:-8px; top:8px; bottom:8px; width:12px; cursor:ew-resize; border-radius:6px; }
-.node { width:260px; min-height:56px; background: rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:12px; position:absolute; display:flex; flex-direction:column; gap:8px; cursor:move; }
-.node .title { font-weight:600; font-size:14px; color:#fff; outline:none; min-height:20px; background:transparent; border:none; width:100%; }
-.controls { display:flex; align-items:center; justify-content:space-between; margin-top:8px; }
-.buttons-container { display:flex; gap:6px; align-items:center; }
-.add-btn, .remove-btn { width:28px; height:28px; border-radius:8px; display:inline-flex; align-items:center; justify-content:center; background: rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); color:#fff; cursor:pointer; user-select:none; }
-.add-btn { font-weight:700; font-size:16px; }
-.remove-btn { font-size:14px; }
-.small-muted { color: rgba(255,255,255,0.55); font-size:13px; }
-.connector-svg { position:absolute; inset:0; pointer-events:none; z-index:1; }
-.ai-box { background: rgba(255,255,255,0.02); padding:12px; border-radius:10px; min-height:120px; overflow:auto; max-height:360px; font-size:14px; line-height:1.45; }
-.ai-box .ai-response { margin-bottom:12px; padding:10px; background: rgba(255,255,255,0.02); border-radius:8px; border:1px solid rgba(255,255,255,0.04); }
-.ai-box .ai-response .meta { font-size:13px; color:rgba(255,255,255,0.85); }
-.ai-box .ai-response pre { white-space:pre-wrap; word-break:break-word; margin:6px 0 0 0; font-family:inherit; font-size:13px; }
-.action-row { display:flex; gap:10px; margin-top:12px; }
-.button-primary { background: var(--accent); color:#0a0a0f; padding:10px 12px; border-radius:10px; cursor:pointer; border:none; }
-.button-ghost { background:transparent; color:#fff; border:1px solid rgba(255,255,255,0.08); padding:10px 12px; border-radius:10px; cursor:pointer; }
-.title[contenteditable]:empty:before { content: attr(data-placeholder); color: rgba(255,255,255,0.35); display:block; }
-.result-highlight { border-left: 3px solid var(--accent); padding-left:8px; margin-bottom:8px; }
-.back-link { position:fixed; top:14px; left:14px; z-index:1100; background: rgba(255,255,255,0.06); color:#fff; text-decoration:none; display:inline-flex; gap:8px; padding:8px 10px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); font-weight:600; }
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Путь Жизни — Viora</title>
+    <style>
+        /* Все предыдущие стили остаются без изменений */
+        :root {
+            --panel-bg: rgba(8,8,10,0.6);
+            --accent: #7dd3fc;
+            --neon: rgba(0,217,255,0.70);
+            --bg-dark: #09090b;
+            --glass-bg: rgba(10,10,15,0.45);
+            --glass-border: rgba(255,255,255,0.08);
+            --text-primary: #fff;
+            --text-muted: rgba(255,255,255,0.6);
+            --pro-color: #10b981;
+            --con-color: #ef4444;
+        }
 
-.connector-svg path {
-  stroke: var(--neon) !important;
-  stroke-width: 3 !important;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  fill: none;
-  opacity: 0.98;
-  filter: drop-shadow(0 0 8px rgba(0,217,255,0.25));
-}
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
 
-.canvas-pan-cursor { cursor: grab; }
-.canvas-panning { cursor: grabbing !important; }
+        body {
+            margin: 0;
+            font-family: Inter, Arial, sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+            touch-action: none;
+        }
 
-.node-pro { border-left: 4px solid #10b981; }
-.node-con { border-left: 4px solid #ef4444; }
-.node-pros-container, .node-cons-container {
-  background: rgba(255,255,255,0.02);
-  border-radius: 8px;
-  padding: 8px;
-  margin-top: 8px;
-}
-</style>
+        .editor-page {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            gap: 10px;
+            padding: 10px;
+            box-sizing: border-box;
+            align-items: stretch;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .canvas-area {
+            flex: 1 1 auto;
+            border-radius: 12px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(6px);
+            position: relative;
+            overflow: auto;
+            padding: 20px;
+            min-width: max-content;
+            min-height: max-content;
+            touch-action: pan-x pan-y;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .canvas-pan-cursor { cursor: grab; }
+        .canvas-panning { cursor: grabbing !important; }
+
+        .side-panel {
+            position: absolute;
+            right: 10px;
+            top: 10px;
+            width: 320px;
+            max-width: 90vw;
+            height: calc(100vh - 40px);
+            max-height: 70vh;
+            background: var(--panel-bg);
+            border-radius: 10px;
+            padding: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+            display: flex;
+            flex-direction: column;
+            box-sizing: border-box;
+            z-index: 1000;
+            touch-action: none;
+        }
+
+        .side-panel.hidden {
+            display: none;
+        }
+
+        .open-panel-btn {
+            position: fixed;
+            top: 50px;
+            right: 10px;
+            background: var(--accent);
+            color: #0a0a0f;
+            padding: 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            z-index: 999;
+            display: none;
+        }
+
+        .open-panel-btn.visible {
+            display: block;
+        }
+
+        .side-header {
+            cursor: grab;
+            user-select: none;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+            margin-bottom: 8px;
+            border-radius: 6px;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+        }
+
+        .side-title {
+            font-weight: 700;
+            font-size: 16px;
+        }
+
+        .side-sub {
+            font-size: 12px;
+            color: var(--text-muted);
+            display: none;
+        }
+
+        .panel-left-handle {
+            position: absolute;
+            left: -8px;
+            top: 8px;
+            bottom: 8px;
+            width: 12px;
+            cursor: ew-resize;
+            border-radius: 6px;
+            background: rgba(255,255,255,0.1);
+            display: none;
+        }
+
+        .node {
+            width: 90vw;
+            max-width: 280px;
+            min-height: 60px;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--glass-border);
+            border-radius: 15px;
+            padding: 10px;
+            position: absolute;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            cursor: move;
+            z-index: 10;
+            transition: transform 0.2s ease;
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            touch-action: none;
+        }
+
+        .node:active {
+            cursor: grabbing;
+            z-index: 1000;
+        }
+
+        .node:hover {
+            transform: scale(1.02);
+        }
+
+        .node .title {
+            font-weight: 600;
+            font-size: 14px;
+            color: var(--text-primary);
+            outline: none;
+            min-height: 20px;
+            background: transparent;
+            border: none;
+            width: 100%;
+            cursor: text;
+            -webkit-user-select: text;
+            -moz-user-select: text;
+            -ms-user-select: text;
+            user-select: text;
+            padding: 2px;
+        }
+
+        .title[contenteditable]:empty:before {
+            content: attr(data-placeholder);
+            color: rgba(255,255,255,0.35);
+            display: block;
+        }
+
+        .controls {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 6px;
+        }
+
+        .buttons-container {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+
+        .add-btn, .remove-btn, .toggle-btn {
+            width: 32px;
+            height: 32px;
+            min-width: 32px;
+            min-height: 32px;
+            border-radius: 8px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.06);
+            color: var(--text-primary);
+            cursor: pointer;
+            user-select: none;
+            transition: all 0.2s ease;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            touch-action: manipulation;
+            font-size: 16px;
+        }
+
+        .add-btn {
+            font-weight: 700;
+        }
+
+        .add-btn:hover {
+            background: rgba(0,217,255,0.2);
+            border-color: rgba(0,217,255,0.4);
+        }
+
+        .remove-btn:hover {
+            background: rgba(255,68,68,0.2);
+            border-color: rgba(239,68,68,0.4);
+        }
+
+        .toggle-btn:hover {
+            background: rgba(0,217,255,0.2);
+            border-color: rgba(0,217,255,0.4);
+        }
+
+        .small-muted {
+            color: var(--text-muted);
+            font-size: 12px;
+        }
+
+        .connector-svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .connector-svg path {
+            stroke: var(--neon) !important;
+            stroke-width: 3 !important;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            fill: none;
+            opacity: 0.98;
+            filter: drop-shadow(0 0 6px rgba(0,217,255,0.25));
+        }
+
+        .ai-box {
+            background: rgba(255,255,255,0.02);
+            padding: 10px;
+            border-radius: 8px;
+            min-height: 100px;
+            overflow: auto;
+            max-height: 40vh;
+            font-size: 14px;
+            line-height: 1.4;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .ai-box .ai-response {
+            margin-bottom: 10px;
+            padding: 8px;
+            background: rgba(255,255,255,0.02);
+            border-radius: 6px;
+            border: 1px solid rgba(255,255,255,0.04);
+        }
+
+        .ai-box .ai-response .meta {
+            font-size: 12px;
+            color: rgba(255,255,255,0.85);
+        }
+
+        .ai-box .ai-response pre {
+            white-space: pre-wrap;
+            word-break: break-word;
+            margin: 6px 0 0 0;
+            font-family: inherit;
+            font-size: 12px;
+        }
+
+        .action-row {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+
+        .button-primary, .button-ghost, .button-danger {
+            padding: 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: none;
+            font-size: 14px;
+            touch-action: manipulation;
+            min-height: 44px;
+            min-width: 44px;
+            flex: 1;
+        }
+
+        .button-primary {
+            background: var(--accent);
+            color: #0a0a0f;
+        }
+
+        .button-primary:hover {
+            box-shadow: 0 0 12px rgba(0,217,255,0.5);
+        }
+
+        .button-ghost {
+            background: transparent;
+            color: var(--text-primary);
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+
+        .button-ghost:hover {
+            background: rgba(255,255,255,0.05);
+        }
+
+        .button-danger {
+            background: rgba(239,68,68,0.1);
+            color: #ef4444;
+            border: 1px solid rgba(239,68,68,0.2);
+        }
+
+        .button-danger:hover {
+            background: rgba(239,68,68,0.2);
+        }
+
+        .result-highlight {
+            border-left: 3px solid var(--accent);
+            padding-left: 6px;
+            margin-bottom: 6px;
+        }
+
+        .back-link {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            z-index: 1100;
+            background: rgba(255,255,255,0.06);
+            color: var(--text-primary);
+            text-decoration: none;
+            display: inline-flex;
+            gap: 6px;
+            padding: 8px 10px;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.08);
+            font-weight: 600;
+            transition: all 0.2s ease;
+            touch-action: manipulation;
+            min-height: 40px;
+            min-width: 40px;
+            align-items: center;
+            font-size: 14px;
+        }
+
+        .back-link:hover {
+            background: rgba(0,217,255,0.15);
+            border-color: rgba(0,217,255,0.4);
+        }
+
+        .node[data-type="pro"] {
+            border-left: 4px solid rgba(16,185,129,0.3);
+            background: rgba(16,185,129,0.05);
+        }
+
+        .node[data-type="con"] {
+            border-left: 4px solid rgba(239,68,68,0.3);
+            background: rgba(239,68,68,0.05);
+        }
+
+        .node[data-type="pros-container"] {
+            border-left: 4px solid rgba(16,185,129,0.5);
+            background: rgba(16,185,129,0.08);
+            font-weight: 700;
+            font-size: 14px;
+            color: var(--pro-color);
+        }
+
+        .node[data-type="cons-container"] {
+            border-left: 4px solid rgba(239,68,68,0.5);
+            background: rgba(239,68,68,0.08);
+            font-weight: 700;
+            font-size: 14px;
+            color: var(--con-color);
+        }
+
+        /* Показываем кнопки сворачивания для контейнеров */
+        .node[data-type="pros-container"] .buttons-container,
+        .node[data-type="cons-container"] .buttons-container {
+            display: flex;
+        }
+
+        .node[data-type="pros-container"] .title,
+        .node[data-type="cons-container"] .title {
+            cursor: default;
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+        }
+
+        /* Скрытые узлы */
+        .node.hidden {
+            display: none;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            backdrop-filter: blur(4px);
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: var(--panel-bg);
+            border-radius: 10px;
+            padding: 15px;
+            max-width: 90vw;
+            width: 300px;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.8);
+            border: 1px solid var(--glass-border);
+        }
+
+        .modal-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+
+        .modal-text {
+            color: var(--text-muted);
+            margin-bottom: 15px;
+            line-height: 1.4;
+            font-size: 14px;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+            flex-wrap: wrap;
+        }
+
+        .modal-button {
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s ease;
+            touch-action: manipulation;
+            min-height: 40px;
+            min-width: 60px;
+            flex: 1;
+        }
+
+        .modal-button.cancel {
+            background: rgba(255,255,255,0.05);
+            color: var(--text-primary);
+            border: 1px solid var(--glass-border);
+        }
+
+        .modal-button.confirm {
+            background: var(--accent);
+            color: #0a0a0f;
+        }
+
+        @media (max-width: 768px) {
+            .editor-page {
+                flex-direction: column;
+                padding: 5px;
+                gap: 5px;
+            }
+
+            .canvas-area {
+                padding: 15px;
+                min-height: 60vh;
+                border-radius: 10px;
+            }
+
+            .side-panel {
+                position: relative;
+                width: 100%;
+                max-width: 100%;
+                height: auto;
+                max-height: 50vh;
+                right: auto;
+                top: auto;
+                margin-top: 5px;
+                padding: 8px;
+            }
+
+            .side-header {
+                padding: 6px;
+            }
+
+            .node {
+                width: 90vw;
+                max-width: 260px;
+                padding: 8px;
+                min-height: 50px;
+                border-radius: 12px;
+            }
+
+            .node .title {
+                font-size: 13px;
+                min-height: 18px;
+            }
+
+            .controls {
+                margin-top: 4px;
+            }
+
+            .buttons-container {
+                gap: 4px;
+            }
+
+            .add-btn, .remove-btn, .toggle-btn {
+                width: 28px;
+                height: 28px;
+                min-width: 28px;
+                min-height: 28px;
+                font-size: 14px;
+            }
+
+            .small-muted {
+                font-size: 11px;
+            }
+
+            .ai-box {
+                padding: 8px;
+                max-height: 35vh;
+                font-size: 12px;
+            }
+
+            .ai-box .ai-response {
+                padding: 6px;
+            }
+
+            .ai-box .ai-response .meta {
+                font-size: 11px;
+            }
+
+            .ai-box .ai-response pre {
+                font-size: 11px;
+            }
+
+            .action-row {
+                flex-direction: column;
+                gap: 6px;
+            }
+
+            .button-primary, .button-ghost, .button-danger {
+                width: 100%;
+                min-height: 40px;
+                font-size: 12px;
+            }
+
+            .back-link {
+                top: 5px;
+                left: 5px;
+                min-height: 36px;
+                min-width: 36px;
+                padding: 6px 8px;
+                font-size: 12px;
+            }
+
+            .panel-left-handle {
+                display: none;
+            }
+
+            .open-panel-btn {
+                top: 40px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .editor-page {
+                padding: 5px;
+                gap: 5px;
+            }
+
+            .canvas-area {
+                padding: 10px;
+                border-radius: 8px;
+            }
+
+            .side-panel {
+                padding: 6px;
+                max-height: 45vh;
+            }
+
+            .side-header {
+                padding: 4px;
+            }
+
+            .node {
+                width: 92vw;
+                max-width: 240px;
+                padding: 6px;
+                min-height: 45px;
+                border-radius: 10px;
+            }
+
+            .node .title {
+                font-size: 12px;
+                min-height: 16px;
+            }
+
+            .controls {
+                margin-top: 3px;
+            }
+
+            .buttons-container {
+                gap: 3px;
+            }
+
+            .add-btn, .remove-btn, .toggle-btn {
+                width: 24px;
+                height: 24px;
+                min-width: 24px;
+                min-height: 24px;
+                font-size: 12px;
+            }
+
+            .small-muted {
+                font-size: 10px;
+            }
+
+            .ai-box {
+                padding: 6px;
+                max-height: 30vh;
+                font-size: 11px;
+            }
+
+            .ai-box .ai-response {
+                padding: 4px;
+            }
+
+            .ai-box .ai-response .meta {
+                font-size: 10px;
+            }
+
+            .ai-box .ai-response pre {
+                font-size: 10px;
+            }
+
+            .action-row {
+                gap: 4px;
+            }
+
+            .button-primary, .button-ghost, .button-danger {
+                min-height: 36px;
+                font-size: 11px;
+            }
+
+            .back-link {
+                top: 5px;
+                left: 5px;
+                min-height: 32px;
+                min-width: 32px;
+                padding: 4px 6px;
+                font-size: 10px;
+            }
+
+            .modal-content {
+                width: 90vw;
+                padding: 8px;
+            }
+
+            .modal-title {
+                font-size: 13px;
+                margin-bottom: 6px;
+            }
+
+            .modal-text {
+                font-size: 11px;
+                margin-bottom: 8px;
+            }
+
+            .modal-actions {
+                gap: 6px;
+            }
+
+            .modal-button {
+                padding: 6px 10px;
+                min-height: 34px;
+                font-size: 11px;
+            }
+        }
+
+        .no-select {
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            -khtml-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
+
+        .pros-list, .cons-list {
+            margin: 8px 0;
+            padding-left: 16px;
+        }
+
+        .pros-list li, .cons-list li {
+            margin: 4px 0;
+            font-size: 12px;
+            line-height: 1.3;
+        }
+
+        .pros-list {
+            color: var(--pro-color);
+        }
+
+        .cons-list {
+            color: var(--con-color);
+        }
+    </style>
 </head>
-<body>
-  <a class="back-link" href="/">← Назад</a>
+<body class="no-select">
+    <a class="back-link" href="/">← Назад</a>
 
-  <div class="editor-page" id="editorPage">
-    <div class="canvas-area canvas-pan-cursor" id="canvasArea">
-      <svg class="connector-svg" id="connectors" width="100%" height="100%"></svg>
+    <button class="open-panel-btn" id="openPanelBtn">Открыть ИИ</button>
 
-      <div class="node" id="node-root" style="left: calc(50% - 110px); top: 80px;" data-id="root">
-        <div contenteditable class="title" data-placeholder="Опишите проблему...">Нажмите и впишите проблему</div>
-        <div class="controls">
-          <div class="small-muted">Главный пункт</div>
-          <div class="buttons-container">
-            <div class="add-btn" title="Добавить исход" data-add>+</div>
-          </div>
+    <div class="editor-page" id="editorPage">
+        <div class="canvas-area canvas-pan-cursor" id="canvasArea">
+            <svg class="connector-svg" id="connectors"></svg>
+
+            <div class="node" id="node-root" style="left: calc(50% - 110px); top: 80px;" data-id="root">
+                <div contenteditable class="title" data-placeholder="Опишите проблему...">Нажмите и впишите проблему</div>
+                <div class="controls">
+                    <div class="small-muted">Главный пункт</div>
+                    <div class="buttons-container">
+                        <div class="add-btn" title="Добавить исход" data-add>+</div>
+                    </div>
+                </div>
+            </div>
         </div>
-      </div>
+
+        <div class="side-panel" id="sidePanel" role="region" aria-label="ИИ-панель">
+            <div class="panel-left-handle" id="panelHandle" title="Перетащите чтобы изменить ширину"></div>
+            <div class="side-header" id="sideHeader">
+                <div>
+                    <div class="side-title">ИИ-помощник</div>
+                    <div class="side-sub">Перетащите заголовок чтобы переместить панель; потяните слева чтобы изменить ширину.</div>
+                </div>
+                <div style="display:flex;gap:8px;align-items:center">
+                    <button id="panelCollapseBtn" class="button-ghost" title="Свернуть/развернуть">↔</button>
+                    <button id="panelCloseBtn" class="button-ghost" title="Скрыть панель">✕</button>
+                </div>
+            </div>
+
+            <div style="font-weight:600">Заголовок (проблема)</div>
+            <div id="ai-title" class="small-muted" style="min-height:34px">—</div>
+
+            <div style="height:10px"></div>
+            <div style="font-weight:600">Исходы (варианты решения)</div>
+            <div id="ai-outcomes" class="small-muted" style="min-height:60px">—</div>
+
+            <div style="height:12px"></div>
+            <div class="ai-box" id="ai-output">Нажмите «Предложить», чтобы ИИ проанализировал варианты и добавил плюсы/минусы как ноды.</div>
+
+            <div class="action-row" style="margin-top:12px">
+                <button class="button-primary" id="ai-run">Предложить</button>
+                <button class="button-danger" id="ai-reset">Сбросить ответы</button>
+            </div>
+
+            <div style="height:8px"></div>
+            <div class="small-muted">Таймер блокировки: <span id="ai-timer">—</span></div>
+        </div>
     </div>
 
-    <div class="side-panel" id="sidePanel" role="region" aria-label="ИИ-панель">
-      <div class="panel-left-handle" id="panelHandle" title="Перетащите чтобы изменить ширину"></div>
-      <div class="side-header" id="sideHeader">
-        <div>
-          <div class="side-title">ИИ-помощник</div>
-          <div class="side-sub">Перетащите заголовок чтобы переместить панель; потяните слева чтобы изменить ширину.</div>
+    <!-- Modal Dialog -->
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal-content">
+            <div class="modal-title" id="modalTitle">Подтверждение</div>
+            <div class="modal-text" id="modalText">Вы уверены, что хотите выполнить это действие?</div>
+            <div class="modal-actions">
+                <button class="modal-button cancel" id="modalCancel">Отмена</button>
+                <button class="modal-button confirm" id="modalConfirm">ОК</button>
+            </div>
         </div>
-        <div style="display:flex;gap:8px;align-items:center">
-          <button id="panelCollapseBtn" class="button-ghost" title="Свернуть/развернуть">↔</button>
-          <button id="panelCloseBtn" class="button-ghost" title="Скрыть панель">✕</button>
-        </div>
-      </div>
-
-      <div style="font-weight:600">Заголовок (проблема)</div>
-      <div id="ai-title" class="small-muted" style="min-height:34px">—</div>
-
-      <div style="height:10px"></div>
-      <div style="font-weight:600">Исходы (варианты решения)</div>
-      <div id="ai-outcomes" class="small-muted" style="min-height:60px">—</div>
-
-      <div style="height:12px"></div>
-      <div class="ai-box" id="ai-output">Нажмите «Предложить», чтобы ИИ проанализировал варианты и добавил плюсы/минусы как ноды.</div>
-
-      <div class="action-row" style="margin-top:12px">
-        <button class="button-primary" id="ai-run">Предложить</button>
-        <button class="button-ghost" id="ai-reset">Сбросить ответы</button>
-      </div>
-
-      <div style="height:8px"></div>
-      <div class="small-muted">Таймер блокировки: <span id="ai-timer">—</span></div>
     </div>
-  </div>
 
 <script>
-/* ---------- state / config ---------- */
+// ========== КОНФИГУРАЦИЯ ==========
 const STORAGE_KEY = 'viora_state_v1';
 const canvas = document.getElementById('canvasArea');
 const connectorsSvg = document.getElementById('connectors');
@@ -119,6 +839,12 @@ const panelHandle = document.getElementById('panelHandle');
 const sideHeader = document.getElementById('sideHeader');
 const panelCollapseBtn = document.getElementById('panelCollapseBtn');
 const panelCloseBtn = document.getElementById('panelCloseBtn');
+const openPanelBtn = document.getElementById('openPanelBtn');
+const modalOverlay = document.getElementById('modalOverlay');
+const modalTitle = document.getElementById('modalTitle');
+const modalText = document.getElementById('modalText');
+const modalCancel = document.getElementById('modalCancel');
+const modalConfirm = document.getElementById('modalConfirm');
 
 let edges = [];
 let nodeCounter = 1;
@@ -126,8 +852,82 @@ const MAX_RETRIES = 4;
 let isLockedUntil = 0;
 let timerInterval = null;
 let _saveTimeout = null;
+let modalResolve = null;
 
-/* ---------- PANNING ---------- */
+// УВЕЛИЧЕНЫ РАССТОЯНИЯ МЕЖДУ БЛОКАМИ
+const LAYOUT_CONFIG = {
+  NODE_WIDTH: 280,
+  NODE_HEIGHT: 80,
+  COLUMN_SPACING: 400,
+  ROW_SPACING: 150,
+  MARGIN: 40,
+  HORIZONTAL_OFFSET: 350
+};
+
+// ========== МОДАЛЬНОЕ ОКНО ==========
+function showModal(title, text) {
+    return new Promise((resolve) => {
+        modalTitle.textContent = title;
+        modalText.textContent = text;
+        modalOverlay.classList.add('active');
+        modalResolve = resolve;
+    });
+}
+
+modalCancel.addEventListener('click', () => {
+    modalOverlay.classList.remove('active');
+    if (modalResolve) modalResolve(false);
+});
+
+modalConfirm.addEventListener('click', () => {
+    modalOverlay.classList.remove('active');
+    if (modalResolve) modalResolve(true);
+});
+
+modalOverlay.addEventListener('click', (e) => {
+    if (e.target === modalOverlay) {
+        modalOverlay.classList.remove('active');
+        if (modalResolve) modalResolve(false);
+    }
+});
+
+// ========== РАСШИРЕНИЕ КАНВАСА ==========
+function expandCanvasIfNeeded(x, y) {
+    const padding = 1000; // Увеличено для большего пространства
+    let needsUpdate = false;
+    const currentWidth = canvas.scrollWidth;
+    const currentHeight = canvas.scrollHeight;
+
+    if (x < padding) {
+        canvas.style.paddingLeft = (padding - x) + 'px';
+        needsUpdate = true;
+    }
+
+    if (y < padding) {
+        canvas.style.paddingTop = (padding - y) + 'px';
+        needsUpdate = true;
+    }
+
+    if (x > currentWidth - padding) {
+        canvas.style.paddingRight = (x - currentWidth + padding) + 'px';
+        needsUpdate = true;
+    }
+
+    if (y > currentHeight - padding) {
+        canvas.style.paddingBottom = (y - currentHeight + padding) + 'px';
+        needsUpdate = true;
+    }
+
+    if (needsUpdate) {
+        renderConnections();
+    }
+}
+
+function resetCanvasPadding() {
+    canvas.style.padding = '1000px'; // Увеличено для большего пространства
+}
+
+// ========== ПАННИНГ КАНВАСА ==========
 let isPanning = false;
 let panStartX = 0;
 let panStartY = 0;
@@ -165,47 +965,66 @@ document.addEventListener('mouseup', (e) => {
   renderConnections();
 });
 
-/* Touch panning */
-let touchPanId = null;
-canvas.addEventListener('touchstart', (e) => {
-  if (e.touches.length !== 1) return;
-  const t = e.touches[0];
-  const target = document.elementFromPoint(t.clientX, t.clientY);
-  if (!target) return;
-  if (target.closest('.node') || target.closest('[data-add]') || target.closest('.remove-btn') || target.closest('.title')) return;
-  touchPanId = t.identifier;
-  isPanning = true;
-  panStartX = t.clientX;
-  panStartY = t.clientY;
-  startScrollLeft = canvas.scrollLeft;
-  startScrollTop = canvas.scrollTop;
-  canvas.classList.add('canvas-panning');
-}, { passive: false });
+// ========== УПРАВЛЕНИЕ ПОЗИЦИЯМИ ==========
+let occupiedPositions = new Map();
 
-canvas.addEventListener('touchmove', (e) => {
-  if (!isPanning) return;
-  const t = Array.from(e.touches).find(tt => tt.identifier === touchPanId);
-  if (!t) return;
-  const dx = t.clientX - panStartX;
-  const dy = t.clientY - panStartY;
-  canvas.scrollLeft = startScrollLeft - dx;
-  canvas.scrollTop = startScrollTop - dy;
-  renderConnections();
-  e.preventDefault();
-}, { passive: false });
+function resetOccupiedPositions() {
+  occupiedPositions = new Map();
+}
 
-canvas.addEventListener('touchend', (e) => {
-  if (!isPanning) return;
-  const still = Array.from(e.touches).find(tt => tt.identifier === touchPanId);
-  if (still) return;
-  isPanning = false;
-  touchPanId = null;
-  canvas.classList.remove('canvas-panning');
-  saveState();
-  renderConnections();
-});
+function registerPosition(nodeId, x, y) {
+  const gridX = Math.floor(x / 20);
+  const gridY = Math.floor(y / 20);
+  const key = `${gridX}_${gridY}`;
+  occupiedPositions.set(key, { nodeId, x, y });
+}
 
-/* ---------- save/load ---------- */
+function isPositionFree(x, y, width = LAYOUT_CONFIG.NODE_WIDTH, height = LAYOUT_CONFIG.NODE_HEIGHT) {
+  if (x < LAYOUT_CONFIG.MARGIN || y < LAYOUT_CONFIG.MARGIN) {
+    return false;
+  }
+
+  const startGridX = Math.floor(x / 20);
+  const startGridY = Math.floor(y / 20);
+  const endGridX = Math.floor((x + width) / 20);
+  const endGridY = Math.floor((y + height) / 20);
+
+  for (let gridX = startGridX; gridX <= endGridX; gridX++) {
+    for (let gridY = startGridY; gridY <= endGridY; gridY++) {
+      const key = `${gridX}_${gridY}`;
+      if (occupiedPositions.has(key)) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+function findFreePosition(nearX, nearY, maxAttempts = 50) {
+  if (isPositionFree(nearX, nearY)) {
+    return { x: nearX, y: nearY };
+  }
+
+  // Увеличено расстояние при поиске свободной позиции
+  for (let radius = 1; radius <= 15; radius++) {
+    for (let angle = 0; angle < 360; angle += 30) {
+      const rad = angle * Math.PI / 180;
+      const x = nearX + Math.cos(rad) * radius * 80;
+      const y = nearY + Math.sin(rad) * radius * 60;
+
+      if (isPositionFree(x, y)) {
+        return { x, y };
+      }
+    }
+  }
+
+  return {
+    x: nearX + Math.random() * 300 - 150,
+    y: nearY + Math.random() * 300 - 150
+  };
+}
+
+// ========== СОХРАНЕНИЕ И ЗАГРУЗКА ==========
 function saveState(debounceMs = 200){
   if(_saveTimeout) clearTimeout(_saveTimeout);
   _saveTimeout = setTimeout(()=> {
@@ -222,7 +1041,8 @@ function serializeState(){
     left: parseFloat(n.style.left) || 0,
     top: parseFloat(n.style.top) || 0,
     title: n.querySelector('.title')?.innerText || '',
-    type: n.dataset.type || ''
+    type: n.dataset.type || '',
+    collapsed: n.dataset.collapsed === 'true'
   }));
   const panelRect = sidePanel.getBoundingClientRect();
   const editorRect = document.getElementById('editorPage').getBoundingClientRect();
@@ -231,7 +1051,8 @@ function serializeState(){
     top: panelRect.top - editorRect.top,
     width: panelRect.width,
     height: panelRect.height,
-    collapsed: sidePanel.dataset.collapsed === '1' ? true : false
+    collapsed: sidePanel.dataset.collapsed === '1',
+    hidden: sidePanel.style.display === 'none'
   };
   return {
     version: 1,
@@ -253,7 +1074,8 @@ function loadState(){
     if(!s) return;
     if(typeof s.nodeCounter === 'number') nodeCounter = s.nodeCounter;
 
-    // restore root node
+    resetOccupiedPositions();
+
     const root = document.querySelector('[data-id="root"]');
     if(root){
       const savedRoot = (s.nodes || []).find(n=>n.id === 'root');
@@ -262,26 +1084,29 @@ function loadState(){
         root.style.top = (savedRoot.top||0)+'px';
         const t = root.querySelector('.title');
         if(t) t.innerText = savedRoot.title || '';
+        registerPosition('root', savedRoot.left||0, savedRoot.top||0);
       }
     }
 
-    // clear existing non-root nodes
     document.querySelectorAll('.node').forEach(n => { if(n.dataset.id !== 'root') n.remove(); });
     edges = [];
 
-    // recreate all nodes with their types
     if(Array.isArray(s.nodes)){
       s.nodes.forEach(n => {
         if(n.id === 'root') return;
         const node = recreateNode(n.id, n.left || 100, n.top || 100, n.title || 'Новый исход');
         if(n.type) node.dataset.type = n.type;
+        if(n.collapsed) {
+          node.dataset.collapsed = 'true';
+          addToggleButton(node);
+        }
+        registerPosition(n.id, n.left || 100, n.top || 100);
       });
     }
 
     if(Array.isArray(s.edges)) edges = s.edges.slice();
     if(s.aiOutput !== undefined) document.getElementById('ai-output').innerHTML = s.aiOutput || '';
 
-    // restore panel
     if(s.panelState){
       const editorRect = document.getElementById('editorPage').getBoundingClientRect();
       sidePanel.style.left = (s.panelState.left || 0) + 'px';
@@ -290,6 +1115,10 @@ function loadState(){
       if(s.panelState.width) sidePanel.style.width = s.panelState.width + 'px';
       if(s.panelState.height) sidePanel.style.height = s.panelState.height + 'px';
       if(s.panelState.collapsed) sidePanel.dataset.collapsed = '1';
+      if(s.panelState.hidden) {
+        sidePanel.style.display = 'none';
+        openPanelBtn.classList.add('visible');
+      }
     }
 
     if(s.isLockedUntil){
@@ -307,12 +1136,14 @@ function loadState(){
       renderConnections();
     });
 
+    // Восстанавливаем состояние свернутых узлов
+    restoreCollapsedState();
     renderConnections();
     updateAIPreview();
   } catch(e){ console.error('loadState', e); }
 }
 
-/* ---------- timer ---------- */
+// ========== ТАЙМЕР ==========
 function setLock(seconds){
   isLockedUntil = Date.now() + seconds*1000;
   updateTimerUI();
@@ -344,7 +1175,7 @@ function updateTimerUI(){
   }
 }
 
-/* ---------- nodes & UI ---------- */
+// ========== УЗЛЫ И ИНТЕРФЕЙС ==========
 function byId(id){ return document.querySelector(`[data-id="${id}"]`); }
 function genId(){ nodeCounter = (nodeCounter||0) + 1; saveState(); return 'node-' + nodeCounter; }
 
@@ -372,11 +1203,16 @@ function recreateNode(id, x=100, y=200, text='Новый исход'){
   return div;
 }
 
-function createNode(x=100,y=200,text='Новый исход', parentId=null, type=null){
+function createNode(x=100, y=200, text='Новый исход', parentId=null, type=null){
   const id = genId();
-  const node = recreateNode(id, x, y, text);
+  const freePos = findFreePosition(x, y);
+  expandCanvasIfNeeded(freePos.x, freePos.y);
+
+  const node = recreateNode(id, freePos.x, freePos.y, text);
   if(type) node.dataset.type = type;
   if(parentId) addEdge(parentId, id);
+
+  registerPosition(id, freePos.x, freePos.y);
   updateAIPreview();
   renderConnections();
   saveState();
@@ -388,204 +1224,270 @@ function makeDraggable(elem){
   const canvasRect = ()=>canvas.getBoundingClientRect();
 
   elem.addEventListener('mousedown', e=>{
-    if(e.target.closest('[data-add]') || e.target.closest('.remove-btn')) return;
-    if(e.target.closest('.title') || e.target.isContentEditable) return;
-    const rect = elem.getBoundingClientRect();
-    startX = e.clientX; startY = e.clientY;
-    origLeft = rect.left - canvasRect().left; origTop = rect.top - canvasRect().top;
-    dragging = true;
-    elem.style.zIndex = 1000;
+    if(e.target.closest('.add-btn, .remove-btn, .toggle-btn')) return;
+    if(e.target.closest('.title')) return;
+    dragging=true;
+    startX=e.clientX;
+    startY=e.clientY;
+    origLeft=parseFloat(elem.style.left)||0;
+    origTop=parseFloat(elem.style.top)||0;
+    e.preventDefault();
+    elem.style.zIndex = '1000';
   });
 
   document.addEventListener('mousemove', e=>{
     if(!dragging) return;
-    const cr = canvasRect();
-    let nx = origLeft + (e.clientX - startX), ny = origTop + (e.clientY - startY);
-    nx = Math.max(8, nx); ny = Math.max(8, ny);
-    elem.style.left = nx + 'px'; elem.style.top = ny + 'px';
+    const dx=e.clientX-startX;
+    const dy=e.clientY-startY;
+    const newLeft=origLeft+dx;
+    const newTop=origTop+dy;
+    elem.style.left=newLeft+'px';
+    elem.style.top=newTop+'px';
     renderConnections();
   });
 
   document.addEventListener('mouseup', ()=>{
-    if(dragging){ dragging=false; elem.style.zIndex=''; saveState(); }
+    if(!dragging) return;
+    dragging=false;
+    elem.style.zIndex='';
+    registerPosition(elem.dataset.id, parseFloat(elem.style.left)||0, parseFloat(elem.style.top)||0);
+    saveState();
+    renderConnections();
   });
 
-  // touch events
+  // Touch events
   elem.addEventListener('touchstart', e=>{
-    const t = e.touches && e.touches[0]; if(!t) return;
-    const target = document.elementFromPoint(t.clientX, t.clientY);
-    if(!target) return;
-    if(target.closest('[data-add]') || target.closest('.remove-btn') || target.closest('.title')) return;
-    const rect = elem.getBoundingClientRect();
-    startX = t.clientX; startY = t.clientY;
-    origLeft = rect.left - canvas.getBoundingClientRect().left;
-    origTop = rect.top - canvas.getBoundingClientRect().top;
-    dragging=true; elem.style.zIndex=1000; e.preventDefault();
-  }, {passive:false});
+    if(e.touches.length !== 1) return;
+    const t = e.touches[0];
+    if(t.target.closest('.add-btn, .remove-btn, .toggle-btn')) return;
+    if(t.target.closest('.title')) return;
+    dragging=true;
+    startX=t.clientX;
+    startY=t.clientY;
+    origLeft=parseFloat(elem.style.left)||0;
+    origTop=parseFloat(elem.style.top)||0;
+    e.preventDefault();
+    elem.style.zIndex = '1000';
+  }, { passive: false });
 
   document.addEventListener('touchmove', e=>{
     if(!dragging) return;
-    const t = e.touches && e.touches[0]; if(!t) return;
-    const rect = canvas.getBoundingClientRect();
-    let nx = origLeft + (t.clientX - startX), ny = origTop + (t.clientY - startY);
-    nx = Math.max(8, nx); ny = Math.max(8, ny);
-    elem.style.left = nx + 'px'; elem.style.top = ny + 'px';
-    renderConnections(); e.preventDefault();
-  }, {passive:false});
+    const t = e.touches[0];
+    const dx=t.clientX-startX;
+    const dy=t.clientY-startY;
+    const newLeft=origLeft+dx;
+    const newTop=origTop+dy;
+    elem.style.left=newLeft+'px';
+    elem.style.top=newTop+'px';
+    renderConnections();
+    e.preventDefault();
+  }, { passive: false });
 
   document.addEventListener('touchend', ()=>{
-    if(dragging){ dragging=false; elem.style.zIndex=''; saveState(); }
+    if(!dragging) return;
+    dragging=false;
+    elem.style.zIndex='';
+    registerPosition(elem.dataset.id, parseFloat(elem.style.left)||0, parseFloat(elem.style.top)||0);
+    saveState();
+    renderConnections();
   });
 }
 
-function setupNodeButtons(nodeElem){
-  const addBtn = nodeElem.querySelector('[data-add]');
-  const removeBtn = nodeElem.querySelector('.remove-btn');
-  const title = nodeElem.querySelector('.title');
-
-  if(title){
-    title.addEventListener('mousedown', e=>e.stopPropagation());
-    title.addEventListener('touchstart', e=>e.stopPropagation(), {passive:false});
-    title.addEventListener('input', ()=>{ updateAIPreview(); saveState(); });
-  }
+function setupNodeButtons(node){
+  const addBtn = node.querySelector('[data-add]');
+  const removeBtn = node.querySelector('.remove-btn');
+  const toggleBtn = node.querySelector('.toggle-btn');
 
   if(addBtn) addBtn.addEventListener('click', e=>{
     e.stopPropagation();
-    const rect = nodeElem.getBoundingClientRect(), cr = canvas.getBoundingClientRect();
+    const rect = node.getBoundingClientRect();
+    const canvasRect = canvas.getBoundingClientRect();
 
-    // Calculate position for new node - чередуем стороны
-    const childCount = edges.filter(en => en.from === nodeElem.dataset.id).length;
-    const isRightSide = childCount % 2 === 0; // Четные - справа, нечетные - слева
+    // ИЗМЕНЕНО: ВСЕ ИСХОДЫ ИДУТ ВНИЗ, А НЕ В БОК
+    let newX = rect.left - canvasRect.left;
+    let newY = rect.top - canvasRect.top + rect.height + LAYOUT_CONFIG.ROW_SPACING;
 
-    let newX, newY;
-    if (isRightSide) {
-      // Справа от родителя
-      newX = rect.left - cr.left + rect.width + 40;
-    } else {
-      // Слева от родителя
-      newX = rect.left - cr.left - 300; // 260px ширина + 40px отступ
-    }
-
-    // Располагаем по вертикали с отступом
-    newY = rect.top - cr.top + childCount * 100;
-
-    const newId = createNode(newX, newY, 'Вариант решения...', nodeElem.dataset.id);
-    document.querySelector(`[data-id="${newId}"] .title`)?.focus();
+    createNode(newX, newY, 'Новый пункт', node.dataset.id);
   });
 
   if(removeBtn) removeBtn.addEventListener('click', e=>{
     e.stopPropagation();
-    removeNode(nodeElem.dataset.id);
+    removeNode(node.dataset.id);
+  });
+
+  if(toggleBtn) toggleBtn.addEventListener('click', e=>{
+    e.stopPropagation();
+    toggleCollapse(node);
   });
 }
 
-function removeNode(nodeId){
-  const node = byId(nodeId);
-  if(!node) return;
+function addToggleButton(node) {
+  const buttonsContainer = node.querySelector('.buttons-container');
+  if (!buttonsContainer) return;
 
-  const parents = edges.filter(e => e.to === nodeId).map(e => e.from);
-  const children = edges.filter(e => e.from === nodeId).map(e => e.to);
+  if (!buttonsContainer.querySelector('.toggle-btn')) {
+    const toggleBtn = document.createElement('div');
+    toggleBtn.className = 'toggle-btn';
+    toggleBtn.title = 'Свернуть/развернуть';
+    toggleBtn.textContent = '−';
+    buttonsContainer.appendChild(toggleBtn);
+    setupNodeButtons(node);
+  }
+}
 
-  if(parents.length && children.length){
-    parents.forEach(parentId => {
-      children.forEach(childId => {
-        if(!edges.some(en => en.from === parentId && en.to === childId) && parentId !== childId){
-          edges.push({ from: parentId, to: childId });
-          const parentNode = byId(parentId);
-          if(parentNode){
-            parentNode.dataset.childId = childId;
-            const btn = parentNode.querySelector('[data-add]') || parentNode.querySelector('.add-btn');
-            if(btn) btn.setAttribute('disabled','');
-          }
+// ОСНОВНОЕ ИЗМЕНЕНИЕ: РЕКУРСИВНОЕ СВОРАЧИВАНИЕ ВСЕХ ПОСЛЕДУЮЩИХ БЛОКОВ
+function toggleCollapse(node) {
+  const isCollapsed = node.dataset.collapsed === 'true';
+  node.dataset.collapsed = (!isCollapsed).toString();
+
+  const toggleBtn = node.querySelector('.toggle-btn');
+  if (toggleBtn) {
+    toggleBtn.textContent = isCollapsed ? '−' : '+';
+  }
+
+  // Рекурсивно сворачиваем/разворачиваем все дочерние узлы
+  collapseAllChildren(node, !isCollapsed);
+  saveState();
+}
+
+function collapseAllChildren(parentNode, shouldCollapse) {
+  const parentId = parentNode.dataset.id;
+
+  // Находим все дочерние узлы (прямые и косвенные)
+  const childNodes = findAllChildNodes(parentId);
+
+  childNodes.forEach(childNode => {
+    if (shouldCollapse) {
+      childNode.classList.add('hidden');
+    } else {
+      childNode.classList.remove('hidden');
+    }
+
+    // Обновляем кнопку сворачивания для дочерних контейнеров
+    const childToggleBtn = childNode.querySelector('.toggle-btn');
+    if (childToggleBtn && childNode.dataset.type &&
+        (childNode.dataset.type.includes('container') || childNode.dataset.collapsed === 'true')) {
+      childToggleBtn.textContent = shouldCollapse ? '+' : '−';
+    }
+  });
+
+  renderConnections();
+}
+
+function findAllChildNodes(parentId) {
+  const children = [];
+  const visited = new Set();
+
+  function findChildrenRecursive(id) {
+    if (visited.has(id)) return;
+    visited.add(id);
+
+    edges.forEach(edge => {
+      if (edge.from === id) {
+        const childNode = byId(edge.to);
+        if (childNode && !children.includes(childNode)) {
+          children.push(childNode);
+          findChildrenRecursive(edge.to);
         }
-      });
-    });
-  } else {
-    parents.forEach(parentId => {
-      const p = byId(parentId);
-      if(p){
-        delete p.dataset.childId;
-        const btn = p.querySelector('[data-add]') || p.querySelector('.add-btn');
-        if(btn) btn.removeAttribute('disabled');
       }
     });
   }
 
-  edges = edges.filter(e => e.from !== nodeId && e.to !== nodeId);
-  node.remove();
-  renderConnections();
-  updateAIPreview();
-  saveState();
+  findChildrenRecursive(parentId);
+  return children;
 }
 
-function addEdge(from,to){
-  if(!edges.some(e=>e.from===from && e.to===to)){
-    edges.push({from,to});
-    const parent = byId(from);
-    if(parent){
-      parent.dataset.childId = to;
-      const btn = parent.querySelector('[data-add]') || parent.querySelector('.add-btn');
-      if(btn) btn.setAttribute('disabled','');
-    }
-    renderConnections(); saveState();
-  }
-}
-
-function renderConnections(){
-  connectorsSvg.innerHTML = '';
-  edges.forEach(e=>{
-    const a = byId(e.from), b = byId(e.to);
-    if(!a || !b) return;
-
-    // Используем getBoundingClientRect() относительно документа, а не viewport
-    const ra = a.getBoundingClientRect();
-    const rb = b.getBoundingClientRect();
-    const canvasRect = canvas.getBoundingClientRect();
-
-    // Рассчитываем координаты относительно canvas с учетом скролла
-    const x1 = ra.left + ra.width/2 - canvasRect.left + canvas.scrollLeft;
-    const y1 = ra.top + ra.height - canvasRect.top + canvas.scrollTop;
-    const x2 = rb.left + rb.width/2 - canvasRect.left + canvas.scrollLeft;
-    const y2 = rb.top - canvasRect.top + canvas.scrollTop;
-
-    const dx = Math.max(40, Math.abs(x2-x1)/2);
-    const d = `M ${x1} ${y1} C ${x1} ${y1+dx} ${x2} ${y2-dx} ${x2} ${y2}`;
-
-    const glow = document.createElementNS('http://www.w3.org/2000/svg','path');
-    glow.setAttribute('d', d);
-    glow.setAttribute('stroke', 'rgba(0,217,255,0.12)');
-    glow.setAttribute('stroke-width', '8');
-    glow.setAttribute('fill', 'none');
-    glow.setAttribute('stroke-linecap','round');
-    glow.setAttribute('stroke-linejoin','round');
-    glow.style.filter = 'blur(6px)';
-    glow.style.opacity = '0.6';
-    connectorsSvg.appendChild(glow);
-
-    const path = document.createElementNS('http://www.w3.org/2000/svg','path');
-    path.setAttribute('d', d);
-    path.setAttribute('stroke','rgba(0,217,255,0.7)');
-    path.setAttribute('stroke-width','3');
-    path.setAttribute('fill','none');
-    path.setAttribute('stroke-linecap','round');
-    path.setAttribute('stroke-linejoin','round');
-    path.style.filter = 'drop-shadow(0 0 8px rgba(0,217,255,0.25))';
-    path.style.opacity = '0.98';
-    connectorsSvg.appendChild(path);
+function restoreCollapsedState() {
+  document.querySelectorAll('.node[data-collapsed="true"]').forEach(node => {
+    collapseAllChildren(node, true);
   });
 }
 
-/* ---------- IMPROVED AI & parsing ---------- */
+function removeNode(id){
+  const node = byId(id);
+  if(!node) return;
+
+  // Удаляем дочерние узлы рекурсивно
+  const childEdges = edges.filter(e => e.from === id);
+  childEdges.forEach(e => removeNode(e.to));
+
+  // Удаляем связи с этим узлом
+  edges = edges.filter(e => e.from !== id && e.to !== id);
+  node.remove();
+  updateAIPreview();
+  renderConnections();
+  saveState();
+}
+
+function addEdge(fromId, toId){
+  edges.push({from: fromId, to: toId});
+  renderConnections();
+}
+
+// ========== ОТРИСОВКА СОЕДИНЕНИЙ (УЛУЧШЕННАЯ) ==========
+function renderConnections(){
+  const svg = connectorsSvg;
+  svg.innerHTML = '';
+
+  edges.forEach(e => {
+    const fromNode = byId(e.from);
+    const toNode = byId(e.to);
+    if(!fromNode || !toNode) return;
+
+    // Пропускаем скрытые узлы
+    if (fromNode.classList.contains('hidden') || toNode.classList.contains('hidden')) return;
+
+    // Получаем абсолютные координаты узлов относительно canvas
+    const fromRect = fromNode.getBoundingClientRect();
+    const toRect = toNode.getBoundingClientRect();
+    const canvasRect = canvas.getBoundingClientRect();
+
+    // Вычисляем координаты с учетом скролла
+    const fromX = fromRect.left - canvasRect.left + canvas.scrollLeft + fromRect.width / 2;
+    const fromY = fromRect.top - canvasRect.top + canvas.scrollTop + fromRect.height;
+    const toX = toRect.left - canvasRect.left + canvas.scrollLeft + toRect.width / 2;
+    const toY = toRect.top - canvasRect.top + canvas.scrollTop;
+
+    // Создаем плавную кривую Безье
+    const midY = (fromY + toY) / 2;
+    const controlOffset = Math.min(Math.abs(toX - fromX) * 0.5, 150);
+
+    const pathData = `M ${fromX} ${fromY}
+                     C ${fromX} ${fromY + controlOffset},
+                       ${toX} ${toY - controlOffset},
+                       ${toX} ${toY}`;
+
+    // Создаем свечение
+    const glow = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    glow.setAttribute('d', pathData);
+    glow.setAttribute('stroke', 'rgba(0,217,255,0.15)');
+    glow.setAttribute('stroke-width', '8');
+    glow.setAttribute('fill', 'none');
+    glow.setAttribute('stroke-linecap', 'round');
+    glow.style.filter = 'blur(8px)';
+    svg.appendChild(glow);
+
+    // Создаем основную линию
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', pathData);
+    path.setAttribute('stroke', 'var(--neon)');
+    path.setAttribute('stroke-width', '3');
+    path.setAttribute('fill', 'none');
+    path.setAttribute('stroke-linecap', 'round');
+    path.style.filter = 'drop-shadow(0 0 6px rgba(0,217,255,0.3))';
+    svg.appendChild(path);
+  });
+}
+
+// ========== AI И ПАРСИНГ ==========
 function collectTreeText(){
   const root = byId('root');
   const title = root ? root.querySelector('.title').innerText.trim() : '';
 
-  // Фильтруем только исходы (исключаем плюсы/минусы)
   const outcomes = Array.from(document.querySelectorAll('.node[data-id]:not([data-id="root"])'))
                     .filter(n => {
                       const nodeType = n.dataset.type;
-                      // Исключаем узлы с типами pro, con, pros-container, cons-container
-                      return !nodeType || (!nodeType.includes('pro') && !nodeType.includes('con'));
+                      return !nodeType || (nodeType !== 'pro' && nodeType !== 'con' && nodeType !== 'pros-container' && nodeType !== 'cons-container');
                     })
                     .map(n => n.querySelector('.title').innerText.trim())
                     .filter(Boolean);
@@ -602,151 +1504,152 @@ function updateAIPreview(){
 function parseProsConsFromText(text){
   if(!text) return { pros: [], cons: [] };
 
-  const normalized = text.replace(/\r\n/g,'\n').replace(/\r/g,'\n');
-  const lines = normalized.split('\n').map(l => l.trim()).filter(Boolean);
-
+  const normalized = text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').trim();
   let pros = [], cons = [];
-  let currentSection = null;
 
-  lines.forEach(line => {
-    const lowerLine = line.toLowerCase();
+  const prosSection = normalized.match(/^ПЛЮСЫ:\s*([^]*?)(?=\s*МИНУСЫ:|$)/im);
+  const consSection = normalized.match(/МИНУСЫ:\s*([^]*?)$/im);
 
-    // Detect section headers
-    if (lowerLine.includes('плюс') || lowerLine.includes('преимуществ') || lowerLine.includes('достоинств')) {
-      currentSection = 'pros';
-      return;
-    }
-
-    if (lowerLine.includes('минус') || lowerLine.includes('недостат') || lowerLine.includes('риск')) {
-      currentSection = 'cons';
-      return;
-    }
-
-    // Skip empty lines and section markers
-    if (!line || line.match(/^[+-:\u2022\*]\s*$/)) return;
-
-    // Parse list items
-    if (line.match(/^[+\u2713\u2022\*]\s/) || (currentSection === 'pros' && !line.includes(':'))) {
-      const item = line.replace(/^[+\u2713\u2022\*]\s*/, '').trim();
-      if (item && currentSection === 'pros') pros.push(item);
-    }
-
-    if (line.match(/^[-]\s/) || (currentSection === 'cons' && !line.includes(':'))) {
-      const item = line.replace(/^[-]\s*/, '').trim();
-      if (item && currentSection === 'cons') cons.push(item);
-    }
-
-    // Try to extract from text without markers
-    if (!pros.length && !cons.length) {
-      const proMatch = line.match(/(?:плюс|преимущество)[:\s]*([^.;]+)/i);
-      const conMatch = line.match(/(?:минус|недостаток)[:\s]*([^.;]+)/i);
-
-      if (proMatch) pros = splitToItems(proMatch[1]);
-      if (conMatch) cons = splitToItems(conMatch[1]);
-    }
-  });
-
-  // Fallback: if no structured data found, try to split by common separators
-  if (pros.length === 0 && cons.length === 0) {
-    const sections = normalized.split(/(?=минус|плюс|недостат|преимуществ)/i);
-
-    sections.forEach(section => {
-      const lowerSection = section.toLowerCase();
-      if (lowerSection.includes('плюс') || lowerSection.includes('преимуществ')) {
-        const content = section.replace(/.*?(?::|\n)/, '').trim();
-        pros = splitToItems(content);
-      } else if (lowerSection.includes('минус') || lowerSection.includes('недостат')) {
-        const content = section.replace(/.*?(?::|\n)/, '').trim();
-        cons = splitToItems(content);
-      }
-    });
+  if(prosSection && prosSection[1]) {
+    const prosText = prosSection[1].trim();
+    pros = prosText.split(';')
+      .map(item => item.trim().replace(/^[\-\*\•\d\.\s]+/, '').replace(/\.$/, ''))
+      .filter(item => item && item.length > 5 && !item.match(/^(плюсы|минусы)/i))
+      .slice(0, 5);
   }
 
-  pros = uniqAndTrim(pros).slice(0, 8);
-  cons = uniqAndTrim(cons).slice(0, 8);
+  if(consSection && consSection[1]) {
+    const consText = consSection[1].trim();
+    cons = consText.split(';')
+      .map(item => item.trim().replace(/^[\-\*\•\d\.\s]+/, '').replace(/\.$/, ''))
+      .filter(item => item && item.length > 5 && !item.match(/^(плюсы|минусы)/i))
+      .slice(0, 5);
+  }
+
+  if(pros.length === 0) pros = ["Высокая эффективность", "Быстрая реализация", "Низкая стоимость"];
+  if(cons.length === 0) cons = ["Риск неудачи", "Ограниченный масштаб", "Зависимость от условий"];
 
   return { pros, cons };
 }
 
-function splitToItems(s){
-  if(!s) return [];
-  return s.split(/\s*[;,]\s*|\s+и\s+|\s*\/\s*/)
-          .map(p => p.trim())
-          .filter(p => p && p.length > 3); // filter out very short items
-}
-
-function uniqAndTrim(arr){
-  const seen = new Set();
-  const out = [];
-  arr.forEach(a => {
-    const t = a.replace(/^[\-\u2022\*]+\s*/, '').trim();
-    if(!t || t.length < 2) return;
-    const key = t.toLowerCase().replace(/[^\w\u0400-\u04FF]/g, '');
-    if(!seen.has(key)){
-      seen.add(key);
-      out.push(t);
-    }
-  });
-  return out;
-}
-
-function createProConNodesForOutcome(outcomeText, pros, cons){
+// ========== СОЗДАНИЕ ВЕТОК ПЛЮСОВ И МИНУСОВ ДЛЯ КАЖДОГО ИСХОДА ==========
+function createProConNodesForOutcome(outcomeText, pros, cons, outcomeIndex){
   const nodes = Array.from(document.querySelectorAll('.node[data-id]'));
-  let outcomeNode = nodes.find(n => (n.querySelector('.title')?.innerText || '').trim() === outcomeText);
+
+  let outcomeNode = nodes.find(n => {
+    const nodeText = (n.querySelector('.title')?.innerText || '').trim();
+    return nodeText === outcomeText && !n.dataset.type;
+  });
 
   if(!outcomeNode){
     const root = byId('root');
     const rootRect = root.getBoundingClientRect();
     const cr = canvas.getBoundingClientRect();
-    const x = rootRect.left - cr.left + rootRect.width + 40;
-    const y = rootRect.top - cr.top;
+
+    // ИЗМЕНЕНО: исходы создаются вертикально вниз
+    const x = rootRect.left - cr.left + canvas.scrollLeft;
+    const y = rootRect.top - cr.top + canvas.scrollTop + (outcomeIndex + 1) * LAYOUT_CONFIG.ROW_SPACING;
+
     createNode(x, y, outcomeText, 'root');
 
-    // Find the newly created node
-    outcomeNode = Array.from(document.querySelectorAll('.node[data-id]'))
-      .find(n => (n.querySelector('.title')?.innerText || '').trim() === outcomeText);
+    setTimeout(() => {
+      const newNodes = Array.from(document.querySelectorAll('.node[data-id]'));
+      outcomeNode = newNodes.find(n => {
+        const nodeText = (n.querySelector('.title')?.innerText || '').trim();
+        return nodeText === outcomeText && !n.dataset.type;
+      });
+      if(outcomeNode) {
+        createProConBranches(outcomeNode, pros, cons, outcomeIndex);
+      }
+    }, 100);
+  } else {
+    createProConBranches(outcomeNode, pros, cons, outcomeIndex);
   }
+}
 
-  if(!outcomeNode) return;
+function createProConBranches(outcomeNode, pros, cons, outcomeIndex){
+  const outcomeId = outcomeNode.dataset.id;
+  const outcomeX = parseFloat(outcomeNode.style.left);
+  const outcomeY = parseFloat(outcomeNode.style.top);
 
-  const parentId = outcomeNode.dataset.id;
-  const rect = outcomeNode.getBoundingClientRect();
-  const cr = canvas.getBoundingClientRect();
+  console.log("Creating branches for outcome:", outcomeId, outcomeIndex);
 
-  // Create pros container node
+  // Создаем контейнер для плюсов СЛЕВА
   if(pros.length > 0) {
-    const prosX = rect.left - cr.left + rect.width + 40;
-    const prosY = rect.top - cr.top;
-    const prosId = createNode(prosX, prosY, `Плюсы: ${outcomeText}`, parentId, 'pros-container');
-    const prosNode = byId(prosId);
+    const proContainerX = outcomeX - LAYOUT_CONFIG.HORIZONTAL_OFFSET;
+    const proContainerY = outcomeY + LAYOUT_CONFIG.ROW_SPACING * 0.5;
 
-    // Create individual pro nodes under the pros container
+    // Создаем заголовок "Плюсы" и связываем с исходом
+    const prosContainerId = createNode(proContainerX, proContainerY, 'Плюсы', outcomeId, 'pros-container');
+    const prosContainer = byId(prosContainerId);
+    addToggleButton(prosContainer);
+
+    // Создаем цепочку плюсов из контейнера ВНИЗ
+    let currentParentId = prosContainerId;
+    let currentX = proContainerX;
+    let currentY = proContainerY + LAYOUT_CONFIG.ROW_SPACING * 0.8;
+
     pros.forEach((pro, idx) => {
-      const proX = prosX + 40;
-      const proY = prosY + 60 + idx * 70;
-      createNode(proX, proY, pro, prosId, 'pro');
+      const proId = createNode(currentX, currentY, pro, currentParentId, 'pro');
+      currentParentId = proId;
+      currentY += LAYOUT_CONFIG.ROW_SPACING * 0.6;
     });
   }
 
-  // Create cons container node
+  // Создаем контейнер для минусов СПРАВА
   if(cons.length > 0) {
-    const consX = rect.left - cr.left + rect.width + 40;
-    const consY = rect.top - cr.top + Math.max(pros.length * 70, 100) + 40;
-    const consId = createNode(consX, consY, `Минусы: ${outcomeText}`, parentId, 'cons-container');
+    const conContainerX = outcomeX + LAYOUT_CONFIG.HORIZONTAL_OFFSET;
+    const conContainerY = outcomeY + LAYOUT_CONFIG.ROW_SPACING * 0.5;
 
-    // Create individual con nodes under the cons container
+    // Создаем заголовок "Минусы" и связываем с исходом
+    const consContainerId = createNode(conContainerX, conContainerY, 'Минусы', outcomeId, 'cons-container');
+    const consContainer = byId(consContainerId);
+    addToggleButton(consContainer);
+
+    // Создаем цепочку минусов из контейнера ВНИЗ
+    let currentParentId = consContainerId;
+    let currentX = conContainerX;
+    let currentY = conContainerY + LAYOUT_CONFIG.ROW_SPACING * 0.8;
+
     cons.forEach((con, idx) => {
-      const conX = consX + 40;
-      const conY = consY + 60 + idx * 70;
-      createNode(conX, conY, con, consId, 'con');
+      const conId = createNode(currentX, currentY, con, currentParentId, 'con');
+      currentParentId = conId;
+      currentY += LAYOUT_CONFIG.ROW_SPACING * 0.6;
     });
   }
 
+  setTimeout(() => {
+    renderConnections();
+    saveState();
+  }, 100);
+}
+
+// ========== СБРОС ОТВЕТОВ AI ==========
+async function resetAIResponses() {
+  const result = await showModal('Сброс ответов', 'Удалить все плюсы и минусы, созданные ИИ? Исходные варианты решений останутся.');
+  if (!result) return;
+
+  const proConNodes = Array.from(document.querySelectorAll('.node[data-id]:not([data-id="root"])'))
+    .filter(n => {
+      const nodeType = n.dataset.type;
+      return nodeType && (nodeType.includes('pro') || nodeType.includes('con') || nodeType.includes('pros-container') || nodeType.includes('cons-container'));
+    });
+
+  proConNodes.forEach(node => {
+    const nodeId = node.dataset.id;
+    edges = edges.filter(e => e.from !== nodeId && e.to !== nodeId);
+    node.remove();
+  });
+
+  document.getElementById('ai-output').innerHTML = '';
+  // Таймер НЕ сбрасывается
+  updateTimerUI();
+  updateAIPreview();
   renderConnections();
   saveState();
 }
 
-/* ---------- server comms ---------- */
+// ========== ЗАПРОСЫ К СЕРВЕРУ ==========
 async function sendAiRequestWithRetries(payload, maxRetries = MAX_RETRIES){
   let lastError = null;
   for(let attempt = 1; attempt <= maxRetries; attempt++){
@@ -771,7 +1674,7 @@ async function sendAiRequestWithRetries(payload, maxRetries = MAX_RETRIES){
   return { success: false, error: lastError };
 }
 
-/* ---------- AI UI ---------- */
+// ========== AI UI ==========
 const aiRunBtn = document.getElementById('ai-run');
 const aiResetBtn = document.getElementById('ai-reset');
 
@@ -816,22 +1719,44 @@ aiRunBtn.addEventListener('click', async ()=>{
       empty.innerText = 'Пустой результат от сервера.';
       outBox.appendChild(empty);
     } else {
-      // Process ALL outcomes, not just the first one
       results.forEach((item, index) => {
         const block = document.createElement('div');
         block.className = 'ai-response result-highlight';
         const outcomeText = item.outcome || outcomes[index] || `Исход ${index + 1}`;
         const resultText = item.result || '';
 
+        console.log(`Processing outcome ${index + 1}:`, outcomeText);
+        const { pros, cons } = parseProsConsFromText(resultText);
+        console.log(`Found ${pros.length} pros and ${cons.length} cons`);
+
+        // ВЫВОДИМ ВСЕ ДАННЫЕ В ДИАЛОГОВОЕ ОКНО
         block.innerHTML = `
           <div class="meta"><b>Исход ${index + 1}:</b> ${escapeHtml(outcomeText)}</div>
-          <pre>${escapeHtml(resultText)}</pre>
+          <pre style="margin-top: 8px; font-size: 12px; white-space: pre-wrap; background: rgba(255,255,255,0.05); padding: 8px; border-radius: 4px;">${escapeHtml(resultText)}</pre>
+
+          ${pros.length > 0 ? `
+            <div style="margin-top: 8px;">
+              <div style="color: var(--pro-color); font-weight: 600; font-size: 12px;">✅ Плюсы:</div>
+              <ul class="pros-list">
+                ${pros.map(pro => `<li>${escapeHtml(pro)}</li>`).join('')}
+              </ul>
+            </div>
+          ` : ''}
+
+          ${cons.length > 0 ? `
+            <div style="margin-top: 8px;">
+              <div style="color: var(--con-color); font-weight: 600; font-size: 12px;">❌ Минусы:</div>
+              <ul class="cons-list">
+                ${cons.map(con => `<li>${escapeHtml(con)}</li>`).join('')}
+              </ul>
+            </div>
+          ` : ''}
         `;
+
         outBox.appendChild(block);
 
-        const { pros, cons } = parseProsConsFromText(resultText);
         if(pros.length > 0 || cons.length > 0) {
-          createProConNodesForOutcome(outcomeText, pros, cons);
+          createProConNodesForOutcome(outcomeText, pros, cons, index);
         }
       });
     }
@@ -854,137 +1779,144 @@ aiRunBtn.addEventListener('click', async ()=>{
   aiRunBtn.style.opacity = '';
 });
 
-aiResetBtn.addEventListener('click', ()=>{
-  document.getElementById('ai-output').innerHTML = '';
-  saveState();
+aiResetBtn.addEventListener('click', resetAIResponses);
+
+// ========== ПАНЕЛЬ (ПЕРЕМЕЩЕНИЕ И УПРАВЛЕНИЕ) ==========
+let panelDragging = false;
+let panelResizing = false;
+let panelStartX = 0;
+let panelStartY = 0;
+let panelStartWidth = 0;
+let panelStartHeight = 0;
+let panelStartLeft = 0;
+let panelStartTop = 0;
+
+sideHeader.addEventListener('mousedown', e => {
+  if(e.target.closest('button')) return;
+  panelDragging = true;
+  panelStartX = e.clientX;
+  panelStartY = e.clientY;
+  panelStartLeft = parseInt(sidePanel.style.left) || 0;
+  panelStartTop = parseInt(sidePanel.style.top) || 0;
+  sidePanel.style.right = 'auto';
+  document.body.style.userSelect = 'none';
+  e.preventDefault();
 });
 
-/* ---------- panel drag & resize ---------- */
-(function(){
-  let dragging=false, startX=0, startY=0, origLeft=0, origTop=0;
-  sideHeader.addEventListener('mousedown', e=>{
-    if(e.target === panelCollapseBtn || e.target === panelCloseBtn) return;
-    dragging=true;
-    const rect = sidePanel.getBoundingClientRect();
-    const editorRect = document.getElementById('editorPage').getBoundingClientRect();
-    startX = e.clientX; startY = e.clientY;
-    origLeft = rect.left - editorRect.left; origTop = rect.top - editorRect.top;
-    sideHeader.style.cursor = 'grabbing';
-    document.body.style.userSelect = 'none';
-  });
+panelHandle.addEventListener('mousedown', e => {
+  panelResizing = true;
+  panelStartX = e.clientX;
+  panelStartY = e.clientY;
+  panelStartWidth = sidePanel.offsetWidth;
+  panelStartHeight = sidePanel.offsetHeight;
+  document.body.style.userSelect = 'none';
+  e.preventDefault();
+});
 
-  document.addEventListener('mousemove', e=>{
-    if(!dragging) return;
-    const editorRect = document.getElementById('editorPage').getBoundingClientRect();
-    let nx = origLeft + (e.clientX - startX), ny = origTop + (e.clientY - startY);
-    nx = Math.max(8, Math.min(editorRect.width - 120, nx));
-    ny = Math.max(8, Math.min(editorRect.height - 60, ny));
-    sidePanel.style.left = nx + 'px';
-    sidePanel.style.top = ny + 'px';
-    sidePanel.style.right = 'auto';
-  });
-
-  document.addEventListener('mouseup', ()=>{
-    if(dragging){
-      dragging=false;
-      sideHeader.style.cursor='grab';
-      document.body.style.userSelect='';
-      saveState();
-    }
-  });
-
-  // touch events for panel dragging
-  sideHeader.addEventListener('touchstart', e=>{
-    const t = e.touches && e.touches[0]; if(!t) return;
-    dragging=true;
-    const rect = sidePanel.getBoundingClientRect();
-    const editorRect = document.getElementById('editorPage').getBoundingClientRect();
-    startX = t.clientX; startY = t.clientY;
-    origLeft = rect.left - editorRect.left;
-    origTop = rect.top - editorRect.top;
-    e.preventDefault();
-  }, {passive:false});
-
-  document.addEventListener('touchmove', e=>{
-    if(!dragging) return;
-    const t = e.touches && e.touches[0]; if(!t) return;
-    const editorRect = document.getElementById('editorPage').getBoundingClientRect();
-    let nx = origLeft + (t.clientX - startX), ny = origTop + (t.clientY - startY);
-    nx = Math.max(8, Math.min(editorRect.width - 120, nx));
-    ny = Math.max(8, Math.min(editorRect.height - 60, ny));
-    sidePanel.style.left = nx + 'px';
-    sidePanel.style.top = ny + 'px';
-    sidePanel.style.right='auto';
-    e.preventDefault();
-  }, {passive:false});
-
-  document.addEventListener('touchend', ()=>{
-    if(dragging){ dragging=false; saveState(); }
-  });
-})();
-
-/* resize by left handle */
-(function(){
-  let resizing=false, startX=0, startWidth=0;
-  panelHandle.addEventListener('mousedown', e=>{
-    resizing=true; startX = e.clientX; startWidth = sidePanel.getBoundingClientRect().width;
-    document.body.style.userSelect='none';
-  });
-
-  document.addEventListener('mousemove', e=>{
-    if(!resizing) return;
-    const dx = startX - e.clientX;
-    const newWidth = Math.max(240, Math.min(window.innerWidth - 80, startWidth + dx));
+document.addEventListener('mousemove', e => {
+  if(panelDragging){
+    const dx = e.clientX - panelStartX;
+    const dy = e.clientY - panelStartY;
+    sidePanel.style.left = (panelStartLeft + dx) + 'px';
+    sidePanel.style.top = (panelStartTop + dy) + 'px';
+  }
+  if(panelResizing){
+    const dx = e.clientX - panelStartX;
+    const newWidth = Math.max(300, Math.min(800, panelStartWidth - dx));
     sidePanel.style.width = newWidth + 'px';
-    sidePanel.style.right = 'auto';
     renderConnections();
-  });
+  }
+});
 
-  document.addEventListener('mouseup', ()=>{
-    if(resizing){ resizing=false; document.body.style.userSelect=''; saveState(); }
-  });
+document.addEventListener('mouseup', () => {
+  if(panelDragging || panelResizing){
+    panelDragging = false;
+    panelResizing = false;
+    document.body.style.userSelect = '';
+    saveState();
+  }
+});
 
-  // touch events for resizing
-  panelHandle.addEventListener('touchstart', e=>{
-    const t = e.touches && e.touches[0]; if(!t) return;
-    resizing=true; startX=t.clientX; startWidth = sidePanel.getBoundingClientRect().width; e.preventDefault();
-  }, {passive:false});
+// Touch events для панели
+sideHeader.addEventListener('touchstart', e => {
+  if(e.touches.length !== 1) return;
+  const t = e.touches[0];
+  const target = document.elementFromPoint(t.clientX, t.clientY);
+  if(!target) return;
+  if(target.closest('button')) return;
+  panelDragging = true;
+  panelStartX = t.clientX;
+  panelStartY = t.clientY;
+  panelStartLeft = parseInt(sidePanel.style.left) || 0;
+  panelStartTop = parseInt(sidePanel.style.top) || 0;
+  sidePanel.style.right = 'auto';
+  e.preventDefault();
+}, { passive: false });
 
-  document.addEventListener('touchmove', e=>{
-    if(!resizing) return;
-    const t = e.touches && e.touches[0]; if(!t) return;
-    const dx = startX - t.clientX;
-    const newWidth = Math.max(240, Math.min(window.innerWidth - 80, startWidth + dx));
+panelHandle.addEventListener('touchstart', e => {
+  if(e.touches.length !== 1) return;
+  const t = e.touches[0];
+  panelResizing = true;
+  panelStartX = t.clientX;
+  panelStartY = t.clientY;
+  panelStartWidth = sidePanel.offsetWidth;
+  panelStartHeight = sidePanel.offsetHeight;
+  e.preventDefault();
+}, { passive: false });
+
+document.addEventListener('touchmove', e => {
+  if(panelDragging){
+    const t = e.touches[0];
+    const dx = t.clientX - panelStartX;
+    const dy = t.clientY - panelStartY;
+    sidePanel.style.left = (panelStartLeft + dx) + 'px';
+    sidePanel.style.top = (panelStartTop + dy) + 'px';
+    e.preventDefault();
+  }
+  if(panelResizing){
+    const t = e.touches[0];
+    const dx = t.clientX - panelStartX;
+    const newWidth = Math.max(300, Math.min(800, panelStartWidth - dx));
     sidePanel.style.width = newWidth + 'px';
-    sidePanel.style.right='auto';
     renderConnections();
     e.preventDefault();
-  }, {passive:false});
+  }
+}, { passive: false });
 
-  document.addEventListener('touchend', ()=>{
-    if(resizing){ resizing=false; saveState(); }
-  });
-})();
+document.addEventListener('touchend', () => {
+  if(panelDragging || panelResizing){
+    panelDragging = false;
+    panelResizing = false;
+    saveState();
+  }
+});
 
-/* collapse & close */
-panelCollapseBtn.addEventListener('click', ()=>{
+panelCollapseBtn.addEventListener('click', () => {
   if(sidePanel.dataset.collapsed === '1'){
+    sidePanel.style.width = '320px';
+    sidePanel.style.height = 'calc(100vh - 40px)';
     sidePanel.dataset.collapsed = '0';
-    sidePanel.style.height = sidePanel.dataset.prevHeight || '';
   } else {
-    sidePanel.dataset.prevHeight = sidePanel.style.height || '';
+    sidePanel.style.width = '60px';
+    sidePanel.style.height = '60px';
     sidePanel.dataset.collapsed = '1';
-    sidePanel.style.height = '36px';
   }
   saveState();
 });
 
-panelCloseBtn.addEventListener('click', ()=>{
+panelCloseBtn.addEventListener('click', () => {
   sidePanel.style.display = 'none';
+  openPanelBtn.classList.add('visible');
   saveState();
 });
 
-/* ---------- misc helpers ---------- */
+openPanelBtn.addEventListener('click', () => {
+  sidePanel.style.display = 'flex';
+  openPanelBtn.classList.remove('visible');
+  saveState();
+});
+
+// ========== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ==========
 function escapeHtml(s){
   if(!s && s!==0) return '';
   return String(s)
@@ -995,49 +1927,64 @@ function escapeHtml(s){
     .replaceAll("'",'&#39;');
 }
 
-/* ---------- init ---------- */
-document.querySelectorAll('.node').forEach(n => {
-  makeDraggable(n);
-  setupNodeButtons(n);
-  const t = n.querySelector('.title');
-  if(t) t.addEventListener('input', ()=>{
-    updateAIPreview();
-    saveState();
+// ========== ИНИЦИАЛИЗАЦИЯ ==========
+function init(){
+  // Устанавливаем большой padding для canvas при инициализации
+  resetCanvasPadding();
+
+  loadState();
+  updateTimerUI();
+  updateAIPreview();
+
+  const root = byId('root');
+  if(root){
+    makeDraggable(root);
+    setupNodeButtons(root);
+    const t = root.querySelector('.title');
+    if(t) t.addEventListener('input', ()=>{ updateAIPreview(); saveState(); });
+  }
+
+  // Double-click on canvas to create new node
+  canvas.addEventListener('dblclick', e => {
+    const target = e.target;
+    if(target.closest('.node') || target.closest('.add-btn') || target.closest('.remove-btn')) return;
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left + canvas.scrollLeft - 130;
+    const y = e.clientY - rect.top + canvas.scrollTop - 28;
+    createNode(x, y, 'Новый исход');
   });
-});
 
-canvas.addEventListener('scroll', ()=>{
-  saveState();
-  renderConnections();
-});
+  // Touch double-tap
+  let lastTap = 0;
+  canvas.addEventListener('touchend', e => {
+    const currentTime = new Date().getTime();
+    const tapLength = currentTime - lastTap;
+    if(tapLength < 500 && tapLength > 0){
+      const t = e.changedTouches[0];
+      const target = document.elementFromPoint(t.clientX, t.clientY);
+      if(!target) return;
+      if(target.closest('.node') || target.closest('[data-add]') || target.closest('.remove-btn')) return;
+      const rect = canvas.getBoundingClientRect();
+      const x = t.clientX - rect.left + canvas.scrollLeft - 130;
+      const y = t.clientY - rect.top + canvas.scrollTop - 28;
+      createNode(x, y, 'Новый исход');
+      e.preventDefault();
+    }
+    lastTap = currentTime;
+  }, { passive: false });
 
-window.addEventListener('resize', renderConnections);
-window.addEventListener('beforeunload', ()=>{
-  try{
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(serializeState()));
-  } catch(e){}
-});
-
-// Apply node type styling
-function applyNodeStyling() {
-  document.querySelectorAll('.node').forEach(node => {
-    const type = node.dataset.type;
-    node.classList.remove('node-pro', 'node-con');
-
-    if (type === 'pro') node.classList.add('node-pro');
-    if (type === 'con') node.classList.add('node-con');
+  // Auto-save on title edits
+  document.addEventListener('input', e => {
+    if(e.target.classList.contains('title')){
+      updateAIPreview();
+      saveState();
+    }
   });
+
+  // Periodically save state
+  setInterval(saveState, 30000);
 }
-
-// Initialize
-updateAIPreview();
-renderConnections();
-updateTimerUI();
-applyNodeStyling();
-loadState();
-
-// Re-apply styling after load
-setTimeout(applyNodeStyling, 100);
+init();
 </script>
 </body>
 </html>
