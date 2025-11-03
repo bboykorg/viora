@@ -858,10 +858,11 @@ let modalResolve = null;
 const LAYOUT_CONFIG = {
   NODE_WIDTH: 280,
   NODE_HEIGHT: 80,
-  COLUMN_SPACING: 400,
-  ROW_SPACING: 150,
-  MARGIN: 40,
-  HORIZONTAL_OFFSET: 350
+  COLUMN_SPACING: 500,
+  ROW_SPACING: 200,
+  MARGIN: 60,
+  HORIZONTAL_OFFSET: 450,
+  VERTICAL_SPACING: 120
 };
 
 // ========== МОДАЛЬНОЕ ОКНО ==========
@@ -893,7 +894,7 @@ modalOverlay.addEventListener('click', (e) => {
 
 // ========== РАСШИРЕНИЕ КАНВАСА ==========
 function expandCanvasIfNeeded(x, y) {
-    const padding = 1000; // Увеличено для большего пространства
+    const padding = 1500;
     let needsUpdate = false;
     const currentWidth = canvas.scrollWidth;
     const currentHeight = canvas.scrollHeight;
@@ -924,7 +925,7 @@ function expandCanvasIfNeeded(x, y) {
 }
 
 function resetCanvasPadding() {
-    canvas.style.padding = '1000px'; // Увеличено для большего пространства
+    canvas.style.padding = '1500px';
 }
 
 // ========== ПАННИНГ КАНВАСА ==========
@@ -973,8 +974,8 @@ function resetOccupiedPositions() {
 }
 
 function registerPosition(nodeId, x, y) {
-  const gridX = Math.floor(x / 20);
-  const gridY = Math.floor(y / 20);
+  const gridX = Math.floor(x / 30);
+  const gridY = Math.floor(y / 30);
   const key = `${gridX}_${gridY}`;
   occupiedPositions.set(key, { nodeId, x, y });
 }
@@ -984,10 +985,10 @@ function isPositionFree(x, y, width = LAYOUT_CONFIG.NODE_WIDTH, height = LAYOUT_
     return false;
   }
 
-  const startGridX = Math.floor(x / 20);
-  const startGridY = Math.floor(y / 20);
-  const endGridX = Math.floor((x + width) / 20);
-  const endGridY = Math.floor((y + height) / 20);
+  const startGridX = Math.floor(x / 30);
+  const startGridY = Math.floor(y / 30);
+  const endGridX = Math.floor((x + width) / 30);
+  const endGridY = Math.floor((y + height) / 30);
 
   for (let gridX = startGridX; gridX <= endGridX; gridX++) {
     for (let gridY = startGridY; gridY <= endGridY; gridY++) {
@@ -1000,17 +1001,16 @@ function isPositionFree(x, y, width = LAYOUT_CONFIG.NODE_WIDTH, height = LAYOUT_
   return true;
 }
 
-function findFreePosition(nearX, nearY, maxAttempts = 50) {
+function findFreePosition(nearX, nearY, maxAttempts = 100) {
   if (isPositionFree(nearX, nearY)) {
     return { x: nearX, y: nearY };
   }
 
-  // Увеличено расстояние при поиске свободной позиции
-  for (let radius = 1; radius <= 15; radius++) {
+  for (let radius = 1; radius <= 20; radius++) {
     for (let angle = 0; angle < 360; angle += 30) {
       const rad = angle * Math.PI / 180;
-      const x = nearX + Math.cos(rad) * radius * 80;
-      const y = nearY + Math.sin(rad) * radius * 60;
+      const x = nearX + Math.cos(rad) * radius * 100;
+      const y = nearY + Math.sin(rad) * radius * 80;
 
       if (isPositionFree(x, y)) {
         return { x, y };
@@ -1019,8 +1019,8 @@ function findFreePosition(nearX, nearY, maxAttempts = 50) {
   }
 
   return {
-    x: nearX + Math.random() * 300 - 150,
-    y: nearY + Math.random() * 300 - 150
+    x: nearX + Math.random() * 400 - 200,
+    y: nearY + Math.random() * 400 - 200
   };
 }
 
@@ -1136,7 +1136,6 @@ function loadState(){
       renderConnections();
     });
 
-    // Восстанавливаем состояние свернутых узлов
     restoreCollapsedState();
     renderConnections();
     updateAIPreview();
@@ -1303,7 +1302,6 @@ function setupNodeButtons(node){
     const rect = node.getBoundingClientRect();
     const canvasRect = canvas.getBoundingClientRect();
 
-    // ИЗМЕНЕНО: ВСЕ ИСХОДЫ ИДУТ ВНИЗ, А НЕ В БОК
     let newX = rect.left - canvasRect.left;
     let newY = rect.top - canvasRect.top + rect.height + LAYOUT_CONFIG.ROW_SPACING;
 
@@ -1335,7 +1333,7 @@ function addToggleButton(node) {
   }
 }
 
-// ОСНОВНОЕ ИЗМЕНЕНИЕ: РЕКУРСИВНОЕ СВОРАЧИВАНИЕ ВСЕХ ПОСЛЕДУЮЩИХ БЛОКОВ
+// РЕКУРСИВНОЕ СВОРАЧИВАНИЕ ВСЕХ ПОСЛЕДУЮЩИХ БЛОКОВ
 function toggleCollapse(node) {
   const isCollapsed = node.dataset.collapsed === 'true';
   node.dataset.collapsed = (!isCollapsed).toString();
@@ -1345,7 +1343,6 @@ function toggleCollapse(node) {
     toggleBtn.textContent = isCollapsed ? '−' : '+';
   }
 
-  // Рекурсивно сворачиваем/разворачиваем все дочерние узлы
   collapseAllChildren(node, !isCollapsed);
   saveState();
 }
@@ -1353,7 +1350,6 @@ function toggleCollapse(node) {
 function collapseAllChildren(parentNode, shouldCollapse) {
   const parentId = parentNode.dataset.id;
 
-  // Находим все дочерние узлы (прямые и косвенные)
   const childNodes = findAllChildNodes(parentId);
 
   childNodes.forEach(childNode => {
@@ -1363,7 +1359,6 @@ function collapseAllChildren(parentNode, shouldCollapse) {
       childNode.classList.remove('hidden');
     }
 
-    // Обновляем кнопку сворачивания для дочерних контейнеров
     const childToggleBtn = childNode.querySelector('.toggle-btn');
     if (childToggleBtn && childNode.dataset.type &&
         (childNode.dataset.type.includes('container') || childNode.dataset.collapsed === 'true')) {
@@ -1407,11 +1402,9 @@ function removeNode(id){
   const node = byId(id);
   if(!node) return;
 
-  // Удаляем дочерние узлы рекурсивно
   const childEdges = edges.filter(e => e.from === id);
   childEdges.forEach(e => removeNode(e.to));
 
-  // Удаляем связи с этим узлом
   edges = edges.filter(e => e.from !== id && e.to !== id);
   node.remove();
   updateAIPreview();
@@ -1424,31 +1417,32 @@ function addEdge(fromId, toId){
   renderConnections();
 }
 
-// ========== ОТРИСОВКА СОЕДИНЕНИЙ (УЛУЧШЕННАЯ) ==========
+// ========== ОТРИСОВКА СОЕДИНЕНИЙ ==========
 function renderConnections(){
   const svg = connectorsSvg;
   svg.innerHTML = '';
+
+  const totalWidth = canvas.scrollWidth;
+  const totalHeight = canvas.scrollHeight;
+
+  svg.setAttribute('width', totalWidth);
+  svg.setAttribute('height', totalHeight);
 
   edges.forEach(e => {
     const fromNode = byId(e.from);
     const toNode = byId(e.to);
     if(!fromNode || !toNode) return;
 
-    // Пропускаем скрытые узлы
     if (fromNode.classList.contains('hidden') || toNode.classList.contains('hidden')) return;
 
-    // Получаем абсолютные координаты узлов относительно canvas
     const fromRect = fromNode.getBoundingClientRect();
     const toRect = toNode.getBoundingClientRect();
-    const canvasRect = canvas.getBoundingClientRect();
 
-    // Вычисляем координаты с учетом скролла
-    const fromX = fromRect.left - canvasRect.left + canvas.scrollLeft + fromRect.width / 2;
-    const fromY = fromRect.top - canvasRect.top + canvas.scrollTop + fromRect.height;
-    const toX = toRect.left - canvasRect.left + canvas.scrollLeft + toRect.width / 2;
-    const toY = toRect.top - canvasRect.top + canvas.scrollTop;
+    const fromX = parseFloat(fromNode.style.left) + fromRect.width / 2;
+    const fromY = parseFloat(fromNode.style.top) + fromRect.height;
+    const toX = parseFloat(toNode.style.left) + toRect.width / 2;
+    const toY = parseFloat(toNode.style.top);
 
-    // Создаем плавную кривую Безье
     const midY = (fromY + toY) / 2;
     const controlOffset = Math.min(Math.abs(toX - fromX) * 0.5, 150);
 
@@ -1457,7 +1451,6 @@ function renderConnections(){
                        ${toX} ${toY - controlOffset},
                        ${toX} ${toY}`;
 
-    // Создаем свечение
     const glow = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     glow.setAttribute('d', pathData);
     glow.setAttribute('stroke', 'rgba(0,217,255,0.15)');
@@ -1467,7 +1460,6 @@ function renderConnections(){
     glow.style.filter = 'blur(8px)';
     svg.appendChild(glow);
 
-    // Создаем основную линию
     const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     path.setAttribute('d', pathData);
     path.setAttribute('stroke', 'var(--neon)');
@@ -1501,67 +1493,99 @@ function updateAIPreview(){
   document.getElementById('ai-outcomes').innerText = outcomes.length ? ('• ' + outcomes.join('\n• ')) : '—';
 }
 
+// УЛУЧШЕННАЯ ФУНКЦИЯ ПАРСИНГА
 function parseProsConsFromText(text){
-  if(!text) return { pros: [], cons: [] };
+  if(!text) return { description: '', pros: [], cons: [] };
 
   const normalized = text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').trim();
-  let pros = [], cons = [];
 
-  const prosSection = normalized.match(/^ПЛЮСЫ:\s*([^]*?)(?=\s*МИНУСЫ:|$)/im);
-  const consSection = normalized.match(/МИНУСЫ:\s*([^]*?)$/im);
+  let description = '';
+  let pros = [];
+  let cons = [];
 
-  if(prosSection && prosSection[1]) {
-    const prosText = prosSection[1].trim();
-    pros = prosText.split(';')
-      .map(item => item.trim().replace(/^[\-\*\•\d\.\s]+/, '').replace(/\.$/, ''))
-      .filter(item => item && item.length > 5 && !item.match(/^(плюсы|минусы)/i))
-      .slice(0, 5);
+  // Пытаемся найти структурированные разделы
+  const prosMatch = normalized.match(/ПЛЮСЫ?[:\s]*([^]*?)(?=\s*МИНУСЫ?|$)/i);
+  const consMatch = normalized.match(/МИНУСЫ?[:\s]*([^]*?)$/i);
+
+  // Если есть структурированные разделы, парсим их
+  if (prosMatch || consMatch) {
+    // Описание - все что до первого раздела
+    if (prosMatch) {
+      description = normalized.substring(0, prosMatch.index).trim();
+    } else if (consMatch) {
+      description = normalized.substring(0, consMatch.index).trim();
+    }
+
+    // Парсим плюсы
+    if (prosMatch && prosMatch[1]) {
+      const prosText = prosMatch[1].trim();
+      pros = prosText.split('\n')
+        .map(item => item.trim().replace(/^[\-\*\•\d\.\s]+/, ''))
+        .filter(item => item && item.length > 2)
+        .slice(0, 6);
+    }
+
+    // Парсим минусы
+    if (consMatch && consMatch[1]) {
+      const consText = consMatch[1].trim();
+      cons = consText.split('\n')
+        .map(item => item.trim().replace(/^[\-\*\•\d\.\s]+/, ''))
+        .filter(item => item && item.length > 2)
+        .slice(0, 6);
+    }
+  } else {
+    // Если нет структурированных разделов, используем весь текст как описание
+    description = normalized;
+    // И генерируем стандартные плюсы/минусы
+    pros = ["Высокая эффективность", "Быстрая реализация"];
+    cons = ["Риск неудачи", "Ограниченный масштаб"];
   }
 
-  if(consSection && consSection[1]) {
-    const consText = consSection[1].trim();
-    cons = consText.split(';')
-      .map(item => item.trim().replace(/^[\-\*\•\d\.\s]+/, '').replace(/\.$/, ''))
-      .filter(item => item && item.length > 5 && !item.match(/^(плюсы|минусы)/i))
-      .slice(0, 5);
-  }
+  // Очищаем описание от маркеров списков
+  description = description.replace(/^[\-\*\•\d\.\s]+/gm, '').trim();
 
-  if(pros.length === 0) pros = ["Высокая эффективность", "Быстрая реализация", "Низкая стоимость"];
-  if(cons.length === 0) cons = ["Риск неудачи", "Ограниченный масштаб", "Зависимость от условий"];
-
-  return { pros, cons };
+  return { description, pros, cons };
 }
 
-// ========== СОЗДАНИЕ ВЕТОК ПЛЮСОВ И МИНУСОВ ДЛЯ КАЖДОГО ИСХОДА ==========
+// ========== СОЗДАНИЕ ВЕТОК ПЛЮСОВ И МИНУСОВ ==========
 function createProConNodesForOutcome(outcomeText, pros, cons, outcomeIndex){
   const nodes = Array.from(document.querySelectorAll('.node[data-id]'));
 
+  // Ищем узел с соответствующим текстом, который не является контейнером плюсов/минусов
   let outcomeNode = nodes.find(n => {
     const nodeText = (n.querySelector('.title')?.innerText || '').trim();
-    return nodeText === outcomeText && !n.dataset.type;
+    const nodeType = n.dataset.type;
+    return nodeText === outcomeText &&
+           !nodeType &&
+           n.dataset.id !== 'root';
   });
 
   if(!outcomeNode){
     const root = byId('root');
-    const rootRect = root.getBoundingClientRect();
-    const cr = canvas.getBoundingClientRect();
+    const rootX = parseFloat(root.style.left) || 0;
+    const rootY = parseFloat(root.style.top) || 0;
 
-    // ИЗМЕНЕНО: исходы создаются вертикально вниз
-    const x = rootRect.left - cr.left + canvas.scrollLeft;
-    const y = rootRect.top - cr.top + canvas.scrollTop + (outcomeIndex + 1) * LAYOUT_CONFIG.ROW_SPACING;
+    // Создаем новый исход под корневым узлом с отступом
+    const x = rootX;
+    const y = rootY + (outcomeIndex + 1) * LAYOUT_CONFIG.ROW_SPACING;
 
     createNode(x, y, outcomeText, 'root');
 
+    // Ждем немного и пытаемся найти созданный узел
     setTimeout(() => {
       const newNodes = Array.from(document.querySelectorAll('.node[data-id]'));
       outcomeNode = newNodes.find(n => {
         const nodeText = (n.querySelector('.title')?.innerText || '').trim();
-        return nodeText === outcomeText && !n.dataset.type;
+        const nodeType = n.dataset.type;
+        return nodeText === outcomeText &&
+               !nodeType &&
+               n.dataset.id !== 'root';
       });
+
       if(outcomeNode) {
         createProConBranches(outcomeNode, pros, cons, outcomeIndex);
       }
-    }, 100);
+    }, 200);
   } else {
     createProConBranches(outcomeNode, pros, cons, outcomeIndex);
   }
@@ -1572,56 +1596,58 @@ function createProConBranches(outcomeNode, pros, cons, outcomeIndex){
   const outcomeX = parseFloat(outcomeNode.style.left);
   const outcomeY = parseFloat(outcomeNode.style.top);
 
-  console.log("Creating branches for outcome:", outcomeId, outcomeIndex);
-
   // Создаем контейнер для плюсов СЛЕВА
   if(pros.length > 0) {
     const proContainerX = outcomeX - LAYOUT_CONFIG.HORIZONTAL_OFFSET;
-    const proContainerY = outcomeY + LAYOUT_CONFIG.ROW_SPACING * 0.5;
+    const proContainerY = outcomeY + LAYOUT_CONFIG.VERTICAL_SPACING;
 
-    // Создаем заголовок "Плюсы" и связываем с исходом
     const prosContainerId = createNode(proContainerX, proContainerY, 'Плюсы', outcomeId, 'pros-container');
     const prosContainer = byId(prosContainerId);
+
+    prosContainer.dataset.collapsed = 'true';
     addToggleButton(prosContainer);
 
-    // Создаем цепочку плюсов из контейнера ВНИЗ
     let currentParentId = prosContainerId;
     let currentX = proContainerX;
-    let currentY = proContainerY + LAYOUT_CONFIG.ROW_SPACING * 0.8;
+    let currentY = proContainerY + LAYOUT_CONFIG.VERTICAL_SPACING * 0.8;
 
     pros.forEach((pro, idx) => {
       const proId = createNode(currentX, currentY, pro, currentParentId, 'pro');
       currentParentId = proId;
-      currentY += LAYOUT_CONFIG.ROW_SPACING * 0.6;
+      currentY += LAYOUT_CONFIG.VERTICAL_SPACING * 0.6;
     });
+
+    collapseAllChildren(prosContainer, true);
   }
 
   // Создаем контейнер для минусов СПРАВА
   if(cons.length > 0) {
     const conContainerX = outcomeX + LAYOUT_CONFIG.HORIZONTAL_OFFSET;
-    const conContainerY = outcomeY + LAYOUT_CONFIG.ROW_SPACING * 0.5;
+    const conContainerY = outcomeY + LAYOUT_CONFIG.VERTICAL_SPACING;
 
-    // Создаем заголовок "Минусы" и связываем с исходом
     const consContainerId = createNode(conContainerX, conContainerY, 'Минусы', outcomeId, 'cons-container');
     const consContainer = byId(consContainerId);
+
+    consContainer.dataset.collapsed = 'true';
     addToggleButton(consContainer);
 
-    // Создаем цепочку минусов из контейнера ВНИЗ
     let currentParentId = consContainerId;
     let currentX = conContainerX;
-    let currentY = conContainerY + LAYOUT_CONFIG.ROW_SPACING * 0.8;
+    let currentY = conContainerY + LAYOUT_CONFIG.VERTICAL_SPACING * 0.8;
 
     cons.forEach((con, idx) => {
       const conId = createNode(currentX, currentY, con, currentParentId, 'con');
       currentParentId = conId;
-      currentY += LAYOUT_CONFIG.ROW_SPACING * 0.6;
+      currentY += LAYOUT_CONFIG.VERTICAL_SPACING * 0.6;
     });
+
+    collapseAllChildren(consContainer, true);
   }
 
   setTimeout(() => {
     renderConnections();
     saveState();
-  }, 100);
+  }, 200);
 }
 
 // ========== СБРОС ОТВЕТОВ AI ==========
@@ -1642,7 +1668,6 @@ async function resetAIResponses() {
   });
 
   document.getElementById('ai-output').innerHTML = '';
-  // Таймер НЕ сбрасывается
   updateTimerUI();
   updateAIPreview();
   renderConnections();
@@ -1725,17 +1750,21 @@ aiRunBtn.addEventListener('click', async ()=>{
         const outcomeText = item.outcome || outcomes[index] || `Исход ${index + 1}`;
         const resultText = item.result || '';
 
-        console.log(`Processing outcome ${index + 1}:`, outcomeText);
-        const { pros, cons } = parseProsConsFromText(resultText);
-        console.log(`Found ${pros.length} pros and ${cons.length} cons`);
+        const { description, pros, cons } = parseProsConsFromText(resultText);
 
-        // ВЫВОДИМ ВСЕ ДАННЫЕ В ДИАЛОГОВОЕ ОКНО
+        // ИСПРАВЛЕННЫЙ ВЫВОД - всегда показываем описание, плюсы и минусы
         block.innerHTML = `
           <div class="meta"><b>Исход ${index + 1}:</b> ${escapeHtml(outcomeText)}</div>
-          <pre style="margin-top: 8px; font-size: 12px; white-space: pre-wrap; background: rgba(255,255,255,0.05); padding: 8px; border-radius: 4px;">${escapeHtml(resultText)}</pre>
+
+          <div style="margin-top: 8px;">
+            <div style="color: var(--text-primary); font-weight: 600; font-size: 12px;">📝 Анализ:</div>
+            <div style="font-size: 12px; line-height: 1.4; margin-top: 4px; color: var(--text-muted);">
+              ${description ? escapeHtml(description) : escapeHtml(resultText)}
+            </div>
+          </div>
 
           ${pros.length > 0 ? `
-            <div style="margin-top: 8px;">
+            <div style="margin-top: 12px;">
               <div style="color: var(--pro-color); font-weight: 600; font-size: 12px;">✅ Плюсы:</div>
               <ul class="pros-list">
                 ${pros.map(pro => `<li>${escapeHtml(pro)}</li>`).join('')}
@@ -1744,7 +1773,7 @@ aiRunBtn.addEventListener('click', async ()=>{
           ` : ''}
 
           ${cons.length > 0 ? `
-            <div style="margin-top: 8px;">
+            <div style="margin-top: 12px;">
               <div style="color: var(--con-color); font-weight: 600; font-size: 12px;">❌ Минусы:</div>
               <ul class="cons-list">
                 ${cons.map(con => `<li>${escapeHtml(con)}</li>`).join('')}
@@ -1929,7 +1958,6 @@ function escapeHtml(s){
 
 // ========== ИНИЦИАЛИЗАЦИЯ ==========
 function init(){
-  // Устанавливаем большой padding для canvas при инициализации
   resetCanvasPadding();
 
   loadState();
@@ -1986,5 +2014,5 @@ function init(){
 }
 init();
 </script>
-</body>
-</html>
+<body>
+<html>
