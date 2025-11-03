@@ -858,10 +858,11 @@ let modalResolve = null;
 const LAYOUT_CONFIG = {
   NODE_WIDTH: 280,
   NODE_HEIGHT: 80,
-  COLUMN_SPACING: 400,
-  ROW_SPACING: 150,
-  MARGIN: 40,
-  HORIZONTAL_OFFSET: 350
+  COLUMN_SPACING: 500, // Увеличено с 400
+  ROW_SPACING: 200, // Увеличено с 150
+  MARGIN: 60, // Увеличено с 40
+  HORIZONTAL_OFFSET: 450, // Увеличено с 350
+  VERTICAL_SPACING: 120 // Добавлено для лучшего вертикального расположения
 };
 
 // ========== МОДАЛЬНОЕ ОКНО ==========
@@ -893,7 +894,7 @@ modalOverlay.addEventListener('click', (e) => {
 
 // ========== РАСШИРЕНИЕ КАНВАСА ==========
 function expandCanvasIfNeeded(x, y) {
-    const padding = 1000;
+    const padding = 1500; // Увеличено для большего пространства
     let needsUpdate = false;
     const currentWidth = canvas.scrollWidth;
     const currentHeight = canvas.scrollHeight;
@@ -924,7 +925,7 @@ function expandCanvasIfNeeded(x, y) {
 }
 
 function resetCanvasPadding() {
-    canvas.style.padding = '1000px';
+    canvas.style.padding = '1500px'; // Увеличено для большего пространства
 }
 
 // ========== ПАННИНГ КАНВАСА ==========
@@ -973,8 +974,8 @@ function resetOccupiedPositions() {
 }
 
 function registerPosition(nodeId, x, y) {
-  const gridX = Math.floor(x / 20);
-  const gridY = Math.floor(y / 20);
+  const gridX = Math.floor(x / 30); // Увеличена сетка
+  const gridY = Math.floor(y / 30);
   const key = `${gridX}_${gridY}`;
   occupiedPositions.set(key, { nodeId, x, y });
 }
@@ -984,10 +985,10 @@ function isPositionFree(x, y, width = LAYOUT_CONFIG.NODE_WIDTH, height = LAYOUT_
     return false;
   }
 
-  const startGridX = Math.floor(x / 20);
-  const startGridY = Math.floor(y / 20);
-  const endGridX = Math.floor((x + width) / 20);
-  const endGridY = Math.floor((y + height) / 20);
+  const startGridX = Math.floor(x / 30);
+  const startGridY = Math.floor(y / 30);
+  const endGridX = Math.floor((x + width) / 30);
+  const endGridY = Math.floor((y + height) / 30);
 
   for (let gridX = startGridX; gridX <= endGridX; gridX++) {
     for (let gridY = startGridY; gridY <= endGridY; gridY++) {
@@ -1000,16 +1001,17 @@ function isPositionFree(x, y, width = LAYOUT_CONFIG.NODE_WIDTH, height = LAYOUT_
   return true;
 }
 
-function findFreePosition(nearX, nearY, maxAttempts = 50) {
+function findFreePosition(nearX, nearY, maxAttempts = 100) {
   if (isPositionFree(nearX, nearY)) {
     return { x: nearX, y: nearY };
   }
 
-  for (let radius = 1; radius <= 15; radius++) {
+  // Увеличено расстояние при поиске свободной позиции
+  for (let radius = 1; radius <= 20; radius++) {
     for (let angle = 0; angle < 360; angle += 30) {
       const rad = angle * Math.PI / 180;
-      const x = nearX + Math.cos(rad) * radius * 80;
-      const y = nearY + Math.sin(rad) * radius * 60;
+      const x = nearX + Math.cos(rad) * radius * 100;
+      const y = nearY + Math.sin(rad) * radius * 80;
 
       if (isPositionFree(x, y)) {
         return { x, y };
@@ -1018,8 +1020,8 @@ function findFreePosition(nearX, nearY, maxAttempts = 50) {
   }
 
   return {
-    x: nearX + Math.random() * 300 - 150,
-    y: nearY + Math.random() * 300 - 150
+    x: nearX + Math.random() * 400 - 200,
+    y: nearY + Math.random() * 400 - 200
   };
 }
 
@@ -1190,7 +1192,7 @@ function recreateNode(id, x=100, y=200, text='Новый кадр'){
   div.innerHTML = `
     <div contenteditable class="title">${text}</div>
     <div class="controls">
-      <div class="small-muted">${id==='root' ? 'Главный пункт' : 'Исход'}</div>
+      <div class="small-muted">${id==='root' ? 'Главный пункт' : 'Кадр'}</div>
       <div class="buttons-container">
         <div class="add-btn" title="Добавить кадр" data-add>+</div>
         ${id==='root' ? '' : '<div class="remove-btn" title="Удалить узел">✕</div>'}
@@ -1305,11 +1307,11 @@ function setupNodeButtons(node){
     const rect = node.getBoundingClientRect();
     const canvasRect = canvas.getBoundingClientRect();
 
-    // ВСЕ ИСХОДЫ ИДУТ ВНИЗ
+    // ВСЕ КАДРЫ ИДУТ ВНИЗ
     let newX = rect.left - canvasRect.left;
     let newY = rect.top - canvasRect.top + rect.height + LAYOUT_CONFIG.ROW_SPACING;
 
-    createNode(newX, newY, 'Новый пункт', node.dataset.id);
+    createNode(newX, newY, 'Новый кадр', node.dataset.id);
   });
 
   if(removeBtn) removeBtn.addEventListener('click', e=>{
@@ -1427,7 +1429,6 @@ function renderConnections(){
   svg.innerHTML = '';
 
   // Устанавливаем размеры SVG равными размерам canvas с учетом скролла
-  const canvasRect = canvas.getBoundingClientRect();
   const totalWidth = canvas.scrollWidth;
   const totalHeight = canvas.scrollHeight;
 
@@ -1579,43 +1580,55 @@ function createProConBranches(outcomeNode, pros, cons, outcomeIndex){
   // Создаем контейнер для плюсов СЛЕВА
   if(pros.length > 0) {
     const proContainerX = outcomeX - LAYOUT_CONFIG.HORIZONTAL_OFFSET;
-    const proContainerY = outcomeY + LAYOUT_CONFIG.ROW_SPACING * 0.5;
+    const proContainerY = outcomeY + LAYOUT_CONFIG.VERTICAL_SPACING;
 
     const prosContainerId = createNode(proContainerX, proContainerY, 'Плюсы', outcomeId, 'pros-container');
     const prosContainer = byId(prosContainerId);
+
+    // СРАЗУ СВОРАЧИВАЕМ КОНТЕЙНЕР ПЛЮСОВ
+    prosContainer.dataset.collapsed = 'true';
     addToggleButton(prosContainer);
 
     // Создаем цепочку плюсов из контейнера ВНИЗ
     let currentParentId = prosContainerId;
     let currentX = proContainerX;
-    let currentY = proContainerY + LAYOUT_CONFIG.ROW_SPACING * 0.8;
+    let currentY = proContainerY + LAYOUT_CONFIG.VERTICAL_SPACING * 0.8;
 
     pros.forEach((pro, idx) => {
       const proId = createNode(currentX, currentY, pro, currentParentId, 'pro');
       currentParentId = proId;
-      currentY += LAYOUT_CONFIG.ROW_SPACING * 0.6;
+      currentY += LAYOUT_CONFIG.VERTICAL_SPACING * 0.6;
     });
+
+    // СРАЗУ СКРЫВАЕМ ДОЧЕРНИЕ УЗЛЫ
+    collapseAllChildren(prosContainer, true);
   }
 
   // Создаем контейнер для минусов СПРАВА
   if(cons.length > 0) {
     const conContainerX = outcomeX + LAYOUT_CONFIG.HORIZONTAL_OFFSET;
-    const conContainerY = outcomeY + LAYOUT_CONFIG.ROW_SPACING * 0.5;
+    const conContainerY = outcomeY + LAYOUT_CONFIG.VERTICAL_SPACING;
 
     const consContainerId = createNode(conContainerX, conContainerY, 'Минусы', outcomeId, 'cons-container');
     const consContainer = byId(consContainerId);
+
+    // СРАЗУ СВОРАЧИВАЕМ КОНТЕЙНЕР МИНУСОВ
+    consContainer.dataset.collapsed = 'true';
     addToggleButton(consContainer);
 
     // Создаем цепочку минусов из контейнера ВНИЗ
     let currentParentId = consContainerId;
     let currentX = conContainerX;
-    let currentY = conContainerY + LAYOUT_CONFIG.ROW_SPACING * 0.8;
+    let currentY = conContainerY + LAYOUT_CONFIG.VERTICAL_SPACING * 0.8;
 
     cons.forEach((con, idx) => {
       const conId = createNode(currentX, currentY, con, currentParentId, 'con');
       currentParentId = conId;
-      currentY += LAYOUT_CONFIG.ROW_SPACING * 0.6;
+      currentY += LAYOUT_CONFIG.VERTICAL_SPACING * 0.6;
     });
+
+    // СРАЗУ СКРЫВАЕМ ДОЧЕРНИЕ УЗЛЫ
+    collapseAllChildren(consContainer, true);
   }
 
   setTimeout(() => {
@@ -1626,7 +1639,7 @@ function createProConBranches(outcomeNode, pros, cons, outcomeIndex){
 
 // ========== СБРОС ОТВЕТОВ AI ==========
 async function resetAIResponses() {
-  const result = await showModal('Сброс ответов', 'Удалить все плюсы и минусы, созданные ИИ? Исходные варианты решений останутся.');
+  const result = await showModal('Сброс ответов', 'Удалить все плюсы и минусы, созданные ИИ? Исходные кадры останутся.');
   if (!result) return;
 
   const proConNodes = Array.from(document.querySelectorAll('.node[data-id]:not([data-id="root"])'))
