@@ -63,8 +63,37 @@
             -webkit-overflow-scrolling: touch;
         }
 
+        /* НОВЫЕ СТИЛИ ДЛЯ БЕСШОВНОГО ХОЛСТА */
+        .canvas-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: var(--bg-dark);
+        }
+
+        .canvas-transform {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            transform-origin: 0 0;
+            transition: transform 0.1s ease-out;
+        }
+
+        .canvas-content {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 5000px;
+            height: 5000px;
+            background: var(--bg-dark);
+        }
+
         .canvas-pan-cursor { cursor: grab; }
         .canvas-panning { cursor: grabbing !important; }
+        .canvas-zooming { cursor: zoom-in; }
 
         .side-panel {
             position: absolute;
@@ -511,6 +540,48 @@
             color: #0a0a0f;
         }
 
+        /* НОВЫЕ СТИЛИ ДЛЯ КОНТРОЛОВ МАСШТАБА */
+        .zoom-controls {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            background: var(--panel-bg);
+            border-radius: 8px;
+            padding: 8px;
+            border: 1px solid var(--glass-border);
+        }
+
+        .zoom-btn {
+            width: 40px;
+            height: 40px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--glass-border);
+            color: var(--text-primary);
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            transition: all 0.2s ease;
+        }
+
+        .zoom-btn:hover {
+            background: rgba(0,217,255,0.2);
+            border-color: rgba(0,217,255,0.4);
+        }
+
+        .zoom-display {
+            text-align: center;
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
         @media (max-width: 768px) {
             .editor-page {
                 flex-direction: column;
@@ -617,6 +688,17 @@
 
             .open-panel-btn {
                 top: 40px;
+            }
+
+            .zoom-controls {
+                bottom: 10px;
+                right: 10px;
+            }
+
+            .zoom-btn {
+                width: 36px;
+                height: 36px;
+                font-size: 16px;
             }
         }
 
@@ -733,6 +815,17 @@
                 min-height: 34px;
                 font-size: 11px;
             }
+
+            .zoom-controls {
+                bottom: 5px;
+                right: 5px;
+            }
+
+            .zoom-btn {
+                width: 32px;
+                height: 32px;
+                font-size: 14px;
+            }
         }
 
         .no-select {
@@ -769,16 +862,31 @@
 
     <button class="open-panel-btn" id="openPanelBtn">Открыть ИИ</button>
 
-    <div class="editor-page" id="editorPage">
-        <div class="canvas-area canvas-pan-cursor" id="canvasArea">
-            <svg class="connector-svg" id="connectors"></svg>
+    <!-- КОНТРОЛЫ МАСШТАБА -->
+    <div class="zoom-controls">
+        <button class="zoom-btn" id="zoomIn" title="Увеличить">+</button>
+        <button class="zoom-btn" id="zoomOut" title="Уменьшить">−</button>
+        <button class="zoom-btn" id="resetZoom" title="Сбросить масштаб">↺</button>
+        <div class="zoom-display" id="zoomLevel">100%</div>
+    </div>
 
-            <div class="node" id="node-root" style="left: calc(50% - 110px); top: 80px;" data-id="root">
-                <div contenteditable class="title" data-placeholder="Опишите проблему...">Нажмите и впишите проблему</div>
-                <div class="controls">
-                    <div class="small-muted">Главный пункт</div>
-                    <div class="buttons-container">
-                        <div class="add-btn" title="Добавить исход" data-add>+</div>
+    <div class="editor-page" id="editorPage">
+        <!-- ОБНОВЛЕННАЯ СТРУКТУРА ХОЛСТА -->
+        <div class="canvas-area canvas-pan-cursor" id="canvasArea">
+            <div class="canvas-container" id="canvasContainer">
+                <div class="canvas-transform" id="canvasTransform">
+                    <div class="canvas-content" id="canvasContent">
+                        <svg class="connector-svg" id="connectors"></svg>
+
+                        <div class="node" id="node-root" style="left: calc(50% - 110px); top: 80px;" data-id="root">
+                            <div contenteditable class="title" data-placeholder="Опишите проблему...">Нажмите и впишите проблему</div>
+                            <div class="controls">
+                                <div class="small-muted">Главный пункт</div>
+                                <div class="buttons-container">
+                                    <div class="add-btn" title="Добавить исход" data-add>+</div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -833,6 +941,9 @@
 // ========== КОНФИГУРАЦИЯ ==========
 const STORAGE_KEY = 'viora_state_v1';
 const canvas = document.getElementById('canvasArea');
+const canvasContainer = document.getElementById('canvasContainer');
+const canvasTransform = document.getElementById('canvasTransform');
+const canvasContent = document.getElementById('canvasContent');
 const connectorsSvg = document.getElementById('connectors');
 const sidePanel = document.getElementById('sidePanel');
 const panelHandle = document.getElementById('panelHandle');
@@ -846,6 +957,12 @@ const modalText = document.getElementById('modalText');
 const modalCancel = document.getElementById('modalCancel');
 const modalConfirm = document.getElementById('modalConfirm');
 
+// ЭЛЕМЕНТЫ МАСШТАБА
+const zoomInBtn = document.getElementById('zoomIn');
+const zoomOutBtn = document.getElementById('zoomOut');
+const resetZoomBtn = document.getElementById('resetZoom');
+const zoomLevelDisplay = document.getElementById('zoomLevel');
+
 let edges = [];
 let nodeCounter = 1;
 const MAX_RETRIES = 4;
@@ -854,16 +971,210 @@ let timerInterval = null;
 let _saveTimeout = null;
 let modalResolve = null;
 
-// УВЕЛИЧЕНЫ РАССТОЯНИЯ МЕЖДУ БЛОКАМИ
+// ПЕРЕМЕННЫЕ ДЛЯ МАСШТАБИРОВАНИЯ И ПАННОРАМИРОВАНИЯ
+let scale = 1;
+let translateX = 0;
+let translateY = 0;
+let isPanning = false;
+let isZooming = false;
+let panStart = { x: 0, y: 0 };
+let startTranslate = { x: 0, y: 0 };
+
+// КОНФИГУРАЦИЯ МАСШТАБА
+const ZOOM_CONFIG = {
+    min: 0.1,
+    max: 3.0,
+    step: 0.1,
+    default: 1.0
+};
+
+// ОБНОВЛЕННАЯ КОНФИГУРАЦИЯ РАСПОЛОЖЕНИЯ
 const LAYOUT_CONFIG = {
   NODE_WIDTH: 280,
   NODE_HEIGHT: 80,
-  COLUMN_SPACING: 500,
-  ROW_SPACING: 200,
+  COLUMN_SPACING: 400,
+  ROW_SPACING: 150,
   MARGIN: 60,
-  HORIZONTAL_OFFSET: 450,
-  VERTICAL_SPACING: 120
+  HORIZONTAL_OFFSET: 350,
+  VERTICAL_SPACING: 120,  // Увеличено для лучшего разделения
+  PRO_CON_SPACING: 100    // Расстояние между плюсами/минусами
 };
+
+// ========== ФУНКЦИИ МАСШТАБИРОВАНИЯ ==========
+function updateTransform() {
+    canvasTransform.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
+    zoomLevelDisplay.textContent = `${Math.round(scale * 100)}%`;
+    renderConnections();
+    saveState();
+}
+
+function zoomToPoint(zoomFactor, clientX, clientY) {
+    const rect = canvasContainer.getBoundingClientRect();
+    const pointX = clientX - rect.left;
+    const pointY = clientY - rect.top;
+
+    const worldX = (pointX - translateX) / scale;
+    const worldY = (pointY - translateY) / scale;
+
+    scale = Math.max(ZOOM_CONFIG.min, Math.min(ZOOM_CONFIG.max, zoomFactor));
+
+    translateX = pointX - worldX * scale;
+    translateY = pointY - worldY * scale;
+
+    updateTransform();
+}
+
+function zoomIn() {
+    const newScale = Math.min(ZOOM_CONFIG.max, scale + ZOOM_CONFIG.step);
+    const rect = canvasContainer.getBoundingClientRect();
+    zoomToPoint(newScale, rect.width / 2, rect.height / 2);
+}
+
+function zoomOut() {
+    const newScale = Math.max(ZOOM_CONFIG.min, scale - ZOOM_CONFIG.step);
+    const rect = canvasContainer.getBoundingClientRect();
+    zoomToPoint(newScale, rect.width / 2, rect.height / 2);
+}
+
+function resetZoom() {
+    scale = ZOOM_CONFIG.default;
+    translateX = 0;
+    translateY = 0;
+    updateTransform();
+}
+
+// ОБРАБОТЧИКИ МАСШТАБИРОВАНИЯ
+zoomInBtn.addEventListener('click', zoomIn);
+zoomOutBtn.addEventListener('click', zoomOut);
+resetZoomBtn.addEventListener('click', resetZoom);
+
+// МАСШТАБИРОВАНИЕ КОЛЕСОМ МЫШИ
+canvasContainer.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    
+    const zoomFactor = e.deltaY > 0 ? scale - ZOOM_CONFIG.step : scale + ZOOM_CONFIG.step;
+    zoomToPoint(zoomFactor, e.clientX, e.clientY);
+});
+
+// ПАННОРАМИРОВАНИЕ
+canvasContainer.addEventListener('mousedown', (e) => {
+    const target = e.target;
+    if (target.closest('.node') || target.closest('.add-btn') || target.closest('.remove-btn') || target.closest('.title')) return;
+    if (e.button !== 0) return;
+    
+    isPanning = true;
+    panStart.x = e.clientX;
+    panStart.y = e.clientY;
+    startTranslate.x = translateX;
+    startTranslate.y = translateY;
+    
+    canvasContainer.classList.add('canvas-panning');
+    document.body.style.userSelect = 'none';
+});
+
+document.addEventListener('mousemove', (e) => {
+    if (!isPanning) return;
+    
+    const dx = e.clientX - panStart.x;
+    const dy = e.clientY - panStart.y;
+    
+    translateX = startTranslate.x + dx;
+    translateY = startTranslate.y + dy;
+    
+    updateTransform();
+});
+
+document.addEventListener('mouseup', () => {
+    if (!isPanning) return;
+    isPanning = false;
+    canvasContainer.classList.remove('canvas-panning');
+    document.body.style.userSelect = '';
+    saveState();
+});
+
+// TOCH-СОБЫТИЯ ДЛЯ МАСШТАБИРОВАНИЯ И ПАННОРАМИРОВАНИЯ
+let touchStartDistance = 0;
+let touchStartScale = 1;
+let touchStartTranslate = { x: 0, y: 0 };
+
+canvasContainer.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 1) {
+        // Паннорамирование одним пальцем
+        const touch = e.touches[0];
+        const target = document.elementFromPoint(touch.clientX, touch.clientY);
+        if (target && (target.closest('.node') || target.closest('.add-btn') || target.closest('.remove-btn') || target.closest('.title'))) return;
+        
+        isPanning = true;
+        panStart.x = touch.clientX;
+        panStart.y = touch.clientY;
+        startTranslate.x = translateX;
+        startTranslate.y = translateY;
+        e.preventDefault();
+    } else if (e.touches.length === 2) {
+        // Масштабирование двумя пальцами
+        isZooming = true;
+        const touch1 = e.touches[0];
+        const touch2 = e.touches[1];
+        touchStartDistance = Math.hypot(
+            touch2.clientX - touch1.clientX,
+            touch2.clientY - touch1.clientY
+        );
+        touchStartScale = scale;
+        touchStartTranslate.x = translateX;
+        touchStartTranslate.y = translateY;
+        e.preventDefault();
+    }
+}, { passive: false });
+
+canvasContainer.addEventListener('touchmove', (e) => {
+    if (isPanning && e.touches.length === 1) {
+        const touch = e.touches[0];
+        const dx = touch.clientX - panStart.x;
+        const dy = touch.clientY - panStart.y;
+        
+        translateX = startTranslate.x + dx;
+        translateY = startTranslate.y + dy;
+        
+        updateTransform();
+        e.preventDefault();
+    } else if (isZooming && e.touches.length === 2) {
+        const touch1 = e.touches[0];
+        const touch2 = e.touches[1];
+        const currentDistance = Math.hypot(
+            touch2.clientX - touch1.clientX,
+            touch2.clientY - touch1.clientY
+        );
+        
+        if (touchStartDistance > 0) {
+            const newScale = Math.max(ZOOM_CONFIG.min, Math.min(ZOOM_CONFIG.max, 
+                touchStartScale * (currentDistance / touchStartDistance)));
+            
+            scale = newScale;
+            
+            // Центрируем масштабирование
+            const rect = canvasContainer.getBoundingClientRect();
+            const centerX = (touch1.clientX + touch2.clientX) / 2 - rect.left;
+            const centerY = (touch1.clientY + touch2.clientY) / 2 - rect.top;
+            
+            const worldX = (centerX - touchStartTranslate.x) / touchStartScale;
+            const worldY = (centerY - touchStartTranslate.y) / touchStartScale;
+            
+            translateX = centerX - worldX * scale;
+            translateY = centerY - worldY * scale;
+            
+            updateTransform();
+        }
+        e.preventDefault();
+    }
+}, { passive: false });
+
+canvasContainer.addEventListener('touchend', (e) => {
+    if (isPanning || isZooming) {
+        isPanning = false;
+        isZooming = false;
+        saveState();
+    }
+});
 
 // ========== МОДАЛЬНОЕ ОКНО ==========
 function showModal(title, text) {
@@ -892,79 +1203,15 @@ modalOverlay.addEventListener('click', (e) => {
     }
 });
 
-// ========== РАСШИРЕНИЕ КАНВАСА ==========
+// ========== ОБНОВЛЕННЫЕ ФУНКЦИИ ДЛЯ РАБОТЫ С МАСШТАБОМ ==========
 function expandCanvasIfNeeded(x, y) {
-    const padding = 1500;
-    let needsUpdate = false;
-    const currentWidth = canvas.scrollWidth;
-    const currentHeight = canvas.scrollHeight;
-
-    if (x < padding) {
-        canvas.style.paddingLeft = (padding - x) + 'px';
-        needsUpdate = true;
-    }
-
-    if (y < padding) {
-        canvas.style.paddingTop = (padding - y) + 'px';
-        needsUpdate = true;
-    }
-
-    if (x > currentWidth - padding) {
-        canvas.style.paddingRight = (x - currentWidth + padding) + 'px';
-        needsUpdate = true;
-    }
-
-    if (y > currentHeight - padding) {
-        canvas.style.paddingBottom = (y - currentHeight + padding) + 'px';
-        needsUpdate = true;
-    }
-
-    if (needsUpdate) {
-        renderConnections();
-    }
+    // В новой реализации расширение холста не требуется
+    // так как у нас бесконечный холст
 }
 
 function resetCanvasPadding() {
-    canvas.style.padding = '1500px';
+    // В новой реализации сброс отступов не требуется
 }
-
-// ========== ПАННИНГ КАНВАСА ==========
-let isPanning = false;
-let panStartX = 0;
-let panStartY = 0;
-let startScrollLeft = 0;
-let startScrollTop = 0;
-
-canvas.addEventListener('mousedown', (e) => {
-  const target = e.target;
-  if (target.closest('.node') || target.closest('.add-btn') || target.closest('.remove-btn') || target.closest('.title')) return;
-  if (e.button !== 0) return;
-  isPanning = true;
-  panStartX = e.clientX;
-  panStartY = e.clientY;
-  startScrollLeft = canvas.scrollLeft;
-  startScrollTop = canvas.scrollTop;
-  canvas.classList.add('canvas-panning');
-  document.body.style.userSelect = 'none';
-});
-
-document.addEventListener('mousemove', (e) => {
-  if (!isPanning) return;
-  const dx = e.clientX - panStartX;
-  const dy = e.clientY - panStartY;
-  canvas.scrollLeft = startScrollLeft - dx;
-  canvas.scrollTop = startScrollTop - dy;
-  renderConnections();
-});
-
-document.addEventListener('mouseup', (e) => {
-  if (!isPanning) return;
-  isPanning = false;
-  canvas.classList.remove('canvas-panning');
-  document.body.style.userSelect = '';
-  saveState();
-  renderConnections();
-});
 
 // ========== УПРАВЛЕНИЕ ПОЗИЦИЯМИ ==========
 let occupiedPositions = new Map();
@@ -1054,14 +1301,22 @@ function serializeState(){
     collapsed: sidePanel.dataset.collapsed === '1',
     hidden: sidePanel.style.display === 'none'
   };
+  
+  // СОХРАНЕНИЕ СОСТОЯНИЯ МАСШТАБА И ПАННОРАМИРОВАНИЯ
+  const viewState = {
+    scale,
+    translateX,
+    translateY
+  };
+
   return {
-    version: 1,
+    version: 2, // Увеличиваем версию для совместимости
     nodes,
     edges,
     nodeCounter,
     aiOutput: document.getElementById('ai-output')?.innerHTML || '',
     isLockedUntil,
-    canvasScroll: {left: canvas.scrollLeft, top: canvas.scrollTop},
+    viewState, // Добавляем состояние вида
     panelState
   };
 }
@@ -1075,6 +1330,14 @@ function loadState(){
     if(typeof s.nodeCounter === 'number') nodeCounter = s.nodeCounter;
 
     resetOccupiedPositions();
+
+    // ЗАГРУЗКА СОСТОЯНИЯ МАСШТАБА И ПАННОРАМИРОВАНИЯ
+    if (s.viewState && s.version >= 2) {
+      scale = s.viewState.scale || ZOOM_CONFIG.default;
+      translateX = s.viewState.translateX || 0;
+      translateY = s.viewState.translateY || 0;
+      updateTransform();
+    }
 
     const root = document.querySelector('[data-id="root"]');
     if(root){
@@ -1129,12 +1392,6 @@ function loadState(){
         timerInterval = setInterval(updateTimerUI, 250);
       }
     }
-
-    if(s.canvasScroll) requestAnimationFrame(()=>{
-      canvas.scrollLeft = s.canvasScroll.left || 0;
-      canvas.scrollTop = s.canvasScroll.top || 0;
-      renderConnections();
-    });
 
     restoreCollapsedState();
     renderConnections();
@@ -1194,7 +1451,7 @@ function recreateNode(id, x=100, y=200, text='Новый исход'){
       </div>
     </div>
   `;
-  canvas.appendChild(div);
+  canvasContent.appendChild(div);
   makeDraggable(div);
   setupNodeButtons(div);
   const t = div.querySelector('.title');
@@ -1220,7 +1477,6 @@ function createNode(x=100, y=200, text='Новый исход', parentId=null, t
 
 function makeDraggable(elem){
   let dragging=false, startX=0, startY=0, origLeft=0, origTop=0;
-  const canvasRect = ()=>canvas.getBoundingClientRect();
 
   elem.addEventListener('mousedown', e=>{
     if(e.target.closest('.add-btn, .remove-btn, .toggle-btn')) return;
@@ -1300,7 +1556,7 @@ function setupNodeButtons(node){
   if(addBtn) addBtn.addEventListener('click', e=>{
     e.stopPropagation();
     const rect = node.getBoundingClientRect();
-    const canvasRect = canvas.getBoundingClientRect();
+    const canvasRect = canvasContent.getBoundingClientRect();
 
     let newX = rect.left - canvasRect.left;
     let newY = rect.top - canvasRect.top + rect.height + LAYOUT_CONFIG.ROW_SPACING;
@@ -1422,8 +1678,8 @@ function renderConnections(){
   const svg = connectorsSvg;
   svg.innerHTML = '';
 
-  const totalWidth = canvas.scrollWidth;
-  const totalHeight = canvas.scrollHeight;
+  const totalWidth = canvasContent.offsetWidth;
+  const totalHeight = canvasContent.offsetHeight;
 
   svg.setAttribute('width', totalWidth);
   svg.setAttribute('height', totalHeight);
@@ -1547,7 +1803,7 @@ function parseProsConsFromText(text){
   return { description, pros, cons };
 }
 
-// ========== СОЗДАНИЕ ВЕТОК ПЛЮСОВ И МИНУСОВ ==========
+// ОБНОВЛЕННАЯ ФУНКЦИЯ СОЗДАНИЯ ВЕТОК ПЛЮСОВ И МИНУСОВ
 function createProConNodesForOutcome(outcomeText, pros, cons, outcomeIndex){
   const nodes = Array.from(document.querySelectorAll('.node[data-id]'));
 
@@ -1591,6 +1847,7 @@ function createProConNodesForOutcome(outcomeText, pros, cons, outcomeIndex){
   }
 }
 
+// ОБНОВЛЕННАЯ ФУНКЦИЯ СОЗДАНИЯ ВЕТОК ПЛЮСОВ И МИНУСОВ
 function createProConBranches(outcomeNode, pros, cons, outcomeIndex){
   const outcomeId = outcomeNode.dataset.id;
   const outcomeX = parseFloat(outcomeNode.style.left);
@@ -1599,7 +1856,7 @@ function createProConBranches(outcomeNode, pros, cons, outcomeIndex){
   // Создаем контейнер для плюсов СЛЕВА
   if(pros.length > 0) {
     const proContainerX = outcomeX - LAYOUT_CONFIG.HORIZONTAL_OFFSET;
-    const proContainerY = outcomeY + LAYOUT_CONFIG.VERTICAL_SPACING;
+    const proContainerY = outcomeY;
 
     const prosContainerId = createNode(proContainerX, proContainerY, 'Плюсы', outcomeId, 'pros-container');
     const prosContainer = byId(prosContainerId);
@@ -1607,14 +1864,14 @@ function createProConBranches(outcomeNode, pros, cons, outcomeIndex){
     prosContainer.dataset.collapsed = 'true';
     addToggleButton(prosContainer);
 
-    let currentParentId = prosContainerId;
-    let currentX = proContainerX;
-    let currentY = proContainerY + LAYOUT_CONFIG.VERTICAL_SPACING * 0.8;
-
+    // Создаем плюсы как отдельные блоки с соединениями
+    let previousProId = prosContainerId;
     pros.forEach((pro, idx) => {
-      const proId = createNode(currentX, currentY, pro, currentParentId, 'pro');
-      currentParentId = proId;
-      currentY += LAYOUT_CONFIG.VERTICAL_SPACING * 0.6;
+      const proX = proContainerX;
+      const proY = proContainerY + (idx + 1) * LAYOUT_CONFIG.PRO_CON_SPACING;
+      
+      const proId = createNode(proX, proY, pro, previousProId, 'pro');
+      previousProId = proId;
     });
 
     collapseAllChildren(prosContainer, true);
@@ -1623,7 +1880,7 @@ function createProConBranches(outcomeNode, pros, cons, outcomeIndex){
   // Создаем контейнер для минусов СПРАВА
   if(cons.length > 0) {
     const conContainerX = outcomeX + LAYOUT_CONFIG.HORIZONTAL_OFFSET;
-    const conContainerY = outcomeY + LAYOUT_CONFIG.VERTICAL_SPACING;
+    const conContainerY = outcomeY;
 
     const consContainerId = createNode(conContainerX, conContainerY, 'Минусы', outcomeId, 'cons-container');
     const consContainer = byId(consContainerId);
@@ -1631,14 +1888,14 @@ function createProConBranches(outcomeNode, pros, cons, outcomeIndex){
     consContainer.dataset.collapsed = 'true';
     addToggleButton(consContainer);
 
-    let currentParentId = consContainerId;
-    let currentX = conContainerX;
-    let currentY = conContainerY + LAYOUT_CONFIG.VERTICAL_SPACING * 0.8;
-
+    // Создаем минусы как отдельные блоки с соединениями
+    let previousConId = consContainerId;
     cons.forEach((con, idx) => {
-      const conId = createNode(currentX, currentY, con, currentParentId, 'con');
-      currentParentId = conId;
-      currentY += LAYOUT_CONFIG.VERTICAL_SPACING * 0.6;
+      const conX = conContainerX;
+      const conY = conContainerY + (idx + 1) * LAYOUT_CONFIG.PRO_CON_SPACING;
+      
+      const conId = createNode(conX, conY, con, previousConId, 'con');
+      previousConId = conId;
     });
 
     collapseAllChildren(consContainer, true);
@@ -1973,18 +2230,18 @@ function init(){
   }
 
   // Double-click on canvas to create new node
-  canvas.addEventListener('dblclick', e => {
+  canvasContent.addEventListener('dblclick', e => {
     const target = e.target;
     if(target.closest('.node') || target.closest('.add-btn') || target.closest('.remove-btn')) return;
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left + canvas.scrollLeft - 130;
-    const y = e.clientY - rect.top + canvas.scrollTop - 28;
+    const rect = canvasContent.getBoundingClientRect();
+    const x = e.clientX - rect.left - 130;
+    const y = e.clientY - rect.top - 28;
     createNode(x, y, 'Новый исход');
   });
 
   // Touch double-tap
   let lastTap = 0;
-  canvas.addEventListener('touchend', e => {
+  canvasContent.addEventListener('touchend', e => {
     const currentTime = new Date().getTime();
     const tapLength = currentTime - lastTap;
     if(tapLength < 500 && tapLength > 0){
@@ -1992,9 +2249,9 @@ function init(){
       const target = document.elementFromPoint(t.clientX, t.clientY);
       if(!target) return;
       if(target.closest('.node') || target.closest('[data-add]') || target.closest('.remove-btn')) return;
-      const rect = canvas.getBoundingClientRect();
-      const x = t.clientX - rect.left + canvas.scrollLeft - 130;
-      const y = t.clientY - rect.top + canvas.scrollTop - 28;
+      const rect = canvasContent.getBoundingClientRect();
+      const x = t.clientX - rect.left - 130;
+      const y = t.clientY - rect.top - 28;
       createNode(x, y, 'Новый исход');
       e.preventDefault();
     }
@@ -2014,5 +2271,5 @@ function init(){
 }
 init();
 </script>
-<body>
-<html>
+</body>
+</html>
