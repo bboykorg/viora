@@ -988,16 +988,15 @@ const ZOOM_CONFIG = {
     default: 1.0
 };
 
-// ОБНОВЛЕННАЯ КОНФИГУРАЦИЯ РАСПОЛОЖЕНИЯ
+// УВЕЛИЧЕНЫ РАССТОЯНИЯ МЕЖДУ БЛОКАМИ
 const LAYOUT_CONFIG = {
   NODE_WIDTH: 280,
   NODE_HEIGHT: 80,
-  COLUMN_SPACING: 400,
-  ROW_SPACING: 150,
+  COLUMN_SPACING: 500,
+  ROW_SPACING: 200,
   MARGIN: 60,
-  HORIZONTAL_OFFSET: 350,
-  VERTICAL_SPACING: 120,  // Увеличено для лучшего разделения
-  PRO_CON_SPACING: 100    // Расстояние между плюсами/минусами
+  HORIZONTAL_OFFSET: 450,
+  VERTICAL_SPACING: 120
 };
 
 // ========== ФУНКЦИИ МАСШТАБИРОВАНИЯ ==========
@@ -1051,7 +1050,7 @@ resetZoomBtn.addEventListener('click', resetZoom);
 // МАСШТАБИРОВАНИЕ КОЛЕСОМ МЫШИ
 canvasContainer.addEventListener('wheel', (e) => {
     e.preventDefault();
-    
+
     const zoomFactor = e.deltaY > 0 ? scale - ZOOM_CONFIG.step : scale + ZOOM_CONFIG.step;
     zoomToPoint(zoomFactor, e.clientX, e.clientY);
 });
@@ -1061,26 +1060,26 @@ canvasContainer.addEventListener('mousedown', (e) => {
     const target = e.target;
     if (target.closest('.node') || target.closest('.add-btn') || target.closest('.remove-btn') || target.closest('.title')) return;
     if (e.button !== 0) return;
-    
+
     isPanning = true;
     panStart.x = e.clientX;
     panStart.y = e.clientY;
     startTranslate.x = translateX;
     startTranslate.y = translateY;
-    
+
     canvasContainer.classList.add('canvas-panning');
     document.body.style.userSelect = 'none';
 });
 
 document.addEventListener('mousemove', (e) => {
     if (!isPanning) return;
-    
+
     const dx = e.clientX - panStart.x;
     const dy = e.clientY - panStart.y;
-    
+
     translateX = startTranslate.x + dx;
     translateY = startTranslate.y + dy;
-    
+
     updateTransform();
 });
 
@@ -1103,7 +1102,7 @@ canvasContainer.addEventListener('touchstart', (e) => {
         const touch = e.touches[0];
         const target = document.elementFromPoint(touch.clientX, touch.clientY);
         if (target && (target.closest('.node') || target.closest('.add-btn') || target.closest('.remove-btn') || target.closest('.title'))) return;
-        
+
         isPanning = true;
         panStart.x = touch.clientX;
         panStart.y = touch.clientY;
@@ -1131,10 +1130,10 @@ canvasContainer.addEventListener('touchmove', (e) => {
         const touch = e.touches[0];
         const dx = touch.clientX - panStart.x;
         const dy = touch.clientY - panStart.y;
-        
+
         translateX = startTranslate.x + dx;
         translateY = startTranslate.y + dy;
-        
+
         updateTransform();
         e.preventDefault();
     } else if (isZooming && e.touches.length === 2) {
@@ -1144,24 +1143,24 @@ canvasContainer.addEventListener('touchmove', (e) => {
             touch2.clientX - touch1.clientX,
             touch2.clientY - touch1.clientY
         );
-        
+
         if (touchStartDistance > 0) {
-            const newScale = Math.max(ZOOM_CONFIG.min, Math.min(ZOOM_CONFIG.max, 
+            const newScale = Math.max(ZOOM_CONFIG.min, Math.min(ZOOM_CONFIG.max,
                 touchStartScale * (currentDistance / touchStartDistance)));
-            
+
             scale = newScale;
-            
+
             // Центрируем масштабирование
             const rect = canvasContainer.getBoundingClientRect();
             const centerX = (touch1.clientX + touch2.clientX) / 2 - rect.left;
             const centerY = (touch1.clientY + touch2.clientY) / 2 - rect.top;
-            
+
             const worldX = (centerX - touchStartTranslate.x) / touchStartScale;
             const worldY = (centerY - touchStartTranslate.y) / touchStartScale;
-            
+
             translateX = centerX - worldX * scale;
             translateY = centerY - worldY * scale;
-            
+
             updateTransform();
         }
         e.preventDefault();
@@ -1212,6 +1211,9 @@ function expandCanvasIfNeeded(x, y) {
 function resetCanvasPadding() {
     // В новой реализации сброс отступов не требуется
 }
+
+// ОБНОВЛЕННАЯ ФУНКЦИЯ ПАННОРАМИРОВАНИЯ (убрана старая)
+// Старая реализация панорамирования удалена, используется новая выше
 
 // ========== УПРАВЛЕНИЕ ПОЗИЦИЯМИ ==========
 let occupiedPositions = new Map();
@@ -1301,7 +1303,7 @@ function serializeState(){
     collapsed: sidePanel.dataset.collapsed === '1',
     hidden: sidePanel.style.display === 'none'
   };
-  
+
   // СОХРАНЕНИЕ СОСТОЯНИЯ МАСШТАБА И ПАННОРАМИРОВАНИЯ
   const viewState = {
     scale,
@@ -1462,7 +1464,9 @@ function recreateNode(id, x=100, y=200, text='Новый исход'){
 function createNode(x=100, y=200, text='Новый исход', parentId=null, type=null){
   const id = genId();
   const freePos = findFreePosition(x, y);
-  expandCanvasIfNeeded(freePos.x, freePos.y);
+
+  // Автоматически расширяем canvas если нужно
+  expandCanvasForNode(freePos.x, freePos.y, LAYOUT_CONFIG.NODE_WIDTH, LAYOUT_CONFIG.NODE_HEIGHT);
 
   const node = recreateNode(id, freePos.x, freePos.y, text);
   if(type) node.dataset.type = type;
@@ -1803,7 +1807,7 @@ function parseProsConsFromText(text){
   return { description, pros, cons };
 }
 
-// ОБНОВЛЕННАЯ ФУНКЦИЯ СОЗДАНИЯ ВЕТОК ПЛЮСОВ И МИНУСОВ
+// ========== СОЗДАНИЕ ВЕТОК ПЛЮСОВ И МИНУСОВ ==========
 function createProConNodesForOutcome(outcomeText, pros, cons, outcomeIndex){
   const nodes = Array.from(document.querySelectorAll('.node[data-id]'));
 
@@ -1847,7 +1851,6 @@ function createProConNodesForOutcome(outcomeText, pros, cons, outcomeIndex){
   }
 }
 
-// ОБНОВЛЕННАЯ ФУНКЦИЯ СОЗДАНИЯ ВЕТОК ПЛЮСОВ И МИНУСОВ
 function createProConBranches(outcomeNode, pros, cons, outcomeIndex){
   const outcomeId = outcomeNode.dataset.id;
   const outcomeX = parseFloat(outcomeNode.style.left);
@@ -1856,7 +1859,7 @@ function createProConBranches(outcomeNode, pros, cons, outcomeIndex){
   // Создаем контейнер для плюсов СЛЕВА
   if(pros.length > 0) {
     const proContainerX = outcomeX - LAYOUT_CONFIG.HORIZONTAL_OFFSET;
-    const proContainerY = outcomeY;
+    const proContainerY = outcomeY + LAYOUT_CONFIG.VERTICAL_SPACING;
 
     const prosContainerId = createNode(proContainerX, proContainerY, 'Плюсы', outcomeId, 'pros-container');
     const prosContainer = byId(prosContainerId);
@@ -1864,14 +1867,14 @@ function createProConBranches(outcomeNode, pros, cons, outcomeIndex){
     prosContainer.dataset.collapsed = 'true';
     addToggleButton(prosContainer);
 
-    // Создаем плюсы как отдельные блоки с соединениями
-    let previousProId = prosContainerId;
+    let currentParentId = prosContainerId;
+    let currentX = proContainerX;
+    let currentY = proContainerY + LAYOUT_CONFIG.VERTICAL_SPACING * 0.8;
+
     pros.forEach((pro, idx) => {
-      const proX = proContainerX;
-      const proY = proContainerY + (idx + 1) * LAYOUT_CONFIG.PRO_CON_SPACING;
-      
-      const proId = createNode(proX, proY, pro, previousProId, 'pro');
-      previousProId = proId;
+      const proId = createNode(currentX, currentY, pro, currentParentId, 'pro');
+      currentParentId = proId;
+      currentY += LAYOUT_CONFIG.VERTICAL_SPACING * 0.6;
     });
 
     collapseAllChildren(prosContainer, true);
@@ -1880,7 +1883,7 @@ function createProConBranches(outcomeNode, pros, cons, outcomeIndex){
   // Создаем контейнер для минусов СПРАВА
   if(cons.length > 0) {
     const conContainerX = outcomeX + LAYOUT_CONFIG.HORIZONTAL_OFFSET;
-    const conContainerY = outcomeY;
+    const conContainerY = outcomeY + LAYOUT_CONFIG.VERTICAL_SPACING;
 
     const consContainerId = createNode(conContainerX, conContainerY, 'Минусы', outcomeId, 'cons-container');
     const consContainer = byId(consContainerId);
@@ -1888,14 +1891,14 @@ function createProConBranches(outcomeNode, pros, cons, outcomeIndex){
     consContainer.dataset.collapsed = 'true';
     addToggleButton(consContainer);
 
-    // Создаем минусы как отдельные блоки с соединениями
-    let previousConId = consContainerId;
+    let currentParentId = consContainerId;
+    let currentX = conContainerX;
+    let currentY = conContainerY + LAYOUT_CONFIG.VERTICAL_SPACING * 0.8;
+
     cons.forEach((con, idx) => {
-      const conX = conContainerX;
-      const conY = conContainerY + (idx + 1) * LAYOUT_CONFIG.PRO_CON_SPACING;
-      
-      const conId = createNode(conX, conY, con, previousConId, 'con');
-      previousConId = conId;
+      const conId = createNode(currentX, currentY, con, currentParentId, 'con');
+      currentParentId = conId;
+      currentY += LAYOUT_CONFIG.VERTICAL_SPACING * 0.6;
     });
 
     collapseAllChildren(consContainer, true);
