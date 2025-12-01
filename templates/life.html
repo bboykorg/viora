@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Путь Жизни — Viora</title>
     <style>
-        /* Все предыдущие стили остаются без изменений */
+        /* Все стили остаются как были */
         :root {
             --panel-bg: rgba(8,8,10,0.6);
             --accent: #7dd3fc;
@@ -63,7 +63,6 @@
             -webkit-overflow-scrolling: touch;
         }
 
-        /* НОВЫЕ СТИЛИ ДЛЯ БЕСШОВНОГО ХОЛСТА */
         .canvas-container {
             position: relative;
             width: 100%;
@@ -939,7 +938,7 @@
 
 <script>
 // ========== КОНФИГУРАЦИЯ ==========
-const STORAGE_KEY = 'viora_state_v1';
+const STORAGE_KEY = 'viora_state_v3';
 const canvas = document.getElementById('canvasArea');
 const canvasContainer = document.getElementById('canvasContainer');
 const canvasTransform = document.getElementById('canvasTransform');
@@ -976,7 +975,6 @@ let scale = 1;
 let translateX = 0;
 let translateY = 0;
 let isPanning = false;
-let isZooming = false;
 let panStart = { x: 0, y: 0 };
 let startTranslate = { x: 0, y: 0 };
 
@@ -988,15 +986,24 @@ const ZOOM_CONFIG = {
     default: 1.0
 };
 
-// УВЕЛИЧЕНЫ РАССТОЯНИЯ МЕЖДУ БЛОКАМИ
+// КОНФИГУРАЦИЯ РАСПОЛОЖЕНИЯ И ГРАНИЦ
 const LAYOUT_CONFIG = {
   NODE_WIDTH: 280,
   NODE_HEIGHT: 80,
-  COLUMN_SPACING: 500,
-  ROW_SPACING: 200,
-  MARGIN: 60,
-  HORIZONTAL_OFFSET: 450,
-  VERTICAL_SPACING: 120
+  COLUMN_SPACING: 400,
+  ROW_SPACING: 150,
+  HORIZONTAL_OFFSET: 350,
+  PRO_CON_SPACING: 100,
+  CANVAS_WIDTH: 5000,
+  CANVAS_HEIGHT: 5000
+};
+
+// Границы перемещения блоков (уменьшены для комфортной работы)
+const BOUNDARIES = {
+  minX: 50,
+  minY: 50,
+  maxX: LAYOUT_CONFIG.CANVAS_WIDTH - LAYOUT_CONFIG.NODE_WIDTH - 50,
+  maxY: LAYOUT_CONFIG.CANVAS_HEIGHT - LAYOUT_CONFIG.NODE_HEIGHT - 50
 };
 
 // ========== ФУНКЦИИ МАСШТАБИРОВАНИЯ ==========
@@ -1042,10 +1049,36 @@ function resetZoom() {
     updateTransform();
 }
 
+function centerOnRoot() {
+    const root = byId('root');
+    if(!root) return;
+
+    const rootX = parseFloat(root.style.left) || LAYOUT_CONFIG.CANVAS_WIDTH / 2;
+    const rootY = parseFloat(root.style.top) || LAYOUT_CONFIG.CANVAS_HEIGHT / 2;
+
+    const containerWidth = canvasContainer.clientWidth;
+    const containerHeight = canvasContainer.clientHeight;
+
+    translateX = -rootX * scale + containerWidth / 2;
+    translateY = -rootY * scale + containerHeight / 2;
+
+    updateTransform();
+}
+
 // ОБРАБОТЧИКИ МАСШТАБИРОВАНИЯ
 zoomInBtn.addEventListener('click', zoomIn);
 zoomOutBtn.addEventListener('click', zoomOut);
 resetZoomBtn.addEventListener('click', resetZoom);
+
+// Добавляем кнопку центрирования в zoom-контролы
+const zoomControls = document.querySelector('.zoom-controls');
+const centerBtn = document.createElement('button');
+centerBtn.className = 'zoom-btn';
+centerBtn.id = 'centerRoot';
+centerBtn.title = 'Центрировать на главном блоке';
+centerBtn.textContent = '⌖';
+zoomControls.appendChild(centerBtn);
+centerBtn.addEventListener('click', centerOnRoot);
 
 // МАСШТАБИРОВАНИЕ КОЛЕСОМ МЫШИ
 canvasContainer.addEventListener('wheel', (e) => {
@@ -1091,90 +1124,6 @@ document.addEventListener('mouseup', () => {
     saveState();
 });
 
-// TOCH-СОБЫТИЯ ДЛЯ МАСШТАБИРОВАНИЯ И ПАННОРАМИРОВАНИЯ
-let touchStartDistance = 0;
-let touchStartScale = 1;
-let touchStartTranslate = { x: 0, y: 0 };
-
-canvasContainer.addEventListener('touchstart', (e) => {
-    if (e.touches.length === 1) {
-        // Паннорамирование одним пальцем
-        const touch = e.touches[0];
-        const target = document.elementFromPoint(touch.clientX, touch.clientY);
-        if (target && (target.closest('.node') || target.closest('.add-btn') || target.closest('.remove-btn') || target.closest('.title'))) return;
-
-        isPanning = true;
-        panStart.x = touch.clientX;
-        panStart.y = touch.clientY;
-        startTranslate.x = translateX;
-        startTranslate.y = translateY;
-        e.preventDefault();
-    } else if (e.touches.length === 2) {
-        // Масштабирование двумя пальцами
-        isZooming = true;
-        const touch1 = e.touches[0];
-        const touch2 = e.touches[1];
-        touchStartDistance = Math.hypot(
-            touch2.clientX - touch1.clientX,
-            touch2.clientY - touch1.clientY
-        );
-        touchStartScale = scale;
-        touchStartTranslate.x = translateX;
-        touchStartTranslate.y = translateY;
-        e.preventDefault();
-    }
-}, { passive: false });
-
-canvasContainer.addEventListener('touchmove', (e) => {
-    if (isPanning && e.touches.length === 1) {
-        const touch = e.touches[0];
-        const dx = touch.clientX - panStart.x;
-        const dy = touch.clientY - panStart.y;
-
-        translateX = startTranslate.x + dx;
-        translateY = startTranslate.y + dy;
-
-        updateTransform();
-        e.preventDefault();
-    } else if (isZooming && e.touches.length === 2) {
-        const touch1 = e.touches[0];
-        const touch2 = e.touches[1];
-        const currentDistance = Math.hypot(
-            touch2.clientX - touch1.clientX,
-            touch2.clientY - touch1.clientY
-        );
-
-        if (touchStartDistance > 0) {
-            const newScale = Math.max(ZOOM_CONFIG.min, Math.min(ZOOM_CONFIG.max,
-                touchStartScale * (currentDistance / touchStartDistance)));
-
-            scale = newScale;
-
-            // Центрируем масштабирование
-            const rect = canvasContainer.getBoundingClientRect();
-            const centerX = (touch1.clientX + touch2.clientX) / 2 - rect.left;
-            const centerY = (touch1.clientY + touch2.clientY) / 2 - rect.top;
-
-            const worldX = (centerX - touchStartTranslate.x) / touchStartScale;
-            const worldY = (centerY - touchStartTranslate.y) / touchStartScale;
-
-            translateX = centerX - worldX * scale;
-            translateY = centerY - worldY * scale;
-
-            updateTransform();
-        }
-        e.preventDefault();
-    }
-}, { passive: false });
-
-canvasContainer.addEventListener('touchend', (e) => {
-    if (isPanning || isZooming) {
-        isPanning = false;
-        isZooming = false;
-        saveState();
-    }
-});
-
 // ========== МОДАЛЬНОЕ ОКНО ==========
 function showModal(title, text) {
     return new Promise((resolve) => {
@@ -1202,20 +1151,7 @@ modalOverlay.addEventListener('click', (e) => {
     }
 });
 
-// ========== ОБНОВЛЕННЫЕ ФУНКЦИИ ДЛЯ РАБОТЫ С МАСШТАБОМ ==========
-function expandCanvasIfNeeded(x, y) {
-    // В новой реализации расширение холста не требуется
-    // так как у нас бесконечный холст
-}
-
-function resetCanvasPadding() {
-    // В новой реализации сброс отступов не требуется
-}
-
-// ОБНОВЛЕННАЯ ФУНКЦИЯ ПАННОРАМИРОВАНИЯ (убрана старая)
-// Старая реализация панорамирования удалена, используется новая выше
-
-// ========== УПРАВЛЕНИЕ ПОЗИЦИЯМИ ==========
+// ========== УПРАВЛЕНИЕ ПОЗИЦИЯМИ С ГРАНИЦАМИ ==========
 let occupiedPositions = new Map();
 
 function resetOccupiedPositions() {
@@ -1230,7 +1166,11 @@ function registerPosition(nodeId, x, y) {
 }
 
 function isPositionFree(x, y, width = LAYOUT_CONFIG.NODE_WIDTH, height = LAYOUT_CONFIG.NODE_HEIGHT) {
-  if (x < LAYOUT_CONFIG.MARGIN || y < LAYOUT_CONFIG.MARGIN) {
+  // Проверяем границы с учетом размера блока
+  if (x < BOUNDARIES.minX || y < BOUNDARIES.minY) {
+    return false;
+  }
+  if (x + width > BOUNDARIES.maxX || y + height > BOUNDARIES.maxY) {
     return false;
   }
 
@@ -1250,27 +1190,63 @@ function isPositionFree(x, y, width = LAYOUT_CONFIG.NODE_WIDTH, height = LAYOUT_
   return true;
 }
 
-function findFreePosition(nearX, nearY, maxAttempts = 100) {
-  if (isPositionFree(nearX, nearY)) {
-    return { x: nearX, y: nearY };
+function getViewportCenter() {
+  // Получаем центр видимой области
+  const containerWidth = canvasContainer.clientWidth;
+  const containerHeight = canvasContainer.clientHeight;
+
+  // Преобразуем экранные координаты в мировые
+  const worldX = (-translateX + containerWidth / 2) / scale;
+  const worldY = (-translateY + containerHeight / 2) / scale;
+
+  return {
+    x: worldX - LAYOUT_CONFIG.NODE_WIDTH / 2,
+    y: worldY - LAYOUT_CONFIG.NODE_HEIGHT / 2
+  };
+}
+
+function findFreePosition(nearX, nearY) {
+  // Если координаты не указаны, используем центр видимой области
+  let targetX = nearX;
+  let targetY = nearY;
+
+  if ((!targetX && targetX !== 0) || (!targetY && targetY !== 0)) {
+    const viewportCenter = getViewportCenter();
+    targetX = viewportCenter.x;
+    targetY = viewportCenter.y;
   }
 
-  for (let radius = 1; radius <= 20; radius++) {
-    for (let angle = 0; angle < 360; angle += 30) {
+  // Сначала проверяем указанную позицию
+  if (isPositionFree(targetX, targetY)) {
+    const clampedPos = clampToBoundaries(targetX, targetY);
+    return { x: clampedPos.x, y: clampedPos.y };
+  }
+
+  // Ищем свободное место по спирали от указанной точки
+  for (let radius = 1; radius <= 15; radius++) {
+    const points = 12;
+    for (let i = 0; i < points; i++) {
+      const angle = (i * 360) / points;
       const rad = angle * Math.PI / 180;
-      const x = nearX + Math.cos(rad) * radius * 100;
-      const y = nearY + Math.sin(rad) * radius * 80;
+      const x = targetX + Math.cos(rad) * radius * 100;
+      const y = targetY + Math.sin(rad) * radius * 80;
 
       if (isPositionFree(x, y)) {
-        return { x, y };
+        const clampedPos = clampToBoundaries(x, y);
+        return { x: clampedPos.x, y: clampedPos.y };
       }
     }
   }
 
-  return {
-    x: nearX + Math.random() * 400 - 200,
-    y: nearY + Math.random() * 400 - 200
-  };
+  // Если не нашли, возвращаем позицию в пределах границ
+  const clampedPos = clampToBoundaries(targetX, targetY);
+  return { x: clampedPos.x, y: clampedPos.y };
+}
+
+function clampToBoundaries(x, y, width = LAYOUT_CONFIG.NODE_WIDTH, height = LAYOUT_CONFIG.NODE_HEIGHT) {
+  const clampedX = Math.max(BOUNDARIES.minX, Math.min(BOUNDARIES.maxX - width, x));
+  const clampedY = Math.max(BOUNDARIES.minY, Math.min(BOUNDARIES.maxY - height, y));
+  return { x: clampedX, y: clampedY };
 }
 
 // ========== СОХРАНЕНИЕ И ЗАГРУЗКА ==========
@@ -1293,6 +1269,7 @@ function serializeState(){
     type: n.dataset.type || '',
     collapsed: n.dataset.collapsed === 'true'
   }));
+
   const panelRect = sidePanel.getBoundingClientRect();
   const editorRect = document.getElementById('editorPage').getBoundingClientRect();
   const panelState = {
@@ -1304,21 +1281,16 @@ function serializeState(){
     hidden: sidePanel.style.display === 'none'
   };
 
-  // СОХРАНЕНИЕ СОСТОЯНИЯ МАСШТАБА И ПАННОРАМИРОВАНИЯ
-  const viewState = {
-    scale,
-    translateX,
-    translateY
-  };
+  const viewState = { scale, translateX, translateY };
 
   return {
-    version: 2, // Увеличиваем версию для совместимости
+    version: 3,
     nodes,
     edges,
     nodeCounter,
     aiOutput: document.getElementById('ai-output')?.innerHTML || '',
     isLockedUntil,
-    viewState, // Добавляем состояние вида
+    viewState,
     panelState
   };
 }
@@ -1326,74 +1298,92 @@ function serializeState(){
 function loadState(){
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if(!raw) return;
-    const s = JSON.parse(raw);
-    if(!s) return;
-    if(typeof s.nodeCounter === 'number') nodeCounter = s.nodeCounter;
 
-    resetOccupiedPositions();
+    // Всегда центрируем на корневом блоке при загрузке
+    if(raw) {
+      const s = JSON.parse(raw);
+      if(s) {
+        if(typeof s.nodeCounter === 'number') nodeCounter = s.nodeCounter;
 
-    // ЗАГРУЗКА СОСТОЯНИЯ МАСШТАБА И ПАННОРАМИРОВАНИЯ
-    if (s.viewState && s.version >= 2) {
-      scale = s.viewState.scale || ZOOM_CONFIG.default;
-      translateX = s.viewState.translateX || 0;
-      translateY = s.viewState.translateY || 0;
-      updateTransform();
-    }
+        resetOccupiedPositions();
 
-    const root = document.querySelector('[data-id="root"]');
-    if(root){
-      const savedRoot = (s.nodes || []).find(n=>n.id === 'root');
-      if(savedRoot){
-        root.style.left = (savedRoot.left||0)+'px';
-        root.style.top = (savedRoot.top||0)+'px';
-        const t = root.querySelector('.title');
-        if(t) t.innerText = savedRoot.title || '';
-        registerPosition('root', savedRoot.left||0, savedRoot.top||0);
-      }
-    }
-
-    document.querySelectorAll('.node').forEach(n => { if(n.dataset.id !== 'root') n.remove(); });
-    edges = [];
-
-    if(Array.isArray(s.nodes)){
-      s.nodes.forEach(n => {
-        if(n.id === 'root') return;
-        const node = recreateNode(n.id, n.left || 100, n.top || 100, n.title || 'Новый исход');
-        if(n.type) node.dataset.type = n.type;
-        if(n.collapsed) {
-          node.dataset.collapsed = 'true';
-          addToggleButton(node);
+        if (s.viewState && s.version >= 3) {
+          scale = s.viewState.scale || ZOOM_CONFIG.default;
+          translateX = s.viewState.translateX || 0;
+          translateY = s.viewState.translateY || 0;
         }
-        registerPosition(n.id, n.left || 100, n.top || 100);
-      });
-    }
 
-    if(Array.isArray(s.edges)) edges = s.edges.slice();
-    if(s.aiOutput !== undefined) document.getElementById('ai-output').innerHTML = s.aiOutput || '';
+        const root = document.querySelector('[data-id="root"]');
+        if(root){
+          const savedRoot = (s.nodes || []).find(n=>n.id === 'root');
+          if(savedRoot){
+            const clampedPos = clampToBoundaries(savedRoot.left||0, savedRoot.top||0);
+            root.style.left = clampedPos.x + 'px';
+            root.style.top = clampedPos.y + 'px';
+            const t = root.querySelector('.title');
+            if(t) t.innerText = savedRoot.title || '';
+            registerPosition('root', clampedPos.x, clampedPos.y);
+          }
+        }
 
-    if(s.panelState){
-      const editorRect = document.getElementById('editorPage').getBoundingClientRect();
-      sidePanel.style.left = (s.panelState.left || 0) + 'px';
-      sidePanel.style.top = (s.panelState.top || 0) + 'px';
-      sidePanel.style.right = 'auto';
-      if(s.panelState.width) sidePanel.style.width = s.panelState.width + 'px';
-      if(s.panelState.height) sidePanel.style.height = s.panelState.height + 'px';
-      if(s.panelState.collapsed) sidePanel.dataset.collapsed = '1';
-      if(s.panelState.hidden) {
-        sidePanel.style.display = 'none';
-        openPanelBtn.classList.add('visible');
+        document.querySelectorAll('.node').forEach(n => { if(n.dataset.id !== 'root') n.remove(); });
+        edges = [];
+
+        if(Array.isArray(s.nodes)){
+          s.nodes.forEach(n => {
+            if(n.id === 'root') return;
+            const clampedPos = clampToBoundaries(n.left || 100, n.top || 100);
+            const node = recreateNode(n.id, clampedPos.x, clampedPos.y, n.title || 'Новый исход');
+            if(n.type) node.dataset.type = n.type;
+            if(n.collapsed) {
+              node.dataset.collapsed = 'true';
+              addToggleButton(node);
+            }
+            registerPosition(n.id, clampedPos.x, clampedPos.y);
+          });
+        }
+
+        if(Array.isArray(s.edges)) edges = s.edges.slice();
+        if(s.aiOutput !== undefined) document.getElementById('ai-output').innerHTML = s.aiOutput || '';
+
+        if(s.panelState){
+          const editorRect = document.getElementById('editorPage').getBoundingClientRect();
+          sidePanel.style.left = (s.panelState.left || 0) + 'px';
+          sidePanel.style.top = (s.panelState.top || 0) + 'px';
+          sidePanel.style.right = 'auto';
+          if(s.panelState.width) sidePanel.style.width = s.panelState.width + 'px';
+          if(s.panelState.height) sidePanel.style.height = s.panelState.height + 'px';
+          if(s.panelState.collapsed) sidePanel.dataset.collapsed = '1';
+          if(s.panelState.hidden) {
+            sidePanel.style.display = 'none';
+            openPanelBtn.classList.add('visible');
+          }
+        }
+
+        if(s.isLockedUntil){
+          isLockedUntil = s.isLockedUntil;
+          updateTimerUI();
+          if(isLockedUntil > Date.now()){
+            timerInterval && clearInterval(timerInterval);
+            timerInterval = setInterval(updateTimerUI, 250);
+          }
+        }
+      }
+    } else {
+      // Первый запуск - создаем корневой блок в центре
+      const root = document.querySelector('[data-id="root"]');
+      if(root) {
+        const centerX = LAYOUT_CONFIG.CANVAS_WIDTH / 2 - LAYOUT_CONFIG.NODE_WIDTH / 2;
+        const centerY = LAYOUT_CONFIG.CANVAS_HEIGHT / 2 - LAYOUT_CONFIG.NODE_HEIGHT / 2;
+
+        root.style.left = centerX + 'px';
+        root.style.top = centerY + 'px';
+        registerPosition('root', centerX, centerY);
       }
     }
 
-    if(s.isLockedUntil){
-      isLockedUntil = s.isLockedUntil;
-      updateTimerUI();
-      if(isLockedUntil > Date.now()){
-        timerInterval && clearInterval(timerInterval);
-        timerInterval = setInterval(updateTimerUI, 250);
-      }
-    }
+    // ВСЕГДА центрируем на корневом блоке после загрузки
+    centerOnRoot();
 
     restoreCollapsedState();
     renderConnections();
@@ -1440,8 +1430,11 @@ function genId(){ nodeCounter = (nodeCounter||0) + 1; saveState(); return 'node-
 function recreateNode(id, x=100, y=200, text='Новый исход'){
   const div = document.createElement('div');
   div.className = 'node';
-  div.style.left = x + 'px';
-  div.style.top = y + 'px';
+
+  const clampedPos = clampToBoundaries(x, y);
+  div.style.left = clampedPos.x + 'px';
+  div.style.top = clampedPos.y + 'px';
+
   div.dataset.id = id;
   div.innerHTML = `
     <div contenteditable class="title">${text}</div>
@@ -1464,9 +1457,6 @@ function recreateNode(id, x=100, y=200, text='Новый исход'){
 function createNode(x=100, y=200, text='Новый исход', parentId=null, type=null){
   const id = genId();
   const freePos = findFreePosition(x, y);
-
-  // Автоматически расширяем canvas если нужно
-  expandCanvasForNode(freePos.x, freePos.y, LAYOUT_CONFIG.NODE_WIDTH, LAYOUT_CONFIG.NODE_HEIGHT);
 
   const node = recreateNode(id, freePos.x, freePos.y, text);
   if(type) node.dataset.type = type;
@@ -1498,8 +1488,15 @@ function makeDraggable(elem){
     if(!dragging) return;
     const dx=e.clientX-startX;
     const dy=e.clientY-startY;
-    const newLeft=origLeft+dx;
-    const newTop=origTop+dy;
+
+    let newLeft = origLeft+dx;
+    let newTop = origTop+dy;
+
+    // Применяем границы при перемещении
+    const clampedPos = clampToBoundaries(newLeft, newTop);
+    newLeft = clampedPos.x;
+    newTop = clampedPos.y;
+
     elem.style.left=newLeft+'px';
     elem.style.top=newTop+'px';
     renderConnections();
@@ -1509,44 +1506,11 @@ function makeDraggable(elem){
     if(!dragging) return;
     dragging=false;
     elem.style.zIndex='';
-    registerPosition(elem.dataset.id, parseFloat(elem.style.left)||0, parseFloat(elem.style.top)||0);
-    saveState();
-    renderConnections();
-  });
 
-  // Touch events
-  elem.addEventListener('touchstart', e=>{
-    if(e.touches.length !== 1) return;
-    const t = e.touches[0];
-    if(t.target.closest('.add-btn, .remove-btn, .toggle-btn')) return;
-    if(t.target.closest('.title')) return;
-    dragging=true;
-    startX=t.clientX;
-    startY=t.clientY;
-    origLeft=parseFloat(elem.style.left)||0;
-    origTop=parseFloat(elem.style.top)||0;
-    e.preventDefault();
-    elem.style.zIndex = '1000';
-  }, { passive: false });
+    const finalLeft = parseFloat(elem.style.left)||0;
+    const finalTop = parseFloat(elem.style.top)||0;
 
-  document.addEventListener('touchmove', e=>{
-    if(!dragging) return;
-    const t = e.touches[0];
-    const dx=t.clientX-startX;
-    const dy=t.clientY-startY;
-    const newLeft=origLeft+dx;
-    const newTop=origTop+dy;
-    elem.style.left=newLeft+'px';
-    elem.style.top=newTop+'px';
-    renderConnections();
-    e.preventDefault();
-  }, { passive: false });
-
-  document.addEventListener('touchend', ()=>{
-    if(!dragging) return;
-    dragging=false;
-    elem.style.zIndex='';
-    registerPosition(elem.dataset.id, parseFloat(elem.style.left)||0, parseFloat(elem.style.top)||0);
+    registerPosition(elem.dataset.id, finalLeft, finalTop);
     saveState();
     renderConnections();
   });
@@ -1564,6 +1528,10 @@ function setupNodeButtons(node){
 
     let newX = rect.left - canvasRect.left;
     let newY = rect.top - canvasRect.top + rect.height + LAYOUT_CONFIG.ROW_SPACING;
+
+    // Корректируем позицию, чтобы не выходить за границы
+    newX = Math.min(newX, BOUNDARIES.maxX - LAYOUT_CONFIG.NODE_WIDTH);
+    newY = Math.min(newY, BOUNDARIES.maxY - LAYOUT_CONFIG.NODE_HEIGHT);
 
     createNode(newX, newY, 'Новый пункт', node.dataset.id);
   });
@@ -1677,16 +1645,10 @@ function addEdge(fromId, toId){
   renderConnections();
 }
 
-// ========== ОТРИСОВКА СОЕДИНЕНИЙ ==========
+// ========== ОТРИСОВКА СОЕДИНЕНИЙ (КАК В FLOW) ==========
 function renderConnections(){
   const svg = connectorsSvg;
   svg.innerHTML = '';
-
-  const totalWidth = canvasContent.offsetWidth;
-  const totalHeight = canvasContent.offsetHeight;
-
-  svg.setAttribute('width', totalWidth);
-  svg.setAttribute('height', totalHeight);
 
   edges.forEach(e => {
     const fromNode = byId(e.from);
@@ -1695,12 +1657,9 @@ function renderConnections(){
 
     if (fromNode.classList.contains('hidden') || toNode.classList.contains('hidden')) return;
 
-    const fromRect = fromNode.getBoundingClientRect();
-    const toRect = toNode.getBoundingClientRect();
-
-    const fromX = parseFloat(fromNode.style.left) + fromRect.width / 2;
-    const fromY = parseFloat(fromNode.style.top) + fromRect.height;
-    const toX = parseFloat(toNode.style.left) + toRect.width / 2;
+    const fromX = parseFloat(fromNode.style.left) + fromNode.offsetWidth / 2;
+    const fromY = parseFloat(fromNode.style.top) + fromNode.offsetHeight;
+    const toX = parseFloat(toNode.style.left) + toNode.offsetWidth / 2;
     const toY = parseFloat(toNode.style.top);
 
     const midY = (fromY + toY) / 2;
@@ -1711,6 +1670,7 @@ function renderConnections(){
                        ${toX} ${toY - controlOffset},
                        ${toX} ${toY}`;
 
+    // Глоу эффект
     const glow = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     glow.setAttribute('d', pathData);
     glow.setAttribute('stroke', 'rgba(0,217,255,0.15)');
@@ -1720,6 +1680,7 @@ function renderConnections(){
     glow.style.filter = 'blur(8px)';
     svg.appendChild(glow);
 
+    // Основная линия
     const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     path.setAttribute('d', pathData);
     path.setAttribute('stroke', 'var(--neon)');
@@ -1728,6 +1689,21 @@ function renderConnections(){
     path.setAttribute('stroke-linecap', 'round');
     path.style.filter = 'drop-shadow(0 0 6px rgba(0,217,255,0.3))';
     svg.appendChild(path);
+
+    // Стрелка
+    const arrowSize = 8;
+    const angle = Math.atan2(toY - (fromY + controlOffset), toX - fromX);
+
+    const arrow = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+    const points = `
+      ${toX},${toY}
+      ${toX - arrowSize * Math.cos(angle - Math.PI/6)},${toY - arrowSize * Math.sin(angle - Math.PI/6)}
+      ${toX - arrowSize * Math.cos(angle + Math.PI/6)},${toY - arrowSize * Math.sin(angle + Math.PI/6)}
+    `;
+    arrow.setAttribute('points', points);
+    arrow.setAttribute('fill', 'var(--neon)');
+    arrow.style.filter = 'drop-shadow(0 0 4px rgba(0,217,255,0.5))';
+    svg.appendChild(arrow);
   });
 }
 
@@ -1807,7 +1783,7 @@ function parseProsConsFromText(text){
   return { description, pros, cons };
 }
 
-// ========== СОЗДАНИЕ ВЕТОК ПЛЮСОВ И МИНУСОВ ==========
+// ОБНОВЛЕННАЯ ФУНКЦИЯ СОЗДАНИЯ ВЕТОК ПЛЮСОВ И МИНУСОВ
 function createProConNodesForOutcome(outcomeText, pros, cons, outcomeIndex){
   const nodes = Array.from(document.querySelectorAll('.node[data-id]'));
 
@@ -1829,7 +1805,10 @@ function createProConNodesForOutcome(outcomeText, pros, cons, outcomeIndex){
     const x = rootX;
     const y = rootY + (outcomeIndex + 1) * LAYOUT_CONFIG.ROW_SPACING;
 
-    createNode(x, y, outcomeText, 'root');
+    // Корректируем позицию, чтобы не выходить за границы
+    const clampedY = Math.min(y, BOUNDARIES.maxY - LAYOUT_CONFIG.NODE_HEIGHT);
+
+    createNode(x, clampedY, outcomeText, 'root');
 
     // Ждем немного и пытаемся найти созданный узел
     setTimeout(() => {
@@ -1851,6 +1830,7 @@ function createProConNodesForOutcome(outcomeText, pros, cons, outcomeIndex){
   }
 }
 
+// ОБНОВЛЕННАЯ ФУНКЦИЯ СОЗДАНИЯ ВЕТОК ПЛЮСОВ И МИНУСОВ
 function createProConBranches(outcomeNode, pros, cons, outcomeIndex){
   const outcomeId = outcomeNode.dataset.id;
   const outcomeX = parseFloat(outcomeNode.style.left);
@@ -1859,22 +1839,28 @@ function createProConBranches(outcomeNode, pros, cons, outcomeIndex){
   // Создаем контейнер для плюсов СЛЕВА
   if(pros.length > 0) {
     const proContainerX = outcomeX - LAYOUT_CONFIG.HORIZONTAL_OFFSET;
-    const proContainerY = outcomeY + LAYOUT_CONFIG.VERTICAL_SPACING;
+    const proContainerY = outcomeY;
 
-    const prosContainerId = createNode(proContainerX, proContainerY, 'Плюсы', outcomeId, 'pros-container');
+    // Корректируем позицию, чтобы не выходить за границы
+    const clampedProX = Math.max(BOUNDARIES.minX, proContainerX);
+
+    const prosContainerId = createNode(clampedProX, proContainerY, 'Плюсы', outcomeId, 'pros-container');
     const prosContainer = byId(prosContainerId);
 
     prosContainer.dataset.collapsed = 'true';
     addToggleButton(prosContainer);
 
-    let currentParentId = prosContainerId;
-    let currentX = proContainerX;
-    let currentY = proContainerY + LAYOUT_CONFIG.VERTICAL_SPACING * 0.8;
-
+    // Создаем плюсы как отдельные блоки с соединениями
+    let previousProId = prosContainerId;
     pros.forEach((pro, idx) => {
-      const proId = createNode(currentX, currentY, pro, currentParentId, 'pro');
-      currentParentId = proId;
-      currentY += LAYOUT_CONFIG.VERTICAL_SPACING * 0.6;
+      const proX = clampedProX;
+      const proY = proContainerY + (idx + 1) * LAYOUT_CONFIG.PRO_CON_SPACING;
+
+      // Корректируем позицию, чтобы не выходить за границы
+      const clampedProY = Math.min(proY, BOUNDARIES.maxY - LAYOUT_CONFIG.NODE_HEIGHT);
+
+      const proId = createNode(proX, clampedProY, pro, previousProId, 'pro');
+      previousProId = proId;
     });
 
     collapseAllChildren(prosContainer, true);
@@ -1883,22 +1869,28 @@ function createProConBranches(outcomeNode, pros, cons, outcomeIndex){
   // Создаем контейнер для минусов СПРАВА
   if(cons.length > 0) {
     const conContainerX = outcomeX + LAYOUT_CONFIG.HORIZONTAL_OFFSET;
-    const conContainerY = outcomeY + LAYOUT_CONFIG.VERTICAL_SPACING;
+    const conContainerY = outcomeY;
 
-    const consContainerId = createNode(conContainerX, conContainerY, 'Минусы', outcomeId, 'cons-container');
+    // Корректируем позицию, чтобы не выходить за границы
+    const clampedConX = Math.min(conContainerX, BOUNDARIES.maxX - LAYOUT_CONFIG.NODE_WIDTH);
+
+    const consContainerId = createNode(clampedConX, conContainerY, 'Минусы', outcomeId, 'cons-container');
     const consContainer = byId(consContainerId);
 
     consContainer.dataset.collapsed = 'true';
     addToggleButton(consContainer);
 
-    let currentParentId = consContainerId;
-    let currentX = conContainerX;
-    let currentY = conContainerY + LAYOUT_CONFIG.VERTICAL_SPACING * 0.8;
-
+    // Создаем минусы как отдельные блоки с соединениями
+    let previousConId = consContainerId;
     cons.forEach((con, idx) => {
-      const conId = createNode(currentX, currentY, con, currentParentId, 'con');
-      currentParentId = conId;
-      currentY += LAYOUT_CONFIG.VERTICAL_SPACING * 0.6;
+      const conX = clampedConX;
+      const conY = conContainerY + (idx + 1) * LAYOUT_CONFIG.PRO_CON_SPACING;
+
+      // Корректируем позицию, чтобы не выходить за границы
+      const clampedConY = Math.min(conY, BOUNDARIES.maxY - LAYOUT_CONFIG.NODE_HEIGHT);
+
+      const conId = createNode(conX, clampedConY, con, previousConId, 'con');
+      previousConId = conId;
     });
 
     collapseAllChildren(consContainer, true);
@@ -1939,7 +1931,7 @@ async function sendAiRequestWithRetries(payload, maxRetries = MAX_RETRIES){
   let lastError = null;
   for(let attempt = 1; attempt <= maxRetries; attempt++){
     try{
-      const res = await fetch('/run-ai', {
+      const res = await fetch('/run-ai-life', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify(payload)
@@ -2126,60 +2118,6 @@ document.addEventListener('mouseup', () => {
   }
 });
 
-// Touch events для панели
-sideHeader.addEventListener('touchstart', e => {
-  if(e.touches.length !== 1) return;
-  const t = e.touches[0];
-  const target = document.elementFromPoint(t.clientX, t.clientY);
-  if(!target) return;
-  if(target.closest('button')) return;
-  panelDragging = true;
-  panelStartX = t.clientX;
-  panelStartY = t.clientY;
-  panelStartLeft = parseInt(sidePanel.style.left) || 0;
-  panelStartTop = parseInt(sidePanel.style.top) || 0;
-  sidePanel.style.right = 'auto';
-  e.preventDefault();
-}, { passive: false });
-
-panelHandle.addEventListener('touchstart', e => {
-  if(e.touches.length !== 1) return;
-  const t = e.touches[0];
-  panelResizing = true;
-  panelStartX = t.clientX;
-  panelStartY = t.clientY;
-  panelStartWidth = sidePanel.offsetWidth;
-  panelStartHeight = sidePanel.offsetHeight;
-  e.preventDefault();
-}, { passive: false });
-
-document.addEventListener('touchmove', e => {
-  if(panelDragging){
-    const t = e.touches[0];
-    const dx = t.clientX - panelStartX;
-    const dy = t.clientY - panelStartY;
-    sidePanel.style.left = (panelStartLeft + dx) + 'px';
-    sidePanel.style.top = (panelStartTop + dy) + 'px';
-    e.preventDefault();
-  }
-  if(panelResizing){
-    const t = e.touches[0];
-    const dx = t.clientX - panelStartX;
-    const newWidth = Math.max(300, Math.min(800, panelStartWidth - dx));
-    sidePanel.style.width = newWidth + 'px';
-    renderConnections();
-    e.preventDefault();
-  }
-}, { passive: false });
-
-document.addEventListener('touchend', () => {
-  if(panelDragging || panelResizing){
-    panelDragging = false;
-    panelResizing = false;
-    saveState();
-  }
-});
-
 panelCollapseBtn.addEventListener('click', () => {
   if(sidePanel.dataset.collapsed === '1'){
     sidePanel.style.width = '320px';
@@ -2218,8 +2156,6 @@ function escapeHtml(s){
 
 // ========== ИНИЦИАЛИЗАЦИЯ ==========
 function init(){
-  resetCanvasPadding();
-
   loadState();
   updateTimerUI();
   updateAIPreview();
@@ -2236,30 +2172,13 @@ function init(){
   canvasContent.addEventListener('dblclick', e => {
     const target = e.target;
     if(target.closest('.node') || target.closest('.add-btn') || target.closest('.remove-btn')) return;
+
     const rect = canvasContent.getBoundingClientRect();
-    const x = e.clientX - rect.left - 130;
-    const y = e.clientY - rect.top - 28;
+    const x = e.clientX - rect.left - LAYOUT_CONFIG.NODE_WIDTH / 2;
+    const y = e.clientY - rect.top - LAYOUT_CONFIG.NODE_HEIGHT / 2;
+
     createNode(x, y, 'Новый исход');
   });
-
-  // Touch double-tap
-  let lastTap = 0;
-  canvasContent.addEventListener('touchend', e => {
-    const currentTime = new Date().getTime();
-    const tapLength = currentTime - lastTap;
-    if(tapLength < 500 && tapLength > 0){
-      const t = e.changedTouches[0];
-      const target = document.elementFromPoint(t.clientX, t.clientY);
-      if(!target) return;
-      if(target.closest('.node') || target.closest('[data-add]') || target.closest('.remove-btn')) return;
-      const rect = canvasContent.getBoundingClientRect();
-      const x = t.clientX - rect.left - 130;
-      const y = t.clientY - rect.top - 28;
-      createNode(x, y, 'Новый исход');
-      e.preventDefault();
-    }
-    lastTap = currentTime;
-  }, { passive: false });
 
   // Auto-save on title edits
   document.addEventListener('input', e => {
