@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Поток Кадров — Viora</title>
     <style>
-        /* Все предыдущие стили остаются без изменений */
         :root {
             --panel-bg: rgba(8,8,10,0.6);
             --accent: #7dd3fc;
@@ -17,6 +16,9 @@
             --text-muted: rgba(255,255,255,0.6);
             --pro-color: #10b981;
             --con-color: #ef4444;
+            --visual-color: #8b5cf6;
+            --emotional-color: #f59e0b;
+            --frame-color: #7dd3fc;
         }
 
         * {
@@ -61,6 +63,33 @@
             min-height: max-content;
             touch-action: pan-x pan-y;
             -webkit-overflow-scrolling: touch;
+        }
+
+        .canvas-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: var(--bg-dark);
+        }
+
+        .canvas-transform {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            transform-origin: 0 0;
+            transition: transform 0.1s ease-out;
+        }
+
+        .canvas-content {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 10000px;
+            height: 10000px;
+            background: var(--bg-dark);
         }
 
         .canvas-pan-cursor { cursor: grab; }
@@ -117,8 +146,6 @@
             margin-bottom: 8px;
             border-radius: 6px;
             -webkit-user-select: none;
-            -moz-user-select: none;
-            -ms-user-select: none;
         }
 
         .side-title {
@@ -126,43 +153,23 @@
             font-size: 16px;
         }
 
-        .side-sub {
-            font-size: 12px;
-            color: var(--text-muted);
-            display: none;
-        }
-
-        .panel-left-handle {
-            position: absolute;
-            left: -8px;
-            top: 8px;
-            bottom: 8px;
-            width: 12px;
-            cursor: ew-resize;
-            border-radius: 6px;
-            background: rgba(255,255,255,0.1);
-            display: none;
-        }
-
         .node {
             width: 90vw;
-            max-width: 280px;
-            min-height: 60px;
+            max-width: 300px;
+            min-height: 80px;
             background: rgba(255,255,255,0.03);
             border: 1px solid var(--glass-border);
             border-radius: 15px;
-            padding: 10px;
+            padding: 12px;
             position: absolute;
             display: flex;
             flex-direction: column;
-            gap: 6px;
+            gap: 8px;
             cursor: move;
             z-index: 10;
             transition: transform 0.2s ease;
             user-select: none;
             -webkit-user-select: none;
-            -moz-user-select: none;
-            -ms-user-select: none;
             touch-action: none;
         }
 
@@ -186,8 +193,6 @@
             width: 100%;
             cursor: text;
             -webkit-user-select: text;
-            -moz-user-select: text;
-            -ms-user-select: text;
             user-select: text;
             padding: 2px;
         }
@@ -211,7 +216,7 @@
             align-items: center;
         }
 
-        .add-btn, .remove-btn, .toggle-btn {
+        .add-btn, .remove-btn, .toggle-btn, .next-frame-btn, .analyze-btn {
             width: 32px;
             height: 32px;
             min-width: 32px;
@@ -227,17 +232,11 @@
             user-select: none;
             transition: all 0.2s ease;
             -webkit-user-select: none;
-            -moz-user-select: none;
-            -ms-user-select: none;
             touch-action: manipulation;
             font-size: 16px;
         }
 
-        .add-btn {
-            font-weight: 700;
-        }
-
-        .add-btn:hover {
+        .add-btn:hover, .next-frame-btn:hover {
             background: rgba(0,217,255,0.2);
             border-color: rgba(0,217,255,0.4);
         }
@@ -247,9 +246,9 @@
             border-color: rgba(239,68,68,0.4);
         }
 
-        .toggle-btn:hover {
-            background: rgba(0,217,255,0.2);
-            border-color: rgba(0,217,255,0.4);
+        .analyze-btn:hover {
+            background: rgba(139,92,246,0.2);
+            border-color: rgba(139,92,246,0.4);
         }
 
         .small-muted {
@@ -261,8 +260,8 @@
             position: absolute;
             top: 0;
             left: 0;
-            width: 100%;
-            height: 100%;
+            width: 10000px;
+            height: 10000px;
             pointer-events: none;
             z-index: 1;
         }
@@ -302,14 +301,6 @@
             color: rgba(255,255,255,0.85);
         }
 
-        .ai-box .ai-response pre {
-            white-space: pre-wrap;
-            word-break: break-word;
-            margin: 6px 0 0 0;
-            font-family: inherit;
-            font-size: 12px;
-        }
-
         .action-row {
             display: flex;
             gap: 8px;
@@ -317,7 +308,7 @@
             flex-wrap: wrap;
         }
 
-        .button-primary, .button-ghost, .button-danger {
+        .button-primary, .button-ghost, .button-danger, .button-special {
             padding: 10px;
             border-radius: 8px;
             cursor: pointer;
@@ -339,6 +330,15 @@
             box-shadow: 0 0 12px rgba(0,217,255,0.5);
         }
 
+        .button-special {
+            background: var(--frame-color);
+            color: white;
+        }
+
+        .button-special:hover {
+            box-shadow: 0 0 12px rgba(139,92,246,0.5);
+        }
+
         .button-ghost {
             background: transparent;
             color: var(--text-primary);
@@ -357,12 +357,6 @@
 
         .button-danger:hover {
             background: rgba(239,68,68,0.2);
-        }
-
-        .result-highlight {
-            border-left: 3px solid var(--accent);
-            padding-left: 6px;
-            margin-bottom: 6px;
         }
 
         .back-link {
@@ -392,123 +386,154 @@
             border-color: rgba(0,217,255,0.4);
         }
 
-        .node[data-type="pro"] {
-            border-left: 4px solid rgba(16,185,129,0.3);
-            background: rgba(16,185,129,0.05);
+        .node[data-type="frame"] {
+            border-left: 4px solid rgba(125,211,252,0.5);
+            background: rgba(125,211,252,0.08);
         }
 
-        .node[data-type="con"] {
-            border-left: 4px solid rgba(239,68,68,0.3);
-            background: rgba(239,68,68,0.05);
+        .node[data-type="visual"] {
+            border-left: 4px solid rgba(139,92,246,0.3);
+            background: rgba(139,92,246,0.05);
         }
 
-        .node[data-type="pros-container"] {
-            border-left: 4px solid rgba(16,185,129,0.5);
-            background: rgba(16,185,129,0.08);
+        .node[data-type="emotional"] {
+            border-left: 4px solid rgba(245,158,11,0.3);
+            background: rgba(245,158,11,0.05);
+        }
+
+        .node[data-type="visual-container"] {
+            border-left: 4px solid rgba(139,92,246,0.5);
+            background: rgba(139,92,246,0.08);
             font-weight: 700;
             font-size: 14px;
-            color: var(--pro-color);
+            color: var(--visual-color);
         }
 
-        .node[data-type="cons-container"] {
-            border-left: 4px solid rgba(239,68,68,0.5);
-            background: rgba(239,68,68,0.08);
+        .node[data-type="emotional-container"] {
+            border-left: 4px solid rgba(245,158,11,0.5);
+            background: rgba(245,158,11,0.08);
             font-weight: 700;
             font-size: 14px;
-            color: var(--con-color);
+            color: var(--emotional-color);
         }
 
-        /* Показываем кнопки сворачивания для контейнеров */
-        .node[data-type="pros-container"] .buttons-container,
-        .node[data-type="cons-container"] .buttons-container {
+        .zoom-controls {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
             display: flex;
+            flex-direction: column;
+            gap: 8px;
+            background: var(--panel-bg);
+            border-radius: 8px;
+            padding: 8px;
+            border: 1px solid var(--glass-border);
         }
 
-        .node[data-type="pros-container"] .title,
-        .node[data-type="cons-container"] .title {
-            cursor: default;
-            user-select: none;
-            -webkit-user-select: none;
-            -moz-user-select: none;
-            -ms-user-select: none;
+        .zoom-btn {
+            width: 40px;
+            height: 40px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--glass-border);
+            color: var(--text-primary);
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            transition: all 0.2s ease;
         }
 
-        /* Скрытые узлы */
-        .node.hidden {
-            display: none;
+        .zoom-btn:hover {
+            background: rgba(0,217,255,0.2);
+            border-color: rgba(0,217,255,0.4);
         }
 
-        .modal-overlay {
+        .zoom-display {
+            text-align: center;
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        .frame-analysis-modal {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.5);
+            background: rgba(0, 0, 0, 0.7);
             display: none;
             justify-content: center;
             align-items: center;
-            z-index: 2000;
+            z-index: 3000;
             backdrop-filter: blur(4px);
         }
 
-        .modal-overlay.active {
+        .frame-analysis-modal.active {
             display: flex;
         }
 
-        .modal-content {
+        .frame-analysis-content {
             background: var(--panel-bg);
-            border-radius: 10px;
-            padding: 15px;
+            border-radius: 12px;
+            padding: 20px;
             max-width: 90vw;
-            width: 300px;
-            box-shadow: 0 15px 40px rgba(0,0,0,0.8);
+            width: 500px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.8);
             border: 1px solid var(--glass-border);
         }
 
-        .modal-title {
-            font-size: 16px;
-            font-weight: 600;
-            margin-bottom: 10px;
-            color: var(--text-primary);
+        .frame-list {
+            margin: 15px 0;
+            max-height: 200px;
+            overflow-y: auto;
+            background: rgba(255,255,255,0.02);
+            border-radius: 8px;
+            padding: 10px;
         }
 
-        .modal-text {
-            color: var(--text-muted);
-            margin-bottom: 15px;
-            line-height: 1.4;
-            font-size: 14px;
-        }
-
-        .modal-actions {
-            display: flex;
-            gap: 8px;
-            justify-content: flex-end;
-            flex-wrap: wrap;
-        }
-
-        .modal-button {
-            padding: 8px 12px;
+        .frame-item {
+            padding: 8px;
+            margin: 4px 0;
+            background: rgba(255,255,255,0.03);
             border-radius: 6px;
-            border: none;
+            border: 1px solid rgba(255,255,255,0.05);
             cursor: pointer;
-            font-size: 14px;
             transition: all 0.2s ease;
-            touch-action: manipulation;
-            min-height: 40px;
-            min-width: 60px;
-            flex: 1;
         }
 
-        .modal-button.cancel {
-            background: rgba(255,255,255,0.05);
-            color: var(--text-primary);
-            border: 1px solid var(--glass-border);
+        .frame-item:hover {
+            background: rgba(139,92,246,0.1);
+            border-color: rgba(139,92,246,0.3);
         }
 
-        .modal-button.confirm {
-            background: var(--accent);
-            color: #0a0a0f;
+        .frame-item.selected {
+            background: rgba(139,92,246,0.2);
+            border-color: var(--frame-color);
+        }
+
+        .visual-list, .emotional-list {
+            margin: 8px 0;
+            padding-left: 16px;
+        }
+
+        .visual-list li, .emotional-list li {
+            margin: 4px 0;
+            font-size: 12px;
+            line-height: 1.3;
+        }
+
+        .visual-list {
+            color: var(--visual-color);
+        }
+
+        .emotional-list {
+            color: var(--emotional-color);
         }
 
         @media (max-width: 768px) {
@@ -517,13 +542,11 @@
                 padding: 5px;
                 gap: 5px;
             }
-
             .canvas-area {
                 padding: 15px;
                 min-height: 60vh;
                 border-radius: 10px;
             }
-
             .side-panel {
                 position: relative;
                 width: 100%;
@@ -535,281 +558,81 @@
                 margin-top: 5px;
                 padding: 8px;
             }
-
-            .side-header {
-                padding: 6px;
-            }
-
             .node {
                 width: 90vw;
-                max-width: 260px;
-                padding: 8px;
-                min-height: 50px;
+                max-width: 280px;
+                padding: 10px;
+                min-height: 70px;
                 border-radius: 12px;
             }
-
-            .node .title {
-                font-size: 13px;
-                min-height: 18px;
+            .zoom-controls {
+                bottom: 10px;
+                right: 10px;
             }
-
-            .controls {
-                margin-top: 4px;
+            .frame-analysis-content {
+                width: 95vw;
+                padding: 15px;
             }
-
-            .buttons-container {
-                gap: 4px;
-            }
-
-            .add-btn, .remove-btn, .toggle-btn {
-                width: 28px;
-                height: 28px;
-                min-width: 28px;
-                min-height: 28px;
-                font-size: 14px;
-            }
-
-            .small-muted {
-                font-size: 11px;
-            }
-
-            .ai-box {
-                padding: 8px;
-                max-height: 35vh;
-                font-size: 12px;
-            }
-
-            .ai-box .ai-response {
-                padding: 6px;
-            }
-
-            .ai-box .ai-response .meta {
-                font-size: 11px;
-            }
-
-            .ai-box .ai-response pre {
-                font-size: 11px;
-            }
-
-            .action-row {
-                flex-direction: column;
-                gap: 6px;
-            }
-
-            .button-primary, .button-ghost, .button-danger {
-                width: 100%;
-                min-height: 40px;
-                font-size: 12px;
-            }
-
-            .back-link {
-                top: 5px;
-                left: 5px;
-                min-height: 36px;
-                min-width: 36px;
-                padding: 6px 8px;
-                font-size: 12px;
-            }
-
-            .panel-left-handle {
-                display: none;
-            }
-
-            .open-panel-btn {
-                top: 40px;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .editor-page {
-                padding: 5px;
-                gap: 5px;
-            }
-
-            .canvas-area {
-                padding: 10px;
-                border-radius: 8px;
-            }
-
-            .side-panel {
-                padding: 6px;
-                max-height: 45vh;
-            }
-
-            .side-header {
-                padding: 4px;
-            }
-
-            .node {
-                width: 92vw;
-                max-width: 240px;
-                padding: 6px;
-                min-height: 45px;
-                border-radius: 10px;
-            }
-
-            .node .title {
-                font-size: 12px;
-                min-height: 16px;
-            }
-
-            .controls {
-                margin-top: 3px;
-            }
-
-            .buttons-container {
-                gap: 3px;
-            }
-
-            .add-btn, .remove-btn, .toggle-btn {
-                width: 24px;
-                height: 24px;
-                min-width: 24px;
-                min-height: 24px;
-                font-size: 12px;
-            }
-
-            .small-muted {
-                font-size: 10px;
-            }
-
-            .ai-box {
-                padding: 6px;
-                max-height: 30vh;
-                font-size: 11px;
-            }
-
-            .ai-box .ai-response {
-                padding: 6px;
-            }
-
-            .ai-box .ai-response .meta {
-                font-size: 10px;
-            }
-
-            .ai-box .ai-response pre {
-                font-size: 10px;
-            }
-
-            .action-row {
-                gap: 4px;
-            }
-
-            .button-primary, .button-ghost, .button-danger {
-                min-height: 36px;
-                font-size: 11px;
-            }
-
-            .back-link {
-                top: 5px;
-                left: 5px;
-                min-height: 32px;
-                min-width: 32px;
-                padding: 4px 6px;
-                font-size: 10px;
-            }
-
-            .modal-content {
-                width: 90vw;
-                padding: 8px;
-            }
-
-            .modal-title {
-                font-size: 13px;
-                margin-bottom: 6px;
-            }
-
-            .modal-text {
-                font-size: 11px;
-                margin-bottom: 8px;
-            }
-
-            .modal-actions {
-                gap: 6px;
-            }
-
-            .modal-button {
-                padding: 6px 10px;
-                min-height: 34px;
-                font-size: 11px;
-            }
-        }
-
-        .no-select {
-            -webkit-touch-callout: none;
-            -webkit-user-select: none;
-            -khtml-user-select: none;
-            -moz-user-select: none;
-            -ms-user-select: none;
-            user-select: none;
-        }
-
-        .pros-list, .cons-list {
-            margin: 8px 0;
-            padding-left: 16px;
-        }
-
-        .pros-list li, .cons-list li {
-            margin: 4px 0;
-            font-size: 12px;
-            line-height: 1.3;
-        }
-
-        .pros-list {
-            color: var(--pro-color);
-        }
-
-        .cons-list {
-            color: var(--con-color);
         }
     </style>
 </head>
 <body class="no-select">
     <a class="back-link" href="/">← Назад</a>
-
     <button class="open-panel-btn" id="openPanelBtn">Открыть ИИ</button>
+
+    <div class="zoom-controls">
+        <button class="zoom-btn" id="zoomIn" title="Увеличить">+</button>
+        <button class="zoom-btn" id="zoomOut" title="Уменьшить">−</button>
+        <button class="zoom-btn" id="resetZoom" title="Сбросить масштаб">↺</button>
+        <div class="zoom-display" id="zoomLevel">100%</div>
+    </div>
 
     <div class="editor-page" id="editorPage">
         <div class="canvas-area canvas-pan-cursor" id="canvasArea">
-            <svg class="connector-svg" id="connectors"></svg>
+            <div class="canvas-container" id="canvasContainer">
+                <div class="canvas-transform" id="canvasTransform">
+                    <div class="canvas-content" id="canvasContent">
+                        <svg class="connector-svg" id="connectors"></svg>
 
-            <div class="node" id="node-root" style="left: calc(50% - 110px); top: 80px;" data-id="root">
-                <div contenteditable class="title" data-placeholder="Опишите проблему...">Нажмите и впишите проблему</div>
-                <div class="controls">
-                    <div class="small-muted">Главный пункт</div>
-                    <div class="buttons-container">
-                        <div class="add-btn" title="Добавить кадр" data-add>+</div>
+                        <div class="node" id="node-root" style="left: calc(50% - 110px); top: 80px;" data-id="root" data-type="frame">
+                            <div contenteditable class="title" data-placeholder="Опишите сцену...">Начните с первого кадра</div>
+                            <div class="controls">
+                                <div class="small-muted">Начальный кадр</div>
+                                <div class="buttons-container">
+                                    <div class="add-btn" title="Добавить кадр" data-add>+</div>
+                                    <div class="next-frame-btn" title="Следующий кадр (ИИ)" data-next-frame>→</div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
 
         <div class="side-panel" id="sidePanel" role="region" aria-label="ИИ-панель">
-            <div class="panel-left-handle" id="panelHandle" title="Перетащите чтобы изменить ширину"></div>
             <div class="side-header" id="sideHeader">
                 <div>
-                    <div class="side-title">ИИ-помощник</div>
-                    <div class="side-sub">Перетащите заголовок чтобы переместить панель; потяните слева чтобы изменить ширину.</div>
+                    <div class="side-title">Режиссер ИИ</div>
+                    <div class="small-muted">Анализ и генерация кадров</div>
                 </div>
                 <div style="display:flex;gap:8px;align-items:center">
-                    <button id="panelCollapseBtn" class="button-ghost" title="Свернуть/развернуть">↔</button>
                     <button id="panelCloseBtn" class="button-ghost" title="Скрыть панель">✕</button>
                 </div>
             </div>
 
-            <div style="font-weight:600">Заголовок (проблема)</div>
+            <div style="font-weight:600">Тема сцены</div>
             <div id="ai-title" class="small-muted" style="min-height:34px">—</div>
 
             <div style="height:10px"></div>
-            <div style="font-weight:600">Исходы (варианты решения)</div>
+            <div style="font-weight:600">Текущие кадры</div>
             <div id="ai-outcomes" class="small-muted" style="min-height:60px">—</div>
 
             <div style="height:12px"></div>
-            <div class="ai-box" id="ai-output">Нажмите «Предложить», чтобы ИИ проанализировал варианты и добавил плюсы/минусы как ноды.</div>
+            <div class="ai-box" id="ai-output">Используйте кнопки для добавления кадров или анализа сцены.</div>
 
             <div class="action-row" style="margin-top:12px">
-                <button class="button-primary" id="ai-run">Предложить</button>
-                <button class="button-danger" id="ai-reset">Сбросить ответы</button>
+                <button class="button-primary" id="ai-next-frame">Следующий кадр (ИИ)</button>
+                <button class="button-special" id="ai-analyze-frames">Анализ кадров</button>
             </div>
 
             <div style="height:8px"></div>
@@ -817,34 +640,45 @@
         </div>
     </div>
 
-    <!-- Modal Dialog -->
-    <div class="modal-overlay" id="modalOverlay">
-        <div class="modal-content">
-            <div class="modal-title" id="modalTitle">Подтверждение</div>
-            <div class="modal-text" id="modalText">Вы уверены, что хотите выполнить это действие?</div>
-            <div class="modal-actions">
-                <button class="modal-button cancel" id="modalCancel">Отмена</button>
-                <button class="modal-button confirm" id="modalConfirm">ОК</button>
+    <!-- Modal для анализа кадров -->
+    <div class="frame-analysis-modal" id="frameAnalysisModal">
+        <div class="frame-analysis-content">
+            <div style="font-weight:600;font-size:18px;margin-bottom:15px;">Выбор кадров для анализа</div>
+            <div class="small-muted" style="margin-bottom:15px;">Выберите кадры для сравнения и анализа:</div>
+
+            <div class="frame-list" id="frameList">
+                <!-- Список кадров будет генерироваться здесь -->
+            </div>
+
+            <div class="action-row" style="margin-top:20px;">
+                <button class="button-ghost" id="modalCancel">Отмена</button>
+                <button class="button-special" id="modalAnalyze">Анализировать</button>
             </div>
         </div>
     </div>
 
 <script>
 // ========== КОНФИГУРАЦИЯ ==========
-const STORAGE_KEY = 'viora_flow_state_v1';
+const STORAGE_KEY = 'viora_flow_state_v3';
 const canvas = document.getElementById('canvasArea');
+const canvasContainer = document.getElementById('canvasContainer');
+const canvasTransform = document.getElementById('canvasTransform');
+const canvasContent = document.getElementById('canvasContent');
 const connectorsSvg = document.getElementById('connectors');
 const sidePanel = document.getElementById('sidePanel');
-const panelHandle = document.getElementById('panelHandle');
 const sideHeader = document.getElementById('sideHeader');
-const panelCollapseBtn = document.getElementById('panelCollapseBtn');
 const panelCloseBtn = document.getElementById('panelCloseBtn');
 const openPanelBtn = document.getElementById('openPanelBtn');
-const modalOverlay = document.getElementById('modalOverlay');
-const modalTitle = document.getElementById('modalTitle');
-const modalText = document.getElementById('modalText');
+const frameAnalysisModal = document.getElementById('frameAnalysisModal');
+const frameList = document.getElementById('frameList');
 const modalCancel = document.getElementById('modalCancel');
-const modalConfirm = document.getElementById('modalConfirm');
+const modalAnalyze = document.getElementById('modalAnalyze');
+const zoomInBtn = document.getElementById('zoomIn');
+const zoomOutBtn = document.getElementById('zoomOut');
+const resetZoomBtn = document.getElementById('resetZoom');
+const zoomLevelDisplay = document.getElementById('zoomLevel');
+const aiNextFrameBtn = document.getElementById('ai-next-frame');
+const aiAnalyzeFramesBtn = document.getElementById('ai-analyze-frames');
 
 let edges = [];
 let nodeCounter = 1;
@@ -852,121 +686,155 @@ const MAX_RETRIES = 4;
 let isLockedUntil = 0;
 let timerInterval = null;
 let _saveTimeout = null;
-let modalResolve = null;
+let selectedFramesForAnalysis = new Set();
 
-// УВЕЛИЧЕНЫ РАССТОЯНИЯ МЕЖДУ БЛОКАМИ
-const LAYOUT_CONFIG = {
-  NODE_WIDTH: 280,
-  NODE_HEIGHT: 80,
-  COLUMN_SPACING: 500, // Увеличено с 400
-  ROW_SPACING: 200, // Увеличено с 150
-  MARGIN: 60, // Увеличено с 40
-  HORIZONTAL_OFFSET: 450, // Увеличено с 350
-  VERTICAL_SPACING: 120 // Добавлено для лучшего вертикального расположения
+// ПЕРЕМЕННЫЕ ДЛЯ МАСШТАБИРОВАНИЯ
+let scale = 1;
+let translateX = 0;
+let translateY = 0;
+let isPanning = false;
+let panStart = { x: 0, y: 0 };
+let startTranslate = { x: 0, y: 0 };
+
+const ZOOM_CONFIG = {
+    min: 0.1,
+    max: 3.0,
+    step: 0.1,
+    default: 1.0
 };
 
-// ========== МОДАЛЬНОЕ ОКНО ==========
-function showModal(title, text) {
-    return new Promise((resolve) => {
-        modalTitle.textContent = title;
-        modalText.textContent = text;
-        modalOverlay.classList.add('active');
-        modalResolve = resolve;
-    });
+// КОНФИГУРАЦИЯ РАСПОЛОЖЕНИЯ И ГРАНИЦ
+const LAYOUT_CONFIG = {
+  NODE_WIDTH: 300,
+  NODE_HEIGHT: 80,
+  COLUMN_SPACING: 400,
+  ROW_SPACING: 150,
+  CANVAS_WIDTH: 5000,
+  CANVAS_HEIGHT: 5000
+};
+
+// Границы перемещения блоков (уменьшены для комфортной работы)
+const BOUNDARIES = {
+  minX: 50,
+  minY: 50,
+  maxX: LAYOUT_CONFIG.CANVAS_WIDTH - LAYOUT_CONFIG.NODE_WIDTH - 50,
+  maxY: LAYOUT_CONFIG.CANVAS_HEIGHT - LAYOUT_CONFIG.NODE_HEIGHT - 50
+};
+
+// ========== ФУНКЦИИ МАСШТАБИРОВАНИЯ ==========
+function updateTransform() {
+    canvasTransform.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
+    zoomLevelDisplay.textContent = `${Math.round(scale * 100)}%`;
+    renderConnections();
+    saveState();
 }
 
-modalCancel.addEventListener('click', () => {
-    modalOverlay.classList.remove('active');
-    if (modalResolve) modalResolve(false);
-});
+function zoomToPoint(zoomFactor, clientX, clientY) {
+    const rect = canvasContainer.getBoundingClientRect();
+    const pointX = clientX - rect.left;
+    const pointY = clientY - rect.top;
 
-modalConfirm.addEventListener('click', () => {
-    modalOverlay.classList.remove('active');
-    if (modalResolve) modalResolve(true);
-});
+    const worldX = (pointX - translateX) / scale;
+    const worldY = (pointY - translateY) / scale;
 
-modalOverlay.addEventListener('click', (e) => {
-    if (e.target === modalOverlay) {
-        modalOverlay.classList.remove('active');
-        if (modalResolve) modalResolve(false);
-    }
-});
+    scale = Math.max(ZOOM_CONFIG.min, Math.min(ZOOM_CONFIG.max, zoomFactor));
 
-// ========== РАСШИРЕНИЕ КАНВАСА ==========
-function expandCanvasIfNeeded(x, y) {
-    const padding = 1500; // Увеличено для большего пространства
-    let needsUpdate = false;
-    const currentWidth = canvas.scrollWidth;
-    const currentHeight = canvas.scrollHeight;
+    translateX = pointX - worldX * scale;
+    translateY = pointY - worldY * scale;
 
-    if (x < padding) {
-        canvas.style.paddingLeft = (padding - x) + 'px';
-        needsUpdate = true;
-    }
-
-    if (y < padding) {
-        canvas.style.paddingTop = (padding - y) + 'px';
-        needsUpdate = true;
-    }
-
-    if (x > currentWidth - padding) {
-        canvas.style.paddingRight = (x - currentWidth + padding) + 'px';
-        needsUpdate = true;
-    }
-
-    if (y > currentHeight - padding) {
-        canvas.style.paddingBottom = (y - currentHeight + padding) + 'px';
-        needsUpdate = true;
-    }
-
-    if (needsUpdate) {
-        renderConnections();
-    }
+    updateTransform();
 }
 
-function resetCanvasPadding() {
-    canvas.style.padding = '1500px'; // Увеличено для большего пространства
+function zoomIn() {
+    const newScale = Math.min(ZOOM_CONFIG.max, scale + ZOOM_CONFIG.step);
+    const rect = canvasContainer.getBoundingClientRect();
+    zoomToPoint(newScale, rect.width / 2, rect.height / 2);
 }
 
-// ========== ПАННИНГ КАНВАСА ==========
-let isPanning = false;
-let panStartX = 0;
-let panStartY = 0;
-let startScrollLeft = 0;
-let startScrollTop = 0;
+function zoomOut() {
+    const newScale = Math.max(ZOOM_CONFIG.min, scale - ZOOM_CONFIG.step);
+    const rect = canvasContainer.getBoundingClientRect();
+    zoomToPoint(newScale, rect.width / 2, rect.height / 2);
+}
 
-canvas.addEventListener('mousedown', (e) => {
-  const target = e.target;
-  if (target.closest('.node') || target.closest('.add-btn') || target.closest('.remove-btn') || target.closest('.title')) return;
-  if (e.button !== 0) return;
-  isPanning = true;
-  panStartX = e.clientX;
-  panStartY = e.clientY;
-  startScrollLeft = canvas.scrollLeft;
-  startScrollTop = canvas.scrollTop;
-  canvas.classList.add('canvas-panning');
-  document.body.style.userSelect = 'none';
+function resetZoom() {
+    scale = ZOOM_CONFIG.default;
+    translateX = 0;
+    translateY = 0;
+    updateTransform();
+}
+
+function centerOnRoot() {
+    const root = byId('root');
+    if(!root) return;
+
+    const rootX = parseFloat(root.style.left) || LAYOUT_CONFIG.CANVAS_WIDTH / 2;
+    const rootY = parseFloat(root.style.top) || LAYOUT_CONFIG.CANVAS_HEIGHT / 2;
+
+    const containerWidth = canvasContainer.clientWidth;
+    const containerHeight = canvasContainer.clientHeight;
+
+    translateX = -rootX * scale + containerWidth / 2;
+    translateY = -rootY * scale + containerHeight / 2;
+
+    updateTransform();
+}
+
+// ОБРАБОТЧИКИ МАСШТАБИРОВАНИЯ
+zoomInBtn.addEventListener('click', zoomIn);
+zoomOutBtn.addEventListener('click', zoomOut);
+resetZoomBtn.addEventListener('click', resetZoom);
+
+// Добавляем кнопку центрирования в zoom-контролы
+const zoomControls = document.querySelector('.zoom-controls');
+const centerBtn = document.createElement('button');
+centerBtn.className = 'zoom-btn';
+centerBtn.id = 'centerRoot';
+centerBtn.title = 'Центрировать на главном блоке';
+centerBtn.textContent = '⌖';
+zoomControls.appendChild(centerBtn);
+centerBtn.addEventListener('click', centerOnRoot);
+
+canvasContainer.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const zoomFactor = e.deltaY > 0 ? scale - ZOOM_CONFIG.step : scale + ZOOM_CONFIG.step;
+    zoomToPoint(zoomFactor, e.clientX, e.clientY);
+});
+
+// ПАННОРАМИРОВАНИЕ
+canvasContainer.addEventListener('mousedown', (e) => {
+    const target = e.target;
+    if (target.closest('.node') || target.closest('.add-btn') || target.closest('.remove-btn') || target.closest('.title')) return;
+    if (e.button !== 0) return;
+
+    isPanning = true;
+    panStart.x = e.clientX;
+    panStart.y = e.clientY;
+    startTranslate.x = translateX;
+    startTranslate.y = translateY;
+
+    canvasContainer.classList.add('canvas-panning');
+    document.body.style.userSelect = 'none';
 });
 
 document.addEventListener('mousemove', (e) => {
-  if (!isPanning) return;
-  const dx = e.clientX - panStartX;
-  const dy = e.clientY - panStartY;
-  canvas.scrollLeft = startScrollLeft - dx;
-  canvas.scrollTop = startScrollTop - dy;
-  renderConnections();
+    if (!isPanning) return;
+    const dx = e.clientX - panStart.x;
+    const dy = e.clientY - panStart.y;
+    translateX = startTranslate.x + dx;
+    translateY = startTranslate.y + dy;
+    updateTransform();
 });
 
-document.addEventListener('mouseup', (e) => {
-  if (!isPanning) return;
-  isPanning = false;
-  canvas.classList.remove('canvas-panning');
-  document.body.style.userSelect = '';
-  saveState();
-  renderConnections();
+document.addEventListener('mouseup', () => {
+    if (!isPanning) return;
+    isPanning = false;
+    canvasContainer.classList.remove('canvas-panning');
+    document.body.style.userSelect = '';
+    saveState();
 });
 
-// ========== УПРАВЛЕНИЕ ПОЗИЦИЯМИ ==========
+// ========== УПРАВЛЕНИЕ ПОЗИЦИЯМИ С ГРАНИЦАМИ ==========
 let occupiedPositions = new Map();
 
 function resetOccupiedPositions() {
@@ -974,14 +842,18 @@ function resetOccupiedPositions() {
 }
 
 function registerPosition(nodeId, x, y) {
-  const gridX = Math.floor(x / 30); // Увеличена сетка
+  const gridX = Math.floor(x / 30);
   const gridY = Math.floor(y / 30);
   const key = `${gridX}_${gridY}`;
   occupiedPositions.set(key, { nodeId, x, y });
 }
 
 function isPositionFree(x, y, width = LAYOUT_CONFIG.NODE_WIDTH, height = LAYOUT_CONFIG.NODE_HEIGHT) {
-  if (x < LAYOUT_CONFIG.MARGIN || y < LAYOUT_CONFIG.MARGIN) {
+  // Проверяем границы с учетом размера блока
+  if (x < BOUNDARIES.minX || y < BOUNDARIES.minY) {
+    return false;
+  }
+  if (x + width > BOUNDARIES.maxX || y + height > BOUNDARIES.maxY) {
     return false;
   }
 
@@ -993,48 +865,79 @@ function isPositionFree(x, y, width = LAYOUT_CONFIG.NODE_WIDTH, height = LAYOUT_
   for (let gridX = startGridX; gridX <= endGridX; gridX++) {
     for (let gridY = startGridY; gridY <= endGridY; gridY++) {
       const key = `${gridX}_${gridY}`;
-      if (occupiedPositions.has(key)) {
-        return false;
-      }
+      if (occupiedPositions.has(key)) return false;
     }
   }
   return true;
 }
 
-function findFreePosition(nearX, nearY, maxAttempts = 100) {
-  if (isPositionFree(nearX, nearY)) {
-    return { x: nearX, y: nearY };
+function getViewportCenter() {
+  // Получаем центр видимой области
+  const containerWidth = canvasContainer.clientWidth;
+  const containerHeight = canvasContainer.clientHeight;
+
+  // Преобразуем экранные координаты в мировые
+  const worldX = (-translateX + containerWidth / 2) / scale;
+  const worldY = (-translateY + containerHeight / 2) / scale;
+
+  return {
+    x: worldX - LAYOUT_CONFIG.NODE_WIDTH / 2,
+    y: worldY - LAYOUT_CONFIG.NODE_HEIGHT / 2
+  };
+}
+
+function findFreePosition(nearX, nearY) {
+  // Если координаты не указаны, используем центр видимой области
+  let targetX = nearX;
+  let targetY = nearY;
+
+  if ((!targetX && targetX !== 0) || (!targetY && targetY !== 0)) {
+    const viewportCenter = getViewportCenter();
+    targetX = viewportCenter.x;
+    targetY = viewportCenter.y;
   }
 
-  // Увеличено расстояние при поиске свободной позиции
-  for (let radius = 1; radius <= 20; radius++) {
-    for (let angle = 0; angle < 360; angle += 30) {
+  // Сначала проверяем указанную позицию
+  if (isPositionFree(targetX, targetY)) {
+    const clampedPos = clampToBoundaries(targetX, targetY);
+    return { x: clampedPos.x, y: clampedPos.y };
+  }
+
+  // Ищем свободное место по спирали от указанной точки
+  for (let radius = 1; radius <= 15; radius++) {
+    const points = 8;
+    for (let i = 0; i < points; i++) {
+      const angle = (i * 360) / points;
       const rad = angle * Math.PI / 180;
-      const x = nearX + Math.cos(rad) * radius * 100;
-      const y = nearY + Math.sin(rad) * radius * 80;
+      const x = targetX + Math.cos(rad) * radius * 120;
+      const y = targetY + Math.sin(rad) * radius * 100;
 
       if (isPositionFree(x, y)) {
-        return { x, y };
+        const clampedPos = clampToBoundaries(x, y);
+        return { x: clampedPos.x, y: clampedPos.y };
       }
     }
   }
 
-  return {
-    x: nearX + Math.random() * 400 - 200,
-    y: nearY + Math.random() * 400 - 200
-  };
+  // Если не нашли, возвращаем позицию в пределах границ
+  const clampedPos = clampToBoundaries(targetX, targetY);
+  return { x: clampedPos.x, y: clampedPos.y };
+}
+
+function clampToBoundaries(x, y, width = LAYOUT_CONFIG.NODE_WIDTH, height = LAYOUT_CONFIG.NODE_HEIGHT) {
+  const clampedX = Math.max(BOUNDARIES.minX, Math.min(BOUNDARIES.maxX - width, x));
+  const clampedY = Math.max(BOUNDARIES.minY, Math.min(BOUNDARIES.maxY - height, y));
+  return { x: clampedX, y: clampedY };
 }
 
 // ========== СОХРАНЕНИЕ И ЗАГРУЗКА ==========
-function saveState(debounceMs = 200) {
-  if (_saveTimeout) clearTimeout(_saveTimeout);
-  _saveTimeout = setTimeout(() => {
+function saveState(debounceMs = 200){
+  if(_saveTimeout) clearTimeout(_saveTimeout);
+  _saveTimeout = setTimeout(()=> {
     try {
       const state = serializeState();
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    } catch (e) {
-      console.error('saveState', e);
-    }
+    } catch(e){ console.error('saveState', e); }
   }, debounceMs);
 }
 
@@ -1047,6 +950,7 @@ function serializeState(){
     type: n.dataset.type || '',
     collapsed: n.dataset.collapsed === 'true'
   }));
+
   const panelRect = sidePanel.getBoundingClientRect();
   const editorRect = document.getElementById('editorPage').getBoundingClientRect();
   const panelState = {
@@ -1054,97 +958,112 @@ function serializeState(){
     top: panelRect.top - editorRect.top,
     width: panelRect.width,
     height: panelRect.height,
-    collapsed: sidePanel.dataset.collapsed === '1',
     hidden: sidePanel.style.display === 'none'
   };
+
+  const viewState = { scale, translateX, translateY };
+
   return {
-    version: 1,
+    version: 3,
     nodes,
     edges,
     nodeCounter,
     aiOutput: document.getElementById('ai-output')?.innerHTML || '',
     isLockedUntil,
-    canvasScroll: {left: canvas.scrollLeft, top: canvas.scrollTop},
+    viewState,
     panelState
   };
 }
 
-function loadState() {
+function loadState(){
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return;
-    const s = JSON.parse(raw);
-    if (!s) return;
-    if (typeof s.nodeCounter === 'number') nodeCounter = s.nodeCounter;
 
-    resetOccupiedPositions();
+    // Всегда центрируем на корневом блоке при загрузке
+    if(raw) {
+      const s = JSON.parse(raw);
+      if(s) {
+        if(typeof s.nodeCounter === 'number') nodeCounter = s.nodeCounter;
 
-    const root = byId('root');
-    if (root) {
-      const savedRoot = (s.nodes || []).find(n => n.id === 'root');
-      if (savedRoot) {
-        root.style.left = (savedRoot.left || 0) + 'px';
-        root.style.top = (savedRoot.top || 0) + 'px';
-        const t = root.querySelector('.title');
-        if (t) t.innerText = savedRoot.title || '';
-        registerPosition('root', savedRoot.left || 0, savedRoot.top || 0);
-      }
-    }
+        resetOccupiedPositions();
 
-    document.querySelectorAll('.node').forEach(n => { if (n.dataset.id !== 'root') n.remove(); });
-    edges = [];
-
-    if (Array.isArray(s.nodes)) {
-      s.nodes.forEach(n => {
-        if (n.id === 'root') return;
-        const node = recreateNode(n.id, n.left || 100, n.top || 100, n.title || 'Новый кадр');
-        if (n.type) node.dataset.type = n.type;
-        if (n.collapsed) {
-          node.dataset.collapsed = 'true';
-          addToggleButton(node);
+        if (s.viewState && s.version >= 3) {
+          scale = s.viewState.scale || ZOOM_CONFIG.default;
+          translateX = s.viewState.translateX || 0;
+          translateY = s.viewState.translateY || 0;
         }
-        registerPosition(n.id, n.left || 100, n.top || 100);
-      });
-    }
 
-    if (Array.isArray(s.edges)) edges = s.edges.slice();
-    if (s.aiOutput !== undefined) document.getElementById('ai-output').innerHTML = s.aiOutput || '';
+        const root = document.querySelector('[data-id="root"]');
+        if(root){
+          const savedRoot = (s.nodes || []).find(n=>n.id === 'root');
+          if(savedRoot){
+            // Восстанавливаем корневой блок
+            const clampedPos = clampToBoundaries(savedRoot.left||0, savedRoot.top||0);
+            root.style.left = clampedPos.x + 'px';
+            root.style.top = clampedPos.y + 'px';
+            const t = root.querySelector('.title');
+            if(t) t.innerText = savedRoot.title || '';
+            registerPosition('root', clampedPos.x, clampedPos.y);
+          }
+        }
 
-    if (s.panelState) {
-      const editorRect = document.getElementById('editorPage').getBoundingClientRect();
-      sidePanel.style.left = (s.panelState.left || 0) + 'px';
-      sidePanel.style.top = (s.panelState.top || 0) + 'px';
-      sidePanel.style.right = 'auto';
-      if (s.panelState.width) sidePanel.style.width = s.panelState.width + 'px';
-      if (s.panelState.height) sidePanel.style.height = s.panelState.height + 'px';
-      if (s.panelState.collapsed) sidePanel.dataset.collapsed = '1';
-      if (s.panelState.hidden) {
-        sidePanel.style.display = 'none';
-        openPanelBtn.classList.add('visible');
+        document.querySelectorAll('.node').forEach(n => { if(n.dataset.id !== 'root') n.remove(); });
+        edges = [];
+
+        if(Array.isArray(s.nodes)){
+          s.nodes.forEach(n => {
+            if(n.id === 'root') return;
+            const clampedPos = clampToBoundaries(n.left || 100, n.top || 100);
+            const node = recreateNode(n.id, clampedPos.x, clampedPos.y, n.title || 'Новый кадр');
+            if(n.type) node.dataset.type = n.type;
+            registerPosition(n.id, clampedPos.x, clampedPos.y);
+          });
+        }
+
+        if(Array.isArray(s.edges)) edges = s.edges.slice();
+        if(s.aiOutput !== undefined) document.getElementById('ai-output').innerHTML = s.aiOutput || '';
+
+        if(s.panelState){
+          const editorRect = document.getElementById('editorPage').getBoundingClientRect();
+          sidePanel.style.left = (s.panelState.left || 0) + 'px';
+          sidePanel.style.top = (s.panelState.top || 0) + 'px';
+          sidePanel.style.right = 'auto';
+          if(s.panelState.width) sidePanel.style.width = s.panelState.width + 'px';
+          if(s.panelState.height) sidePanel.style.height = s.panelState.height + 'px';
+          if(s.panelState.hidden) {
+            sidePanel.style.display = 'none';
+            openPanelBtn.classList.add('visible');
+          }
+        }
+
+        if(s.isLockedUntil){
+          isLockedUntil = s.isLockedUntil;
+          updateTimerUI();
+          if(isLockedUntil > Date.now()){
+            timerInterval && clearInterval(timerInterval);
+            timerInterval = setInterval(updateTimerUI, 250);
+          }
+        }
+      }
+    } else {
+      // Первый запуск - создаем корневой блок в центре
+      const root = document.querySelector('[data-id="root"]');
+      if(root) {
+        const centerX = LAYOUT_CONFIG.CANVAS_WIDTH / 2 - LAYOUT_CONFIG.NODE_WIDTH / 2;
+        const centerY = LAYOUT_CONFIG.CANVAS_HEIGHT / 2 - LAYOUT_CONFIG.NODE_HEIGHT / 2;
+
+        root.style.left = centerX + 'px';
+        root.style.top = centerY + 'px';
+        registerPosition('root', centerX, centerY);
       }
     }
 
-    if (s.isLockedUntil) {
-      isLockedUntil = s.isLockedUntil;
-      updateTimerUI();
-      if (isLockedUntil > Date.now()) {
-        timerInterval && clearInterval(timerInterval);
-        timerInterval = setInterval(updateTimerUI, 250);
-      }
-    }
+    // ВСЕГДА центрируем на корневом блоке после загрузки
+    centerOnRoot();
 
-    if (s.canvasScroll) requestAnimationFrame(() => {
-      canvas.scrollLeft = s.canvasScroll.left || 0;
-      canvas.scrollTop = s.canvasScroll.top || 0;
-      renderConnections();
-    });
-
-    restoreCollapsedState();
     renderConnections();
     updateAIPreview();
-  } catch (e) {
-    console.error('loadState', e);
-  }
+  } catch(e){ console.error('loadState', e); }
 }
 
 // ========== ТАЙМЕР ==========
@@ -1158,16 +1077,21 @@ function setLock(seconds){
 
 function updateTimerUI(){
   const el = document.getElementById('ai-timer');
-  const runBtn = document.getElementById('ai-run');
+  const runBtn = document.getElementById('ai-next-frame');
+  const analyzeBtn = document.getElementById('ai-analyze-frames');
   const remaining = Math.max(0, Math.ceil((isLockedUntil - Date.now()) / 1000));
   if(remaining > 0){
     el.innerText = `${remaining}s`;
     runBtn.disabled = true;
+    analyzeBtn.disabled = true;
     runBtn.style.opacity='0.6';
+    analyzeBtn.style.opacity='0.6';
   } else {
     el.innerText = '—';
     runBtn.disabled = false;
+    analyzeBtn.disabled = false;
     runBtn.style.opacity='';
+    analyzeBtn.style.opacity='';
     if(timerInterval){
       clearInterval(timerInterval);
       timerInterval=null;
@@ -1186,20 +1110,25 @@ function genId(){ nodeCounter = (nodeCounter||0) + 1; saveState(); return 'node-
 function recreateNode(id, x=100, y=200, text='Новый кадр'){
   const div = document.createElement('div');
   div.className = 'node';
-  div.style.left = x + 'px';
-  div.style.top = y + 'px';
+
+  const clampedPos = clampToBoundaries(x, y);
+  div.style.left = clampedPos.x + 'px';
+  div.style.top = clampedPos.y + 'px';
+
   div.dataset.id = id;
+  div.dataset.type = 'frame';
   div.innerHTML = `
     <div contenteditable class="title">${text}</div>
     <div class="controls">
-      <div class="small-muted">${id==='root' ? 'Главный пункт' : 'Кадр'}</div>
+      <div class="small-muted">Кадр</div>
       <div class="buttons-container">
         <div class="add-btn" title="Добавить кадр" data-add>+</div>
-        ${id==='root' ? '' : '<div class="remove-btn" title="Удалить узел">✕</div>'}
+        <div class="next-frame-btn" title="Следующий кадр (ИИ)" data-next-frame>→</div>
+        ${id==='root' ? '' : '<div class="remove-btn" title="Удалить кадр">✕</div>'}
       </div>
     </div>
   `;
-  canvas.appendChild(div);
+  canvasContent.appendChild(div);
   makeDraggable(div);
   setupNodeButtons(div);
   const t = div.querySelector('.title');
@@ -1207,11 +1136,9 @@ function recreateNode(id, x=100, y=200, text='Новый кадр'){
   return div;
 }
 
-function createNode(x=100, y=200, text='Новый кадр', parentId=null, type=null){
+function createNode(x=100, y=200, text='Новый кадр', parentId=null, type='frame'){
   const id = genId();
   const freePos = findFreePosition(x, y);
-  expandCanvasIfNeeded(freePos.x, freePos.y);
-
   const node = recreateNode(id, freePos.x, freePos.y, text);
   if(type) node.dataset.type = type;
   if(parentId) addEdge(parentId, id);
@@ -1225,10 +1152,9 @@ function createNode(x=100, y=200, text='Новый кадр', parentId=null, typ
 
 function makeDraggable(elem){
   let dragging=false, startX=0, startY=0, origLeft=0, origTop=0;
-  const canvasRect = ()=>canvas.getBoundingClientRect();
 
   elem.addEventListener('mousedown', e=>{
-    if(e.target.closest('.add-btn, .remove-btn, .toggle-btn')) return;
+    if(e.target.closest('.add-btn, .remove-btn, .next-frame-btn, .analyze-btn')) return;
     if(e.target.closest('.title')) return;
     dragging=true;
     startX=e.clientX;
@@ -1243,8 +1169,15 @@ function makeDraggable(elem){
     if(!dragging) return;
     const dx=e.clientX-startX;
     const dy=e.clientY-startY;
-    const newLeft=origLeft+dx;
-    const newTop=origTop+dy;
+
+    let newLeft = origLeft+dx;
+    let newTop = origTop+dy;
+
+    // Применяем границы при перемещении
+    const clampedPos = clampToBoundaries(newLeft, newTop);
+    newLeft = clampedPos.x;
+    newTop = clampedPos.y;
+
     elem.style.left=newLeft+'px';
     elem.style.top=newTop+'px';
     renderConnections();
@@ -1254,44 +1187,11 @@ function makeDraggable(elem){
     if(!dragging) return;
     dragging=false;
     elem.style.zIndex='';
-    registerPosition(elem.dataset.id, parseFloat(elem.style.left)||0, parseFloat(elem.style.top)||0);
-    saveState();
-    renderConnections();
-  });
 
-  // Touch events
-  elem.addEventListener('touchstart', e=>{
-    if(e.touches.length !== 1) return;
-    const t = e.touches[0];
-    if(t.target.closest('.add-btn, .remove-btn, .toggle-btn')) return;
-    if(t.target.closest('.title')) return;
-    dragging=true;
-    startX=t.clientX;
-    startY=t.clientY;
-    origLeft=parseFloat(elem.style.left)||0;
-    origTop=parseFloat(elem.style.top)||0;
-    e.preventDefault();
-    elem.style.zIndex = '1000';
-  }, { passive: false });
+    const finalLeft = parseFloat(elem.style.left)||0;
+    const finalTop = parseFloat(elem.style.top)||0;
 
-  document.addEventListener('touchmove', e=>{
-    if(!dragging) return;
-    const t = e.touches[0];
-    const dx=t.clientX-startX;
-    const dy=t.clientY-startY;
-    const newLeft=origLeft+dx;
-    const newTop=origTop+dy;
-    elem.style.left=newLeft+'px';
-    elem.style.top=newTop+'px';
-    renderConnections();
-    e.preventDefault();
-  }, { passive: false });
-
-  document.addEventListener('touchend', ()=>{
-    if(!dragging) return;
-    dragging=false;
-    elem.style.zIndex='';
-    registerPosition(elem.dataset.id, parseFloat(elem.style.left)||0, parseFloat(elem.style.top)||0);
+    registerPosition(elem.dataset.id, finalLeft, finalTop);
     saveState();
     renderConnections();
   });
@@ -1299,118 +1199,39 @@ function makeDraggable(elem){
 
 function setupNodeButtons(node){
   const addBtn = node.querySelector('[data-add]');
+  const nextFrameBtn = node.querySelector('[data-next-frame]');
   const removeBtn = node.querySelector('.remove-btn');
-  const toggleBtn = node.querySelector('.toggle-btn');
 
   if(addBtn) addBtn.addEventListener('click', e=>{
     e.stopPropagation();
     const rect = node.getBoundingClientRect();
-    const canvasRect = canvas.getBoundingClientRect();
+    const canvasRect = canvasContent.getBoundingClientRect();
 
-    // ВСЕ КАДРЫ ИДУТ ВНИЗ
-    let newX = rect.left - canvasRect.left;
-    let newY = rect.top - canvasRect.top + rect.height + LAYOUT_CONFIG.ROW_SPACING;
+    let newX = rect.left - canvasRect.left + 400;
+    let newY = rect.top - canvasRect.top;
 
-    createNode(newX, newY, 'Новый кадр', node.dataset.id);
+    // Корректируем позицию, чтобы не выходить за границы
+    const clampedX = Math.min(newX, BOUNDARIES.maxX - LAYOUT_CONFIG.NODE_WIDTH);
+
+    createNode(clampedX, newY, 'Новый кадр', node.dataset.id, 'frame');
+  });
+
+  if(nextFrameBtn) nextFrameBtn.addEventListener('click', e=>{
+    e.stopPropagation();
+    generateNextFrame(node);
   });
 
   if(removeBtn) removeBtn.addEventListener('click', e=>{
     e.stopPropagation();
     removeNode(node.dataset.id);
   });
-
-  if(toggleBtn) toggleBtn.addEventListener('click', e=>{
-    e.stopPropagation();
-    toggleCollapse(node);
-  });
-}
-
-function addToggleButton(node) {
-  const buttonsContainer = node.querySelector('.buttons-container');
-  if (!buttonsContainer) return;
-
-  if (!buttonsContainer.querySelector('.toggle-btn')) {
-    const toggleBtn = document.createElement('div');
-    toggleBtn.className = 'toggle-btn';
-    toggleBtn.title = 'Свернуть/развернуть';
-    toggleBtn.textContent = '−';
-    buttonsContainer.appendChild(toggleBtn);
-    setupNodeButtons(node);
-  }
-}
-
-// РЕКУРСИВНОЕ СВОРАЧИВАНИЕ ВСЕХ ПОСЛЕДУЮЩИХ БЛОКОВ
-function toggleCollapse(node) {
-  const isCollapsed = node.dataset.collapsed === 'true';
-  node.dataset.collapsed = (!isCollapsed).toString();
-
-  const toggleBtn = node.querySelector('.toggle-btn');
-  if (toggleBtn) {
-    toggleBtn.textContent = isCollapsed ? '−' : '+';
-  }
-
-  collapseAllChildren(node, !isCollapsed);
-  saveState();
-}
-
-function collapseAllChildren(parentNode, shouldCollapse) {
-  const parentId = parentNode.dataset.id;
-
-  const childNodes = findAllChildNodes(parentId);
-
-  childNodes.forEach(childNode => {
-    if (shouldCollapse) {
-      childNode.classList.add('hidden');
-    } else {
-      childNode.classList.remove('hidden');
-    }
-
-    const childToggleBtn = childNode.querySelector('.toggle-btn');
-    if (childToggleBtn && childNode.dataset.type &&
-        (childNode.dataset.type.includes('container') || childNode.dataset.collapsed === 'true')) {
-      childToggleBtn.textContent = shouldCollapse ? '+' : '−';
-    }
-  });
-
-  renderConnections();
-}
-
-function findAllChildNodes(parentId) {
-  const children = [];
-  const visited = new Set();
-
-  function findChildrenRecursive(id) {
-    if (visited.has(id)) return;
-    visited.add(id);
-
-    edges.forEach(edge => {
-      if (edge.from === id) {
-        const childNode = byId(edge.to);
-        if (childNode && !children.includes(childNode)) {
-          children.push(childNode);
-          findChildrenRecursive(edge.to);
-        }
-      }
-    });
-  }
-
-  findChildrenRecursive(parentId);
-  return children;
-}
-
-function restoreCollapsedState() {
-  document.querySelectorAll('.node[data-collapsed="true"]').forEach(node => {
-    collapseAllChildren(node, true);
-  });
 }
 
 function removeNode(id){
   const node = byId(id);
   if(!node) return;
-
   const childEdges = edges.filter(e => e.from === id);
   childEdges.forEach(e => removeNode(e.to));
-
   edges = edges.filter(e => e.from !== id && e.to !== id);
   node.remove();
   updateAIPreview();
@@ -1423,36 +1244,20 @@ function addEdge(fromId, toId){
   renderConnections();
 }
 
-// ========== ОТРИСОВКА СОЕДИНЕНИЙ (ИСПРАВЛЕННАЯ) ==========
+// ========== ОТРИСОВКА СОЕДИНЕНИЙ ==========
 function renderConnections(){
   const svg = connectorsSvg;
   svg.innerHTML = '';
-
-  // Устанавливаем размеры SVG равными размерам canvas с учетом скролла
-  const totalWidth = canvas.scrollWidth;
-  const totalHeight = canvas.scrollHeight;
-
-  svg.setAttribute('width', totalWidth);
-  svg.setAttribute('height', totalHeight);
-
   edges.forEach(e => {
     const fromNode = byId(e.from);
     const toNode = byId(e.to);
     if(!fromNode || !toNode) return;
 
-    if (fromNode.classList.contains('hidden') || toNode.classList.contains('hidden')) return;
-
-    // ИСПРАВЛЕНИЕ: Используем абсолютные координаты относительно canvas
-    const fromRect = fromNode.getBoundingClientRect();
-    const toRect = toNode.getBoundingClientRect();
-
-    // Координаты относительно документа
-    const fromX = parseFloat(fromNode.style.left) + fromRect.width / 2;
-    const fromY = parseFloat(fromNode.style.top) + fromRect.height;
-    const toX = parseFloat(toNode.style.left) + toRect.width / 2;
+    const fromX = parseFloat(fromNode.style.left) + fromNode.offsetWidth / 2;
+    const fromY = parseFloat(fromNode.style.top) + fromNode.offsetHeight;
+    const toX = parseFloat(toNode.style.left) + toNode.offsetWidth / 2;
     const toY = parseFloat(toNode.style.top);
 
-    // Создаем плавную кривую Безье
     const midY = (fromY + toY) / 2;
     const controlOffset = Math.min(Math.abs(toX - fromX) * 0.5, 150);
 
@@ -1461,7 +1266,7 @@ function renderConnections(){
                        ${toX} ${toY - controlOffset},
                        ${toX} ${toY}`;
 
-    // Создаем свечение
+    // Глоу эффект
     const glow = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     glow.setAttribute('d', pathData);
     glow.setAttribute('stroke', 'rgba(0,217,255,0.15)');
@@ -1471,7 +1276,7 @@ function renderConnections(){
     glow.style.filter = 'blur(8px)';
     svg.appendChild(glow);
 
-    // Создаем основную линию
+    // Основная линия
     const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     path.setAttribute('d', pathData);
     path.setAttribute('stroke', 'var(--neon)');
@@ -1480,22 +1285,31 @@ function renderConnections(){
     path.setAttribute('stroke-linecap', 'round');
     path.style.filter = 'drop-shadow(0 0 6px rgba(0,217,255,0.3))';
     svg.appendChild(path);
+
+    // Стрелка
+    const arrowSize = 8;
+    const angle = Math.atan2(toY - (fromY + controlOffset), toX - fromX);
+
+    const arrow = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+    const points = `
+      ${toX},${toY}
+      ${toX - arrowSize * Math.cos(angle - Math.PI/6)},${toY - arrowSize * Math.sin(angle - Math.PI/6)}
+      ${toX - arrowSize * Math.cos(angle + Math.PI/6)},${toY - arrowSize * Math.sin(angle + Math.PI/6)}
+    `;
+    arrow.setAttribute('points', points);
+    arrow.setAttribute('fill', 'var(--neon)');
+    arrow.style.filter = 'drop-shadow(0 0 4px rgba(0,217,255,0.5))';
+    svg.appendChild(arrow);
   });
 }
 
-// ========== AI И ПАРСИНГ ==========
+// ========== AI ФУНКЦИИ ==========
 function collectTreeText(){
   const root = byId('root');
   const title = root ? root.querySelector('.title').innerText.trim() : '';
-
-  const outcomes = Array.from(document.querySelectorAll('.node[data-id]:not([data-id="root"])'))
-                    .filter(n => {
-                      const nodeType = n.dataset.type;
-                      return !nodeType || (nodeType !== 'pro' && nodeType !== 'con' && nodeType !== 'pros-container' && nodeType !== 'cons-container');
-                    })
+  const outcomes = Array.from(document.querySelectorAll('.node[data-type="frame"]'))
                     .map(n => n.querySelector('.title').innerText.trim())
                     .filter(Boolean);
-
   return { title, outcomes };
 }
 
@@ -1505,416 +1319,273 @@ function updateAIPreview(){
   document.getElementById('ai-outcomes').innerText = outcomes.length ? ('• ' + outcomes.join('\n• ')) : '—';
 }
 
-function parseProsConsFromText(text){
-  if(!text) return { pros: [], cons: [] };
+function parseNextFrameResponse(text){
+  if(!text) return { nextFrame: '', visualElements: [], emotionalImpact: [] };
 
-  const normalized = text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').trim();
-  let pros = [], cons = [];
+  const nextFrameMatch = text.match(/СЛЕДУЮЩИЙ КАДР:\s*([^\n]+)/i);
+  const visualMatch = text.match(/ВИЗУАЛЬНЫЕ ЭЛЕМЕНТЫ:\s*([^\n]+)/i);
+  const emotionalMatch = text.match(/ЭМОЦИОНАЛЬНОЕ ВОЗДЕЙСТВИЕ:\s*([^\n]+)/i);
 
-  const prosSection = normalized.match(/^ПЛЮСЫ:\s*([^]*?)(?=\s*МИНУСЫ:|$)/im);
-  const consSection = normalized.match(/МИНУСЫ:\s*([^]*?)$/im);
+  const nextFrame = nextFrameMatch ? nextFrameMatch[1].trim() : '';
+  const visualElements = visualMatch ? visualMatch[1].split(';').map(item => item.trim()).filter(Boolean) : [];
+  const emotionalImpact = emotionalMatch ? emotionalMatch[1].split(';').map(item => item.trim()).filter(Boolean) : [];
 
-  if(prosSection && prosSection[1]) {
-    const prosText = prosSection[1].trim();
-    pros = prosText.split(';')
-      .map(item => item.trim().replace(/^[\-\*\•\d\.\s]+/, '').replace(/\.$/, ''))
-      .filter(item => item && item.length > 5 && !item.match(/^(плюсы|минусы)/i))
-      .slice(0, 5);
-  }
-
-  if(consSection && consSection[1]) {
-    const consText = consSection[1].trim();
-    cons = consText.split(';')
-      .map(item => item.trim().replace(/^[\-\*\•\d\.\s]+/, '').replace(/\.$/, ''))
-      .filter(item => item && item.length > 5 && !item.match(/^(плюсы|минусы)/i))
-      .slice(0, 5);
-  }
-
-  if(pros.length === 0) pros = ["Высокая эффективность", "Быстрая реализация", "Низкая стоимость"];
-  if(cons.length === 0) cons = ["Риск неудачи", "Ограниченный масштаб", "Зависимость от условий"];
-
-  return { pros, cons };
+  return { nextFrame, visualElements, emotionalImpact };
 }
 
-// ========== СОЗДАНИЕ ВЕТОК ПЛЮСОВ И МИНУСОВ ДЛЯ КАЖДОГО ИСХОДА ==========
-function createProConNodesForOutcome(outcomeText, pros, cons, outcomeIndex){
-  const nodes = Array.from(document.querySelectorAll('.node[data-id]'));
+function parseFrameAnalysisResponse(text){
+  if(!text) return { bestFrame: '', explanation: '', strengths: [], improvements: [] };
 
-  let outcomeNode = nodes.find(n => {
-    const nodeText = (n.querySelector('.title')?.innerText || '').trim();
-    return nodeText === outcomeText && !n.dataset.type;
-  });
+  const bestFrameMatch = text.match(/ЛУЧШИЙ КАДР:\s*([^\n]+)/i);
+  const explanationMatch = text.match(/ПОЧЕМУ ЭТОТ КАДР:\s*([^\n]+)/i);
+  const strengthsMatch = text.match(/СИЛЬНЫЕ СТОРОНЫ:\s*([^\n]+)/i);
+  const improvementsMatch = text.match(/ВОЗМОЖНЫЕ УЛУЧШЕНИЯ:\s*([^\n]+)/i);
 
-  if(!outcomeNode){
-    const root = byId('root');
-    const rootRect = root.getBoundingClientRect();
-    const cr = canvas.getBoundingClientRect();
+  const bestFrame = bestFrameMatch ? bestFrameMatch[1].trim() : '';
+  const explanation = explanationMatch ? explanationMatch[1].trim() : '';
+  const strengths = strengthsMatch ? strengthsMatch[1].split(';').map(item => item.trim()).filter(Boolean) : [];
+  const improvements = improvementsMatch ? improvementsMatch[1].split(';').map(item => item.trim()).filter(Boolean) : [];
 
-    const x = parseFloat(root.style.left) || 0;
-    const y = parseFloat(root.style.top) || 0 + (outcomeIndex + 1) * LAYOUT_CONFIG.ROW_SPACING;
-
-    createNode(x, y, outcomeText, 'root');
-
-    setTimeout(() => {
-      const newNodes = Array.from(document.querySelectorAll('.node[data-id]'));
-      outcomeNode = newNodes.find(n => {
-        const nodeText = (n.querySelector('.title')?.innerText || '').trim();
-        return nodeText === outcomeText && !n.dataset.type;
-      });
-      if(outcomeNode) {
-        createProConBranches(outcomeNode, pros, cons, outcomeIndex);
-      }
-    }, 100);
-  } else {
-    createProConBranches(outcomeNode, pros, cons, outcomeIndex);
-  }
+  return { bestFrame, explanation, strengths, improvements };
 }
 
-function createProConBranches(outcomeNode, pros, cons, outcomeIndex){
-  const outcomeId = outcomeNode.dataset.id;
-  const outcomeX = parseFloat(outcomeNode.style.left);
-  const outcomeY = parseFloat(outcomeNode.style.top);
-
-  console.log("Creating branches for outcome:", outcomeId, outcomeIndex);
-
-  // Создаем контейнер для плюсов СЛЕВА
-  if(pros.length > 0) {
-    const proContainerX = outcomeX - LAYOUT_CONFIG.HORIZONTAL_OFFSET;
-    const proContainerY = outcomeY + LAYOUT_CONFIG.VERTICAL_SPACING;
-
-    const prosContainerId = createNode(proContainerX, proContainerY, 'Плюсы', outcomeId, 'pros-container');
-    const prosContainer = byId(prosContainerId);
-
-    // СРАЗУ СВОРАЧИВАЕМ КОНТЕЙНЕР ПЛЮСОВ
-    prosContainer.dataset.collapsed = 'true';
-    addToggleButton(prosContainer);
-
-    // Создаем цепочку плюсов из контейнера ВНИЗ
-    let currentParentId = prosContainerId;
-    let currentX = proContainerX;
-    let currentY = proContainerY + LAYOUT_CONFIG.VERTICAL_SPACING * 0.8;
-
-    pros.forEach((pro, idx) => {
-      const proId = createNode(currentX, currentY, pro, currentParentId, 'pro');
-      currentParentId = proId;
-      currentY += LAYOUT_CONFIG.VERTICAL_SPACING * 0.6;
-    });
-
-    // СРАЗУ СКРЫВАЕМ ДОЧЕРНИЕ УЗЛЫ
-    collapseAllChildren(prosContainer, true);
-  }
-
-  // Создаем контейнер для минусов СПРАВА
-  if(cons.length > 0) {
-    const conContainerX = outcomeX + LAYOUT_CONFIG.HORIZONTAL_OFFSET;
-    const conContainerY = outcomeY + LAYOUT_CONFIG.VERTICAL_SPACING;
-
-    const consContainerId = createNode(conContainerX, conContainerY, 'Минусы', outcomeId, 'cons-container');
-    const consContainer = byId(consContainerId);
-
-    // СРАЗУ СВОРАЧИВАЕМ КОНТЕЙНЕР МИНУСОВ
-    consContainer.dataset.collapsed = 'true';
-    addToggleButton(consContainer);
-
-    // Создаем цепочку минусов из контейнера ВНИЗ
-    let currentParentId = consContainerId;
-    let currentX = conContainerX;
-    let currentY = conContainerY + LAYOUT_CONFIG.VERTICAL_SPACING * 0.8;
-
-    cons.forEach((con, idx) => {
-      const conId = createNode(currentX, currentY, con, currentParentId, 'con');
-      currentParentId = conId;
-      currentY += LAYOUT_CONFIG.VERTICAL_SPACING * 0.6;
-    });
-
-    // СРАЗУ СКРЫВАЕМ ДОЧЕРНИЕ УЗЛЫ
-    collapseAllChildren(consContainer, true);
-  }
-
-  setTimeout(() => {
-    renderConnections();
-    saveState();
-  }, 100);
-}
-
-// ========== СБРОС ОТВЕТОВ AI ==========
-async function resetAIResponses() {
-  const result = await showModal('Сброс ответов', 'Удалить все плюсы и минусы, созданные ИИ? Исходные кадры останутся.');
-  if (!result) return;
-
-  const proConNodes = Array.from(document.querySelectorAll('.node[data-id]:not([data-id="root"])'))
-    .filter(n => {
-      const nodeType = n.dataset.type;
-      return nodeType && (nodeType.includes('pro') || nodeType.includes('con') || nodeType.includes('pros-container') || nodeType.includes('cons-container'));
-    });
-
-  proConNodes.forEach(node => {
-    const nodeId = node.dataset.id;
-    edges = edges.filter(e => e.from !== nodeId && e.to !== nodeId);
-    node.remove();
-  });
-
-  document.getElementById('ai-output').innerHTML = '';
-  updateTimerUI();
-  updateAIPreview();
-  renderConnections();
-  saveState();
-}
-
-// ========== ЗАПРОСЫ К СЕРВЕРУ ==========
-async function sendAiRequestWithRetries(payload, maxRetries = MAX_RETRIES){
-  let lastError = null;
-  for(let attempt = 1; attempt <= maxRetries; attempt++){
-    try{
-      const res = await fetch('/run-ai', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify(payload)
-      });
-
-      if(!res.ok){
-        lastError = new Error('HTTP ' + res.status);
-      } else {
-        const data = await res.json();
-        return { success: true, data };
-      }
-    } catch(err){ lastError = err; }
-
-    const backoff = 200 * attempt;
-    await new Promise(r => setTimeout(r, backoff));
-  }
-  return { success: false, error: lastError };
-}
-
-// ========== AI UI ==========
-const aiRunBtn = document.getElementById('ai-run');
-const aiResetBtn = document.getElementById('ai-reset');
-
-aiRunBtn.addEventListener('click', async ()=>{
+// ========== ГЕНЕРАЦИЯ СЛЕДУЮЩЕГО КАДРА ==========
+async function generateNextFrame(parentNode){
   if(isLockedUntil > Date.now()) return;
 
-  const { title, outcomes } = collectTreeText();
+  const { title } = collectTreeText();
+  const currentFrame = parentNode.querySelector('.title').innerText.trim();
   const outBox = document.getElementById('ai-output');
 
   if(!title){
-    outBox.innerText = 'Пожалуйста, опишите проблему.';
+    outBox.innerText = 'Пожалуйста, опишите тему сцены в начальном кадре.';
     return;
   }
 
-  if(!outcomes.length){
-    outBox.innerText = 'Добавьте кадры.';
+  if(!currentFrame){
+    outBox.innerText = 'Кадр не может быть пустым.';
     return;
   }
 
   outBox.innerHTML = '';
   const loading = document.createElement('div');
   loading.className = 'ai-response';
-  loading.innerHTML = `<div class="meta"><b>Анализируем ${outcomes.length} кадров...</b></div>`;
+  loading.innerHTML = `<div class="meta"><b>Генерируем следующий кадр...</b></div>`;
   outBox.appendChild(loading);
   outBox.scrollTop = outBox.scrollHeight;
 
-  aiRunBtn.disabled = true;
-  aiRunBtn.style.opacity = '0.6';
+  aiNextFrameBtn.disabled = true;
+  aiNextFrameBtn.style.opacity = '0.6';
 
-  const payload = { title, outcomes };
-  const result = await sendAiRequestWithRetries(payload, MAX_RETRIES);
+  try {
+    const response = await fetch('/run-ai-flow-next-frame', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ title, current_frame: currentFrame })
+    });
 
-  if(result.success){
-    const data = result.data || {};
-    const results = Array.isArray(data.results) ? data.results : [];
+    if(!response.ok) throw new Error('HTTP ' + response.status);
+
+    const data = await response.json();
+    const result = data.result || '';
 
     if(outBox.lastElementChild === loading) outBox.removeChild(loading);
 
-    if(results.length === 0){
-      const empty = document.createElement('div');
-      empty.className = 'ai-response';
-      empty.innerText = 'Пустой результат от сервера.';
-      outBox.appendChild(empty);
+    const { nextFrame, visualElements, emotionalImpact } = parseNextFrameResponse(result);
+
+    if(nextFrame) {
+      const rect = parentNode.getBoundingClientRect();
+      const canvasRect = canvasContent.getBoundingClientRect();
+
+      let newX = rect.left - canvasRect.left + 400;
+      let newY = rect.top - canvasRect.top;
+
+      // Корректируем позицию, чтобы не выходить за границы
+      newX = Math.min(newX, BOUNDARIES.maxX - LAYOUT_CONFIG.NODE_WIDTH);
+      newY = Math.min(newY, BOUNDARIES.maxY - LAYOUT_CONFIG.NODE_HEIGHT);
+
+      createNode(newX, newY, nextFrame, parentNode.dataset.id, 'frame');
+
+      // Показываем анализ в панели
+      const analysisHTML = `
+        <div class="ai-response result-highlight">
+          <div class="meta"><b>Сгенерирован следующий кадр:</b> ${nextFrame}</div>
+          ${visualElements.length > 0 ? `
+            <div style="margin-top: 8px;">
+              <div style="color: var(--visual-color); font-weight: 600; font-size: 12px;">🎬 Визуальные элементы:</div>
+              <ul class="visual-list">
+                ${visualElements.map(el => `<li>${escapeHtml(el)}</li>`).join('')}
+              </ul>
+            </div>
+          ` : ''}
+          ${emotionalImpact.length > 0 ? `
+            <div style="margin-top: 8px;">
+              <div style="color: var(--emotional-color); font-weight: 600; font-size: 12px;">💫 Эмоциональное воздействие:</div>
+              <ul class="emotional-list">
+                ${emotionalImpact.map(em => `<li>${escapeHtml(em)}</li>`).join('')}
+              </ul>
+            </div>
+          ` : ''}
+        </div>
+      `;
+
+      outBox.innerHTML = analysisHTML;
     } else {
-      results.forEach((item, index) => {
-        const block = document.createElement('div');
-        block.className = 'ai-response result-highlight';
-        const outcomeText = item.outcome || outcomes[index] || `Кадр ${index + 1}`;
-        const resultText = item.result || '';
-
-        console.log(`Processing outcome ${index + 1}:`, outcomeText);
-        const { pros, cons } = parseProsConsFromText(resultText);
-        console.log(`Found ${pros.length} pros and ${cons.length} cons`);
-
-        block.innerHTML = `
-          <div class="meta"><b>Кадр ${index + 1}:</b> ${escapeHtml(outcomeText)}</div>
-          <pre style="margin-top: 8px; font-size: 12px; white-space: pre-wrap; background: rgba(255,255,255,0.05); padding: 8px; border-radius: 4px;">${escapeHtml(resultText)}</pre>
-
-          ${pros.length > 0 ? `
-            <div style="margin-top: 8px;">
-              <div style="color: var(--pro-color); font-weight: 600; font-size: 12px;">✅ Плюсы:</div>
-              <ul class="pros-list">
-                ${pros.map(pro => `<li>${escapeHtml(pro)}</li>`).join('')}
-              </ul>
-            </div>
-          ` : ''}
-
-          ${cons.length > 0 ? `
-            <div style="margin-top: 8px;">
-              <div style="color: var(--con-color); font-weight: 600; font-size: 12px;">❌ Минусы:</div>
-              <ul class="cons-list">
-                ${cons.map(con => `<li>${escapeHtml(con)}</li>`).join('')}
-              </ul>
-            </div>
-          ` : ''}
-        `;
-
-        outBox.appendChild(block);
-
-        if(pros.length > 0 || cons.length > 0) {
-          createProConNodesForOutcome(outcomeText, pros, cons, index);
-        }
-      });
+      outBox.innerHTML = `<div class="ai-response">Не удалось сгенерировать следующий кадр. Попробуйте еще раз.</div>`;
     }
 
-    setLock(60);
-    saveState();
-  } else {
+    setLock(30);
+  } catch(error) {
+    console.error('AI request failed:', error);
     if(outBox.lastElementChild === loading) {
-      loading.innerHTML = `<div class="meta"><b>Ошибка при запросе к AI. Попытки исчерпаны.</b></div>`;
+      loading.innerHTML = `<div class="meta"><b>Ошибка при генерации кадра.</b></div>`;
     } else {
-      const err = document.createElement('div');
-      err.className = 'ai-response';
-      err.innerText = 'Ошибка при запросе к AI. Попытки исчерпаны.';
-      outBox.appendChild(err);
+      outBox.innerHTML = `<div class="ai-response">Ошибка при генерации кадра. Попробуйте позже.</div>`;
     }
-    console.error('AI request failed', result.error);
   }
 
-  aiRunBtn.disabled = false;
-  aiRunBtn.style.opacity = '';
+  aiNextFrameBtn.disabled = false;
+  aiNextFrameBtn.style.opacity = '';
+}
+
+// ========== АНАЛИЗ КАДРОВ ==========
+function showFrameAnalysisModal(){
+  const frames = Array.from(document.querySelectorAll('.node[data-type="frame"]'));
+
+  if(frames.length < 2) {
+    document.getElementById('ai-output').innerHTML = '<div class="ai-response">Для анализа нужно как минимум 2 кадра.</div>';
+    return;
+  }
+
+  frameList.innerHTML = '';
+  selectedFramesForAnalysis.clear();
+
+  frames.forEach((frame, index) => {
+    const frameText = frame.querySelector('.title').innerText.trim();
+    const frameItem = document.createElement('div');
+    frameItem.className = 'frame-item';
+    frameItem.innerHTML = `
+      <div style="font-weight: 600; font-size: 12px;">Кадр ${index + 1}</div>
+      <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">${frameText}</div>
+    `;
+
+    frameItem.addEventListener('click', () => {
+      frameItem.classList.toggle('selected');
+      if(frameItem.classList.contains('selected')) {
+        selectedFramesForAnalysis.add(frameText);
+      } else {
+        selectedFramesForAnalysis.delete(frameText);
+      }
+    });
+
+    frameList.appendChild(frameItem);
+  });
+
+  frameAnalysisModal.classList.add('active');
+}
+
+async function analyzeSelectedFrames(){
+  if(selectedFramesForAnalysis.size < 2) {
+    alert('Выберите как минимум 2 кадра для анализа');
+    return;
+  }
+
+  const { title } = collectTreeText();
+  const frames = Array.from(selectedFramesForAnalysis);
+  const outBox = document.getElementById('ai-output');
+
+  outBox.innerHTML = '';
+  const loading = document.createElement('div');
+  loading.className = 'ai-response';
+  loading.innerHTML = `<div class="meta"><b>Анализируем выбранные кадры...</b></div>`;
+  outBox.appendChild(loading);
+
+  aiAnalyzeFramesBtn.disabled = true;
+  aiAnalyzeFramesBtn.style.opacity = '0.6';
+  frameAnalysisModal.classList.remove('active');
+
+  try {
+    const response = await fetch('/run-ai-flow-analyze-frames', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ title, frames })
+    });
+
+    if(!response.ok) throw new Error('HTTP ' + response.status);
+
+    const data = await response.json();
+    const result = data.result || '';
+
+    if(outBox.lastElementChild === loading) outBox.removeChild(loading);
+
+    const { bestFrame, explanation, strengths, improvements } = parseFrameAnalysisResponse(result);
+
+    const analysisHTML = `
+      <div class="ai-response result-highlight">
+        <div class="meta"><b>Анализ кадров:</b></div>
+        ${bestFrame ? `
+          <div style="margin-top: 8px;">
+            <div style="color: var(--frame-color); font-weight: 600; font-size: 12px;">🏆 Лучший кадр:</div>
+            <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">${bestFrame}</div>
+          </div>
+        ` : ''}
+        ${explanation ? `
+          <div style="margin-top: 8px;">
+            <div style="color: var(--accent); font-weight: 600; font-size: 12px;">📝 Обоснование:</div>
+            <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">${explanation}</div>
+          </div>
+        ` : ''}
+        ${strengths.length > 0 ? `
+          <div style="margin-top: 8px;">
+            <div style="color: var(--pro-color); font-weight: 600; font-size: 12px;">✅ Сильные стороны:</div>
+            <ul style="color: var(--text-muted); font-size: 12px; margin: 4px 0; padding-left: 16px;">
+              ${strengths.map(st => `<li>${escapeHtml(st)}</li>`).join('')}
+            </ul>
+          </div>
+        ` : ''}
+        ${improvements.length > 0 ? `
+          <div style="margin-top: 8px;">
+            <div style="color: var(--con-color); font-weight: 600; font-size: 12px;">💡 Возможные улучшения:</div>
+            <ul style="color: var(--text-muted); font-size: 12px; margin: 4px 0; padding-left: 16px;">
+              ${improvements.map(im => `<li>${escapeHtml(im)}</li>`).join('')}
+            </ul>
+          </div>
+        ` : ''}
+      </div>
+    `;
+
+    outBox.innerHTML = analysisHTML;
+    setLock(30);
+  } catch(error) {
+    console.error('Analysis request failed:', error);
+    if(outBox.lastElementChild === loading) {
+      loading.innerHTML = `<div class="meta"><b>Ошибка при анализе кадров.</b></div>`;
+    } else {
+      outBox.innerHTML = `<div class="ai-response">Ошибка при анализе кадров. Попробуйте позже.</div>`;
+    }
+  }
+
+  aiAnalyzeFramesBtn.disabled = false;
+  aiAnalyzeFramesBtn.style.opacity = '';
+}
+
+// ========== ОБРАБОТЧИКИ КНОПОК ==========
+aiNextFrameBtn.addEventListener('click', () => {
+  const frames = Array.from(document.querySelectorAll('.node[data-type="frame"]'));
+  const lastFrame = frames[frames.length - 1];
+  if(lastFrame) {
+    generateNextFrame(lastFrame);
+  }
 });
 
-aiResetBtn.addEventListener('click', resetAIResponses);
+aiAnalyzeFramesBtn.addEventListener('click', showFrameAnalysisModal);
 
-// ========== ПАНЕЛЬ (ПЕРЕМЕЩЕНИЕ И УПРАВЛЕНИЕ) ==========
-let panelDragging = false;
-let panelResizing = false;
-let panelStartX = 0;
-let panelStartY = 0;
-let panelStartWidth = 0;
-let panelStartHeight = 0;
-let panelStartLeft = 0;
-let panelStartTop = 0;
-
-sideHeader.addEventListener('mousedown', e => {
-  if(e.target.closest('button')) return;
-  panelDragging = true;
-  panelStartX = e.clientX;
-  panelStartY = e.clientY;
-  panelStartLeft = parseInt(sidePanel.style.left) || 0;
-  panelStartTop = parseInt(sidePanel.style.top) || 0;
-  sidePanel.style.right = 'auto';
-  document.body.style.userSelect = 'none';
-  e.preventDefault();
+modalAnalyze.addEventListener('click', analyzeSelectedFrames);
+modalCancel.addEventListener('click', () => {
+  frameAnalysisModal.classList.remove('active');
 });
 
-panelHandle.addEventListener('mousedown', e => {
-  panelResizing = true;
-  panelStartX = e.clientX;
-  panelStartY = e.clientY;
-  panelStartWidth = sidePanel.offsetWidth;
-  panelStartHeight = sidePanel.offsetHeight;
-  document.body.style.userSelect = 'none';
-  e.preventDefault();
-});
-
-document.addEventListener('mousemove', e => {
-  if(panelDragging){
-    const dx = e.clientX - panelStartX;
-    const dy = e.clientY - panelStartY;
-    sidePanel.style.left = (panelStartLeft + dx) + 'px';
-    sidePanel.style.top = (panelStartTop + dy) + 'px';
-  }
-  if(panelResizing){
-    const dx = e.clientX - panelStartX;
-    const newWidth = Math.max(300, Math.min(800, panelStartWidth - dx));
-    sidePanel.style.width = newWidth + 'px';
-    renderConnections();
-  }
-});
-
-document.addEventListener('mouseup', () => {
-  if(panelDragging || panelResizing){
-    panelDragging = false;
-    panelResizing = false;
-    document.body.style.userSelect = '';
-    saveState();
-  }
-});
-
-// Touch events для панели
-sideHeader.addEventListener('touchstart', e => {
-  if(e.touches.length !== 1) return;
-  const t = e.touches[0];
-  const target = document.elementFromPoint(t.clientX, t.clientY);
-  if(!target) return;
-  if(target.closest('button')) return;
-  panelDragging = true;
-  panelStartX = t.clientX;
-  panelStartY = t.clientY;
-  panelStartLeft = parseInt(sidePanel.style.left) || 0;
-  panelStartTop = parseInt(sidePanel.style.top) || 0;
-  sidePanel.style.right = 'auto';
-  e.preventDefault();
-}, { passive: false });
-
-panelHandle.addEventListener('touchstart', e => {
-  if(e.touches.length !== 1) return;
-  const t = e.touches[0];
-  panelResizing = true;
-  panelStartX = t.clientX;
-  panelStartY = t.clientY;
-  panelStartWidth = sidePanel.offsetWidth;
-  panelStartHeight = sidePanel.offsetHeight;
-  e.preventDefault();
-}, { passive: false });
-
-document.addEventListener('touchmove', e => {
-  if(panelDragging){
-    const t = e.touches[0];
-    const dx = t.clientX - panelStartX;
-    const dy = t.clientY - panelStartY;
-    sidePanel.style.left = (panelStartLeft + dx) + 'px';
-    sidePanel.style.top = (panelStartTop + dy) + 'px';
-    e.preventDefault();
-  }
-  if(panelResizing){
-    const t = e.touches[0];
-    const dx = t.clientX - panelStartX;
-    const newWidth = Math.max(300, Math.min(800, panelStartWidth - dx));
-    sidePanel.style.width = newWidth + 'px';
-    renderConnections();
-    e.preventDefault();
-  }
-}, { passive: false });
-
-document.addEventListener('touchend', () => {
-  if(panelDragging || panelResizing){
-    panelDragging = false;
-    panelResizing = false;
-    saveState();
-  }
-});
-
-panelCollapseBtn.addEventListener('click', () => {
-  if(sidePanel.dataset.collapsed === '1'){
-    sidePanel.style.width = '320px';
-    sidePanel.style.height = 'calc(100vh - 40px)';
-    sidePanel.dataset.collapsed = '0';
-  } else {
-    sidePanel.style.width = '60px';
-    sidePanel.style.height = '60px';
-    sidePanel.dataset.collapsed = '1';
-  }
-  saveState();
-});
-
+// ========== ПАНЕЛЬ УПРАВЛЕНИЯ ==========
 panelCloseBtn.addEventListener('click', () => {
   sidePanel.style.display = 'none';
   openPanelBtn.classList.add('visible');
@@ -1940,8 +1611,6 @@ function escapeHtml(s){
 
 // ========== ИНИЦИАЛИЗАЦИЯ ==========
 function init(){
-  resetCanvasPadding();
-
   loadState();
   updateTimerUI();
   updateAIPreview();
@@ -1954,34 +1623,17 @@ function init(){
     if(t) t.addEventListener('input', ()=>{ updateAIPreview(); saveState(); });
   }
 
-  // Double-click on canvas to create new node
-  canvas.addEventListener('dblclick', e => {
+  // Double-click on canvas to create new frame
+  canvasContent.addEventListener('dblclick', e => {
     const target = e.target;
     if(target.closest('.node') || target.closest('.add-btn') || target.closest('.remove-btn')) return;
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left + canvas.scrollLeft - 130;
-    const y = e.clientY - rect.top + canvas.scrollTop - 28;
+
+    const rect = canvasContent.getBoundingClientRect();
+    const x = e.clientX - rect.left - LAYOUT_CONFIG.NODE_WIDTH / 2;
+    const y = e.clientY - rect.top - LAYOUT_CONFIG.NODE_HEIGHT / 2;
+
     createNode(x, y, 'Новый кадр');
   });
-
-  // Touch double-tap
-  let lastTap = 0;
-  canvas.addEventListener('touchend', e => {
-    const currentTime = new Date().getTime();
-    const tapLength = currentTime - lastTap;
-    if(tapLength < 500 && tapLength > 0){
-      const t = e.changedTouches[0];
-      const target = document.elementFromPoint(t.clientX, t.clientY);
-      if(!target) return;
-      if(target.closest('.node') || target.closest('[data-add]') || target.closest('.remove-btn')) return;
-      const rect = canvas.getBoundingClientRect();
-      const x = t.clientX - rect.left + canvas.scrollLeft - 130;
-      const y = t.clientY - rect.top + canvas.scrollTop - 28;
-      createNode(x, y, 'Новый кадр');
-      e.preventDefault();
-    }
-    lastTap = currentTime;
-  }, { passive: false });
 
   // Auto-save on title edits
   document.addEventListener('input', e => {
@@ -1994,6 +1646,7 @@ function init(){
   // Periodically save state
   setInterval(saveState, 30000);
 }
+
 init();
 </script>
 </body>
