@@ -3,40 +3,14 @@ import os
 from mistralai import Mistral
 import re
 
-api_key1 = os.environ.get("MISTRAL_API_KEY1")
-api_key2 = os.environ.get("MISTRAL_API_KEY2")
-if not api_key1 or not api_key2:
-    raise RuntimeError("MISTRAL_API_KEY1 и MISTRAL_API_KEY2 должны быть заданы в окружении")
+api_key = os.environ.get("MISTRAL_API_KEY")
+if not api_key:
+    raise RuntimeError("MISTRAL_API_KEY должен быть задан в окружении")
 
-model1 = "mistral-large-latest"
-model2 = "mistral-tiny"
-
-client1 = Mistral(api_key=api_key1)
-client2 = Mistral(api_key=api_key2)
+model = "mistral-tiny"
+client = Mistral(api_key=api_key)
 
 app = Flask(__name__)
-
-def sanitize_ai_text(text, max_len=4000):
-    if not text:
-        return ""
-    text = text.replace('\r\n', '\n').replace('\r', '\n')
-    lines = text.split('\n')
-    kept = []
-    for ln in lines:
-        s = ln.strip()
-        if not s:
-            continue
-        if re.match(r'^[-#\*\u2022]\s*', s):
-            continue
-        s = re.sub(r'^[\-\#\*\u2022]+\s*', '', s)
-        s = s.replace(' * ', ' ').replace('*', '')
-        kept.append(s)
-    cleaned = '\n'.join(kept).strip()
-    cleaned = re.sub(r'^[\-\#\*\u2022]+\s*', '', cleaned)
-    if len(cleaned) > max_len:
-        cleaned = cleaned[:max_len].rstrip() + '…'
-    return cleaned
-
 
 def build_prompt(title, outcome):
     prompt = (
@@ -44,28 +18,43 @@ def build_prompt(title, outcome):
 
         "ФОРМАТ ОТВЕТА (НЕОТКЛОНЯЕМО):\n"
         f"ОПИСАНИЕ {outcome}\n"
-        "ПЛЮСЫ: пункт1; пункт2; пункт3\n"
-        "МИНУСЫ: пункт1; пункт2; пункт3\n\n"
+        "ПЛЮСЫ:\n"
+        "пункт1\n"
+        "пункт2\n" 
+        "пункт3\n"
+        "МИНУСЫ:\n"
+        "пункт1\n"
+        "пункт2\n"
+        "пункт3\n\n"
 
         "КРИТИЧЕСКИ ВАЖНЫЕ ПРАВИЛА:\n"
-        "1. ОТВЕТ ДОЛЖЕН НАЧИНАТЬСЯ С 'ПЛЮСЫ:' БЕЗ ЛЮБЫХ ПРЕДИСЛОВИЙ\n"
-        "2. ПОСЛЕ ПОСЛЕДНЕГО ПЛЮСА СРАЗУ ПИШИ 'МИНУСЫ:' БЕЗ ПУСТЫХ СТРОК\n"
-        "3. РАЗДЕЛЯЙ ПУНКТЫ ТОЛЬКО ТОЧКОЙ С ЗАПЯТОЙ (;)\n"
-        "4. НЕ ИСПОЛЬЗУЙ: маркеры (-, *, •), нумерацию (1., 2.), переносы строк внутри разделов\n"
-        "5. НЕ ДОБАВЛЯЙ: вступления, выводы, комментарии, пояснения\n"
-        "6. КАЖДЫЙ ПУНКТ ДОЛЖЕН БЫТЬ КОНКРЕТНЫМ И ЗАКОНЧЕННЫМ\n"
-        "7. ОБЯЗАТЕЛЬНО ВКЛЮЧИ И ПЛЮСЫ И МИНУСЫ ДАЖЕ ЕСЛИ ИХ МАЛО\n"
-        "8. ОТ 3 ДО 5 ПУНКТОВ В КАЖДОМ РАЗДЕЛЕ\n\n"
+        "1. ОТВЕТ ДОЛЖЕН НАЧИНАТЬСЯ С 'ОПИСАНИЕ [название исхода]' БЕЗ ЛЮБЫХ ПРЕДИСЛОВИЙ\n"
+        "2. ПОСЛЕ ОПИСАНИЯ СРАЗУ ПИШИ 'ПЛЮСЫ:' С ПЕРЕНОСОМ СТРОКИ\n"
+        "3. КАЖДЫЙ ПЛЮС ПИШИ С НОВОЙ СТРОКИ БЕЗ МАРКЕРОВ\n"
+        "4. ПОСЛЕ ПОСЛЕДНЕГО ПЛЮСА СРАЗУ ПИШИ 'МИНУСЫ:' С ПЕРЕНОСОМ СТРОКИ\n"
+        "5. КАЖДЫЙ МИНУС ПИШИ С НОВОЙ СТРОКИ БЕЗ МАРКЕРОВ\n"
+        "6. НЕ ИСПОЛЬЗУЙ: маркеры (-, *, •), нумерацию (1., 2.), точки с запятой\n"
+        "7. НЕ ДОБАВЛЯЙ: вступления, выводы, комментарии, пояснения\n"
+        "8. КАЖДЫЙ ПУНКТ ДОЛЖЕН БЫТЬ КОНКРЕТНЫМ И ЗАКОНЧЕННЫМ\n"
+        "9. ОБЯЗАТЕЛЬНО ВКЛЮЧИ И ПЛЮСЫ И МИНУСЫ ДАЖЕ ЕСЛИ ИХ МАЛО\n"
+        "10. ОТ 3 ДО 5 ПУНКТОВ В КАЖДОМ РАЗДЕЛЕ\n\n"
 
         "ПРИМЕР ПРАВИЛЬНОГО ОТВЕТА:\n"
-        "ПЛЮСЫ: Быстрое достижение результата; Низкие финансовые затраты; Простота реализации\n"
-        "МИНУСЫ: Риск неудачи; Ограниченный масштаб; Зависимость от внешних факторов\n\n"
+        "ОПИСАНИЕ Переезд в другой город\n"
+        "ПЛЮСЫ:\n"
+        "Быстрое достижение результата\n"
+        "Низкие финансовые затраты\n"
+        "Простота реализации\n"
+        "МИНУСЫ:\n"
+        "Риск неудачи\n"
+        "Ограниченный масштаб\n"
+        "Зависимость от внешних факторов\n\n"
 
         "АНАЛИЗИРУЕМ:\n"
         f"ПРОБЛЕМА: {title}\n"
         f"ВАРИАНТ РЕШЕНИЯ: {outcome}\n\n"
 
-        f"ТВОЙ ОТВЕТ (НАЧИНАЙ С ОПИСАНИЯ {outcome}, А ПОТОМ СРАЗУ С ПЛЮСЫ:):"
+        f"ТВОЙ ОТВЕТ (НАЧИНАЙ С 'ОПИСАНИЕ {outcome}'):"
     )
     return prompt
 
@@ -73,10 +62,7 @@ def sanitize_ai_text(text, max_len=4000):
     if not text:
         return ""
 
-    # Убираем лишние пробелы и переносы
     text = text.replace('\r\n', '\n').replace('\r', '\n').strip()
-
-    # Убираем общие вступления типа "Как эксперт..."
     lines = text.split('\n')
     cleaned_lines = []
 
@@ -85,14 +71,12 @@ def sanitize_ai_text(text, max_len=4000):
         if not line:
             continue
 
-        # Пропускаем общие вступительные фразы
         if any(phrase in line.lower() for phrase in [
             'как эксперт', 'в качестве', 'проанализировав',
             'рассмотрев вариант', 'после анализа', 'исходя из'
         ]):
             continue
 
-        # Пропускаем заключительные фразы
         if any(phrase in line.lower() for phrase in [
             'в заключение', 'таким образом', 'в итоге',
             'подводя итоги', 'в целом можно сказать'
@@ -101,95 +85,222 @@ def sanitize_ai_text(text, max_len=4000):
 
         cleaned_lines.append(line)
 
-    # Собираем обратно
     cleaned = '\n'.join(cleaned_lines)
-
-    # Убираем маркеры списков
     cleaned = re.sub(r'^[\-\*\•\d\.]+\s*', '', cleaned, flags=re.MULTILINE)
-
-    # Убираем лишние символы внутри текста
     cleaned = re.sub(r'[\*\-\•]', '', cleaned)
 
-    # Обрезаем если слишком длинный
     if len(cleaned) > max_len:
         cleaned = cleaned[:max_len].rstrip() + '…'
 
     return cleaned
 
+
+def parse_pros_cons_from_text(text):
+    """Парсит текст в формате с плюсами/минусами на новых строках"""
+    if not text:
+        return {"description": "", "pros": [], "cons": []}
+
+    lines = text.split('\n')
+    description = ""
+    pros = []
+    cons = []
+    current_section = None
+
+    for line in lines:
+        line = line.strip()
+        if not line:
+            continue
+
+        if line.startswith('ОПИСАНИЕ'):
+            description = line.replace('ОПИСАНИЕ', '').strip()
+            current_section = None
+        elif line == 'ПЛЮСЫ:':
+            current_section = 'pros'
+        elif line == 'МИНУСЫ:':
+            current_section = 'cons'
+        elif current_section == 'pros' and line and not line.endswith(':'):
+            pros.append(line)
+        elif current_section == 'cons' and line and not line.endswith(':'):
+            cons.append(line)
+
+    # Ограничиваем количество пунктов
+    pros = pros[:5]
+    cons = cons[:5]
+
+    return {
+        "description": description,
+        "pros": pros,
+        "cons": cons
+    }
+
+def build_prompt_flow_next_frame(title, current_frame):
+    prompt = (
+        "ТЫ РЕЖИССЕР ГОЛЛИВУДА С 20-ЛЕТНИМ ОПЫТОМ. ТВОЯ ЗАДАЧА - ПРЕДЛОЖИТЬ СЛЕДУЮЩИЙ КАДР ДЛЯ ФИЛЬМА.\n\n"
+
+        "ФОРМАТ ОТВЕТА (СТРОГО СОБЛЮДАЙ):\n"
+        "СЛЕДУЮЩИЙ КАДР: [описание следующего кадра]\n"
+        "ВИЗУАЛЬНЫЕ ЭЛЕМЕНТЫ: элемент1; элемент2; элемент3\n"
+        "ЭМОЦИОНАЛЬНОЕ ВОЗДЕЙСТВИЕ: эффект1; эффект2; эффект3\n\n"
+
+        "КРИТИЧЕСКИ ВАЖНЫЕ ПРАВИЛА:\n"
+        "1. ОТВЕТ ДОЛЖЕН НАЧИНАТЬСЯ С 'СЛЕДУЮЩИЙ КАДР:' БЕЗ ПРЕДИСЛОВИЙ\n"
+        "2. ПОСЛЕ ОПИСАНИЯ КАДРА СРАЗУ ПИШИ 'ВИЗУАЛЬНЫЕ ЭЛЕМЕНТЫ:'\n"
+        "3. ПОСЛЕ ВИЗУАЛЬНЫХ ЭЛЕМЕНТОВ СРАЗУ ПИШИ 'ЭМОЦИОНАЛЬНОЕ ВОЗДЕЙСТВИЕ:'\n"
+        "4. РАЗДЕЛЯЙ ПУНКТЫ ТОЧКОЙ С ЗАПЯТОЙ (;)\n"
+        "5. НЕ ИСПОЛЬЗУЙ маркеры, нумерацию, переносы строк внутри разделов\n"
+        "6. НЕ ДОБАВЛЯЙ вступления, выводы, комментарии\n"
+        "7. ОТ 3 ДО 5 ПУНКТОВ В КАЖДОМ РАЗДЕЛЕ\n"
+        "8. БУДЬ КРЕАТИВНЫМ И КИНЕМАТОГРАФИЧНЫМ\n\n"
+
+        "РАБОТАЕМ НАД ФИЛЬМОМ:\n"
+        f"ОСНОВНАЯ ТЕМА: {title}\n"
+        f"ТЕКУЩИЙ КАДР: {current_frame}\n\n"
+
+        "ТВОЙ ОТВЕТ (НАЧИНАЙ С 'СЛЕДУЮЩИЙ КАДР:'):"
+    )
+    return prompt
+
+
+def build_prompt_flow_analyze_frames(title, frames):
+    frames_text = "\n".join([f"{i + 1}. {frame}" for i, frame in enumerate(frames)])
+
+    prompt = (
+        "ТЫ РЕЖИССЕР ГОЛЛИВУДА С 20-ЛЕТНИМ ОПЫТОМ. ТВОЯ ЗАДАЧА - ВЫБРАТЬ ЛУЧШИЙ КАДР И ОБЪЯСНИТЬ СВОЙ ВЫБОР.\n\n"
+
+        "ФОРМАТ ОТВЕТА (СТРОГО СОБЛЮДАЙ):\n"
+        "ЛУЧШИЙ КАДР: [номер кадра]\n"
+        "ПОЧЕМУ ЭТОТ КАДР: [развернутое объяснение выбора]\n"
+        "СИЛЬНЫЕ СТОРОНЫ: сторона1; сторона2; сторона3\n"
+        "ВОЗМОЖНЫЕ УЛУЧШЕНИЯ: улучшение1; улучшение2; улучшение3\n\n"
+
+        "КРИТИЧЕСКИ ВАЖНЫЕ ПРАВИЛА:\n"
+        "1. ОТВЕТ ДОЛЖЕН НАЧИНАТЬСЯ С 'ЛУЧШИЙ КАДР:' БЕЗ ПРЕДИСЛОВИЙ\n"
+        "2. УКАЖИ НОМЕР КАДРА (1, 2, 3 и т.д.)\n"
+        "3. ОБЪЯСНИ СВОЙ ВЫБОР КИНЕМАТОГРАФИЧЕСКИМ ЯЗЫКОМ\n"
+        "4. БУДЬ ОБЪЕКТИВНЫМ И ПРОФЕССИОНАЛЬНЫМ\n"
+        "5. ДАЙ КОНСТРУКТИВНЫЕ РЕКОМЕНДАЦИИ\n\n"
+
+        "АНАЛИЗИРУЕМ КАДРЫ:\n"
+        f"ОСНОВНАЯ ТЕМА: {title}\n"
+        f"ПРЕДЛОЖЕННЫЕ КАДРЫ:\n{frames_text}\n\n"
+
+        "ТВОЙ ОТВЕТ (НАЧИНАЙ С 'ЛУЧШИЙ КАДР:'):"
+    )
+    return prompt
+
+
 @app.route("/")
 def index():
     return render_template("index.html")
+
 
 @app.route("/life")
 def life():
     return render_template("life.html")
 
+
 @app.route("/flow")
 def flow():
     return render_template("flow.html")
 
-@app.route("/run-ai", methods=["POST"])
-def run_ai():
+@app.route("/run-ai-life", methods=["POST"])
+def run_ai_life():
     data = request.get_json() or {}
     title = data.get("title", "")
     outcomes = data.get("outcomes", [])
 
-    if not title or not isinstance(outcomes, list) or len(outcomes) == 0:
-        return jsonify({"error": "Expected JSON with 'title' and non-empty list 'outcomes'"}), 400
+    if not title or not outcomes:
+        return jsonify({"error": "Expected JSON with 'title' and 'outcomes'"}), 400
 
     results = []
 
-    for i, outcome in enumerate(outcomes, start=1):
+    for outcome in outcomes:
         prompt = build_prompt(title, outcome)
-        attempts = 0
-        used_model = None
         ai_text = ""
+
         try:
-            attempts += 1
-            resp1 = client1.chat.complete(
-                model=model1,
+            resp = client.chat.complete(
+                model=model,
                 messages=[{"role": "user", "content": prompt}],
-                temperature=0.0
+                temperature=0.7
             )
-            try:
-                ai_text_raw = getattr(resp1.choices[0].message, "content", None) or str(resp1)
-            except Exception:
-                ai_text_raw = str(resp1)
+            ai_text_raw = getattr(resp.choices[0].message, "content", None) or str(resp)
             ai_text = sanitize_ai_text(ai_text_raw)
-            if ai_text:
-                used_model = model1
+            print(f"[run-ai-life] succeeded for outcome: {outcome}")
         except Exception as e:
-            print(f"[run-ai] model1 failed for #{i}: {e}")
+            print(f"[run-ai-life] failed for outcome {outcome}: {e}")
+            ai_text = "Ошибка при получении ответа от ИИ. Попробуйте позже."
 
-        if not ai_text:
-            try:
-                attempts += 1
-                resp2 = client2.chat.complete(
-                    model=model2,
-                    messages=[{"role": "user", "content": prompt}],
-                    temperature=0.0
-                )
-                try:
-                    ai_text_raw = getattr(resp2.choices[0].message, "content", None) or str(resp2)
-                except Exception:
-                    ai_text_raw = str(resp2)
-                ai_text = sanitize_ai_text(ai_text_raw)
-                if ai_text:
-                    used_model = model2
-            except Exception as e:
-                print(f"[run-ai] model2 failed for #{i}: {e}")
+        results.append({
+            "outcome": outcome,
+            "result": ai_text
+        })
 
-        if used_model:
-            print(f"[run-ai] outcome #{i}: succeeded with {used_model}, attempts={attempts}")
-        else:
-            print(f"[run-ai] outcome #{i}: failed after attempts={attempts}")
+    return jsonify({"results": results}), 200
 
-        if ai_text:
-            results.append({"index": i, "outcome": outcome, "result": ai_text})
-        else:
-            results.append({"index": i, "outcome": outcome, "result": "Ошибка при получении ответа от ИИ. Попробуйте позже."})
+@app.route("/run-ai-flow-next-frame", methods=["POST"])
+def run_ai_flow_next_frame():
+    data = request.get_json() or {}
+    title = data.get("title", "")
+    current_frame = data.get("current_frame", "")
 
-    return jsonify({"title": title, "results": results}), 200
+    if not title or not current_frame:
+        return jsonify({"error": "Expected JSON with 'title' and 'current_frame'"}), 400
+
+    prompt = build_prompt_flow_next_frame(title, current_frame)
+    ai_text = ""
+
+    try:
+        resp = client.chat.complete(
+            model=model,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.8
+        )
+        ai_text_raw = getattr(resp.choices[0].message, "content", None) or str(resp)
+        ai_text = sanitize_ai_text(ai_text_raw)
+        print(f"[run-ai-flow-next-frame] succeeded with {model}")
+    except Exception as e:
+        print(f"[run-ai-flow-next-frame] failed: {e}")
+        ai_text = "Ошибка при получении ответа от ИИ. Попробуйте позже."
+
+    return jsonify({
+        "title": title,
+        "current_frame": current_frame,
+        "result": ai_text
+    }), 200
+
+
+@app.route("/run-ai-flow-analyze-frames", methods=["POST"])
+def run_ai_flow_analyze_frames():
+    data = request.get_json() or {}
+    title = data.get("title", "")
+    frames = data.get("frames", [])
+
+    if not title or not isinstance(frames, list) or len(frames) < 2:
+        return jsonify({"error": "Expected JSON with 'title' and at least 2 frames"}), 400
+
+    prompt = build_prompt_flow_analyze_frames(title, frames)
+    ai_text = ""
+
+    try:
+        resp = client.chat.complete(
+            model=model,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.3
+        )
+        ai_text_raw = getattr(resp.choices[0].message, "content", None) or str(resp)
+        ai_text = sanitize_ai_text(ai_text_raw)
+        print(f"[run-ai-flow-analyze-frames] succeeded with {model}")
+    except Exception as e:
+        print(f"[run-ai-flow-analyze-frames] failed: {e}")
+        ai_text = "Ошибка при получении ответа от ИИ. Попробуйте позже."
+
+    return jsonify({
+        "title": title,
+        "frames": frames,
+        "result": ai_text
+    }), 200
+
 
 if __name__ == "__main__":
     app.run(debug=True, port=5001)
