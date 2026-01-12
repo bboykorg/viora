@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Путь Жизни — Viora</title>
     <style>
-        /* Все стили остаются как были */
+        /* ========== ОСНОВНЫЕ ПЕРЕМЕННЫЕ ========== */
         :root {
             --panel-bg: rgba(8,8,10,0.6);
             --accent: #7dd3fc;
@@ -17,8 +17,12 @@
             --text-muted: rgba(255,255,255,0.6);
             --pro-color: #10b981;
             --con-color: #ef4444;
+            --glow-pro: rgba(16,185,129,0.2);
+            --glow-con: rgba(239,68,68,0.2);
+            --glow-neon: rgba(0,217,255,0.15);
         }
 
+        /* ========== СБРОС И БАЗОВЫЕ СТИЛИ ========== */
         * {
             margin: 0;
             padding: 0;
@@ -37,6 +41,16 @@
             touch-action: none;
         }
 
+        .no-select {
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            -khtml-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
+
+        /* ========== ОСНОВНОЙ КОНТЕЙНЕР ========== */
         .editor-page {
             width: 100vw;
             height: 100vh;
@@ -49,6 +63,7 @@
             overflow: hidden;
         }
 
+        /* ========== ОБЛАСТЬ ХОЛСТА ========== */
         .canvas-area {
             flex: 1 1 auto;
             border-radius: 12px;
@@ -94,6 +109,7 @@
         .canvas-panning { cursor: grabbing !important; }
         .canvas-zooming { cursor: zoom-in; }
 
+        /* ========== БОКОВАЯ ПАНЕЛЬ ========== */
         .side-panel {
             position: absolute;
             right: 10px;
@@ -128,6 +144,7 @@
             cursor: pointer;
             z-index: 999;
             display: none;
+            border: 1px solid rgba(0,217,255,0.3);
         }
 
         .open-panel-btn.visible {
@@ -144,9 +161,6 @@
             border-bottom: 1px solid rgba(255,255,255,0.04);
             margin-bottom: 8px;
             border-radius: 6px;
-            -webkit-user-select: none;
-            -moz-user-select: none;
-            -ms-user-select: none;
         }
 
         .side-title {
@@ -172,6 +186,7 @@
             display: none;
         }
 
+        /* ========== УЗЛЫ (БЛОКИ) ========== */
         .node {
             width: 90vw;
             max-width: 280px;
@@ -185,12 +200,9 @@
             flex-direction: column;
             gap: 6px;
             cursor: move;
-            z-index: 10;
+            z-index: 20; /* Увеличен для приоритета над соединениями */
             transition: transform 0.2s ease;
             user-select: none;
-            -webkit-user-select: none;
-            -moz-user-select: none;
-            -ms-user-select: none;
             touch-action: none;
         }
 
@@ -213,9 +225,6 @@
             border: none;
             width: 100%;
             cursor: text;
-            -webkit-user-select: text;
-            -moz-user-select: text;
-            -ms-user-select: text;
             user-select: text;
             padding: 2px;
         }
@@ -226,6 +235,50 @@
             display: block;
         }
 
+        /* ========== ТИПЫ УЗЛОВ ========== */
+        .node[data-type="pro"] {
+            border-left: 4px solid rgba(16,185,129,0.3);
+            background: rgba(16,185,129,0.05);
+        }
+
+        .node[data-type="con"] {
+            border-left: 4px solid rgba(239,68,68,0.3);
+            background: rgba(239,68,68,0.05);
+        }
+
+        .node[data-type="pros-container"] {
+            border-left: 4px solid rgba(16,185,129,0.5);
+            background: rgba(16,185,129,0.08);
+            font-weight: 700;
+            font-size: 14px;
+            color: var(--pro-color);
+        }
+
+        .node[data-type="cons-container"] {
+            border-left: 4px solid rgba(239,68,68,0.5);
+            background: rgba(239,68,68,0.08);
+            font-weight: 700;
+            font-size: 14px;
+            color: var(--con-color);
+        }
+
+        .node[data-type="pros-container"] .buttons-container,
+        .node[data-type="cons-container"] .buttons-container {
+            display: flex;
+        }
+
+        .node[data-type="pros-container"] .title,
+        .node[data-type="cons-container"] .title {
+            cursor: default;
+            user-select: none;
+        }
+
+        .node[data-type="pros-container"] .add-btn,
+        .node[data-type="cons-container"] .add-btn {
+            display: none !important;
+        }
+
+        /* ========== УПРАВЛЕНИЕ УЗЛАМИ ========== */
         .controls {
             display: flex;
             align-items: center;
@@ -239,6 +292,12 @@
             align-items: center;
         }
 
+        .small-muted {
+            color: var(--text-muted);
+            font-size: 12px;
+        }
+
+        /* ========== КНОПКИ УЗЛОВ ========== */
         .add-btn, .remove-btn, .toggle-btn {
             width: 32px;
             height: 32px;
@@ -254,9 +313,6 @@
             cursor: pointer;
             user-select: none;
             transition: all 0.2s ease;
-            -webkit-user-select: none;
-            -moz-user-select: none;
-            -ms-user-select: none;
             touch-action: manipulation;
             font-size: 16px;
         }
@@ -280,11 +336,7 @@
             border-color: rgba(0,217,255,0.4);
         }
 
-        .small-muted {
-            color: var(--text-muted);
-            font-size: 12px;
-        }
-
+        /* ========== СОЕДИНЕНИЯ ========== */
         .connector-svg {
             position: absolute;
             top: 0;
@@ -292,19 +344,51 @@
             width: 100%;
             height: 100%;
             pointer-events: none;
-            z-index: 1;
+            z-index: 10; /* Уменьшен, чтобы был под блоками */
         }
 
         .connector-svg path {
-            stroke: var(--neon) !important;
             stroke-width: 3 !important;
             stroke-linecap: round;
             stroke-linejoin: round;
             fill: none;
             opacity: 0.98;
+        }
+
+        .connector-svg path.connector-line {
+            stroke: var(--neon) !important;
             filter: drop-shadow(0 0 6px rgba(0,217,255,0.25));
         }
 
+        .connector-svg path.connector-pro {
+            stroke: var(--pro-color) !important;
+            filter: drop-shadow(0 0 4px rgba(16,185,129,0.4));
+        }
+
+        .connector-svg path.connector-con {
+            stroke: var(--con-color) !important;
+            filter: drop-shadow(0 0 4px rgba(239,68,68,0.4));
+        }
+
+        .connector-svg path.connector-glow {
+            filter: blur(8px);
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        .connector-svg polygon.connector-arrow {
+            filter: drop-shadow(0 0 4px rgba(0,217,255,0.5));
+        }
+
+        .connector-svg polygon.arrow-pro {
+            filter: drop-shadow(0 0 3px rgba(16,185,129,0.3));
+        }
+
+        .connector-svg polygon.arrow-con {
+            filter: drop-shadow(0 0 3px rgba(239,68,68,0.3));
+        }
+
+        /* ========== AI ПАНЕЛЬ ========== */
         .ai-box {
             background: rgba(255,255,255,0.02);
             padding: 10px;
@@ -338,6 +422,7 @@
             font-size: 12px;
         }
 
+        /* ========== КНОПКИ ========== */
         .action-row {
             display: flex;
             gap: 8px;
@@ -361,10 +446,12 @@
         .button-primary {
             background: var(--accent);
             color: #0a0a0f;
+            border: 1px solid rgba(0,217,255,0.3);
         }
 
         .button-primary:hover {
             box-shadow: 0 0 12px rgba(0,217,255,0.5);
+            border-color: rgba(0,217,255,0.6);
         }
 
         .button-ghost {
@@ -375,6 +462,7 @@
 
         .button-ghost:hover {
             background: rgba(255,255,255,0.05);
+            border-color: rgba(255,255,255,0.12);
         }
 
         .button-danger {
@@ -385,8 +473,10 @@
 
         .button-danger:hover {
             background: rgba(239,68,68,0.2);
+            border-color: rgba(239,68,68,0.4);
         }
 
+        /* ========== СПЕЦИАЛЬНЫЕ ЭЛЕМЕНТЫ ========== */
         .result-highlight {
             border-left: 3px solid var(--accent);
             padding-left: 6px;
@@ -420,52 +510,12 @@
             border-color: rgba(0,217,255,0.4);
         }
 
-        .node[data-type="pro"] {
-            border-left: 4px solid rgba(16,185,129,0.3);
-            background: rgba(16,185,129,0.05);
-        }
-
-        .node[data-type="con"] {
-            border-left: 4px solid rgba(239,68,68,0.3);
-            background: rgba(239,68,68,0.05);
-        }
-
-        .node[data-type="pros-container"] {
-            border-left: 4px solid rgba(16,185,129,0.5);
-            background: rgba(16,185,129,0.08);
-            font-weight: 700;
-            font-size: 14px;
-            color: var(--pro-color);
-        }
-
-        .node[data-type="cons-container"] {
-            border-left: 4px solid rgba(239,68,68,0.5);
-            background: rgba(239,68,68,0.08);
-            font-weight: 700;
-            font-size: 14px;
-            color: var(--con-color);
-        }
-
-        /* Показываем кнопки сворачивания для контейнеров */
-        .node[data-type="pros-container"] .buttons-container,
-        .node[data-type="cons-container"] .buttons-container {
-            display: flex;
-        }
-
-        .node[data-type="pros-container"] .title,
-        .node[data-type="cons-container"] .title {
-            cursor: default;
-            user-select: none;
-            -webkit-user-select: none;
-            -moz-user-select: none;
-            -ms-user-select: none;
-        }
-
-        /* Скрытые узлы */
+        /* ========== СКРЫТЫЕ ЭЛЕМЕНТЫ ========== */
         .node.hidden {
             display: none;
         }
 
+        /* ========== МОДАЛЬНОЕ ОКНО ========== */
         .modal-overlay {
             position: fixed;
             top: 0;
@@ -537,9 +587,10 @@
         .modal-button.confirm {
             background: var(--accent);
             color: #0a0a0f;
+            border: 1px solid rgba(0,217,255,0.3);
         }
 
-        /* НОВЫЕ СТИЛИ ДЛЯ КОНТРОЛОВ МАСШТАБА */
+        /* ========== УПРАВЛЕНИЕ МАСШТАБОМ ========== */
         .zoom-controls {
             position: fixed;
             bottom: 20px;
@@ -581,6 +632,27 @@
             margin-top: 4px;
         }
 
+        /* ========== СПИСКИ ========== */
+        .pros-list, .cons-list {
+            margin: 8px 0;
+            padding-left: 16px;
+        }
+
+        .pros-list li, .cons-list li {
+            margin: 4px 0;
+            font-size: 12px;
+            line-height: 1.3;
+        }
+
+        .pros-list {
+            color: var(--pro-color);
+        }
+
+        .cons-list {
+            color: var(--con-color);
+        }
+
+        /* ========== МЕДИА-ЗАПРОСЫ ========== */
         @media (max-width: 768px) {
             .editor-page {
                 flex-direction: column;
@@ -826,39 +898,6 @@
                 font-size: 14px;
             }
         }
-
-        .no-select {
-            -webkit-touch-callout: none;
-            -webkit-user-select: none;
-            -khtml-user-select: none;
-            -moz-user-select: none;
-            -ms-user-select: none;
-            user-select: none;
-        }
-
-        .pros-list, .cons-list {
-            margin: 8px 0;
-            padding-left: 16px;
-        }
-
-        .pros-list li, .cons-list li {
-            margin: 4px 0;
-            font-size: 12px;
-            line-height: 1.3;
-        }
-
-        .pros-list {
-            color: var(--pro-color);
-        }
-
-        .cons-list {
-            color: var(--con-color);
-        }
-
-        .node[data-type="pros-container"] .add-btn,
-        .node[data-type="cons-container"] .add-btn {
-            display: none !important;
-        }
     </style>
 </head>
 <body class="no-select">
@@ -870,6 +909,7 @@
         <button class="zoom-btn" id="zoomIn" title="Увеличить">+</button>
         <button class="zoom-btn" id="zoomOut" title="Уменьшить">−</button>
         <button class="zoom-btn" id="resetZoom" title="Сбросить масштаб">↺</button>
+        <button class="zoom-btn" id="centerRoot" title="Центрировать на главном блоке">⌖</button>
         <div class="zoom-display" id="zoomLevel">100%</div>
     </div>
 
@@ -919,7 +959,7 @@
 
             <div class="action-row" style="margin-top:12px">
                 <button class="button-primary" id="ai-run">Предложить</button>
-                <button class="button-danger" id="ai-reset">Сбросить ответы</button>
+                <button class="button-danger" id="ai-reset">Сброс ответов</button>
             </div>
 
             <div style="height:8px"></div>
@@ -962,6 +1002,7 @@ const modalConfirm = document.getElementById('modalConfirm');
 const zoomInBtn = document.getElementById('zoomIn');
 const zoomOutBtn = document.getElementById('zoomOut');
 const resetZoomBtn = document.getElementById('resetZoom');
+const centerRootBtn = document.getElementById('centerRoot');
 const zoomLevelDisplay = document.getElementById('zoomLevel');
 
 let edges = [];
@@ -990,22 +1031,25 @@ const ZOOM_CONFIG = {
 
 // КОНФИГУРАЦИЯ РАСПОЛОЖЕНИЯ И ГРАНИЦ
 const LAYOUT_CONFIG = {
-  NODE_WIDTH: 280,
-  NODE_HEIGHT: 80,
-  COLUMN_SPACING: 400,
-  ROW_SPACING: 150,
-  HORIZONTAL_OFFSET: 350,
-  PRO_CON_SPACING: 25,
-  CANVAS_WIDTH: 5000,
-  CANVAS_HEIGHT: 5000
+    NODE_WIDTH: 280,
+    NODE_HEIGHT: 80,
+    COLUMN_SPACING: 400,
+    ROW_SPACING: 150,
+    HORIZONTAL_OFFSET: 350,
+    PRO_CON_SPACING: 70,
+    PRO_CON_ITEM_HEIGHT: 60,
+    PRO_CON_VERTICAL_SPACING: 25,
+    MIN_DISTANCE_FROM_PARENT: 40,
+    CANVAS_WIDTH: 5000,
+    CANVAS_HEIGHT: 5000
 };
 
-// Границы перемещения блоков (уменьшены для комфортной работы)
+// Границы перемещения блоков
 const BOUNDARIES = {
-  minX: 50,
-  minY: 50,
-  maxX: LAYOUT_CONFIG.CANVAS_WIDTH - LAYOUT_CONFIG.NODE_WIDTH - 50,
-  maxY: LAYOUT_CONFIG.CANVAS_HEIGHT - LAYOUT_CONFIG.NODE_HEIGHT - 50
+    minX: 50,
+    minY: 50,
+    maxX: LAYOUT_CONFIG.CANVAS_WIDTH - LAYOUT_CONFIG.NODE_WIDTH - 50,
+    maxY: LAYOUT_CONFIG.CANVAS_HEIGHT - LAYOUT_CONFIG.NODE_HEIGHT - 50
 };
 
 // ========== ФУНКЦИИ МАСШТАБИРОВАНИЯ ==========
@@ -1053,7 +1097,7 @@ function resetZoom() {
 
 function centerOnRoot() {
     const root = byId('root');
-    if(!root) return;
+    if (!root) return;
 
     const rootX = parseFloat(root.style.left) || LAYOUT_CONFIG.CANVAS_WIDTH / 2;
     const rootY = parseFloat(root.style.top) || LAYOUT_CONFIG.CANVAS_HEIGHT / 2;
@@ -1071,16 +1115,7 @@ function centerOnRoot() {
 zoomInBtn.addEventListener('click', zoomIn);
 zoomOutBtn.addEventListener('click', zoomOut);
 resetZoomBtn.addEventListener('click', resetZoom);
-
-// Добавляем кнопку центрирования в zoom-контролы
-const zoomControls = document.querySelector('.zoom-controls');
-const centerBtn = document.createElement('button');
-centerBtn.className = 'zoom-btn';
-centerBtn.id = 'centerRoot';
-centerBtn.title = 'Центрировать на главном блоке';
-centerBtn.textContent = '⌖';
-zoomControls.appendChild(centerBtn);
-centerBtn.addEventListener('click', centerOnRoot);
+centerRootBtn.addEventListener('click', centerOnRoot);
 
 // МАСШТАБИРОВАНИЕ КОЛЕСОМ МЫШИ
 canvasContainer.addEventListener('wheel', (e) => {
@@ -1155,1042 +1190,1391 @@ modalOverlay.addEventListener('click', (e) => {
 
 // ========== УПРАВЛЕНИЕ ПОЗИЦИЯМИ С ГРАНИЦАМИ ==========
 let occupiedPositions = new Map();
-let occupiedRectangles = new Map(); // Новый: храним реальные прямоугольники блоков
+let occupiedRectangles = new Map();
 
 function resetOccupiedPositions() {
-  occupiedPositions = new Map();
-  occupiedRectangles = new Map();
+    occupiedPositions = new Map();
+    occupiedRectangles = new Map();
 }
 
 function registerPosition(nodeId, x, y, width = LAYOUT_CONFIG.NODE_WIDTH, height = LAYOUT_CONFIG.NODE_HEIGHT) {
-  const gridX = Math.floor(x / 30);
-  const gridY = Math.floor(y / 30);
-  const key = `${gridX}_${gridY}`;
-  occupiedPositions.set(key, { nodeId, x, y });
+    const gridX = Math.floor(x / 30);
+    const gridY = Math.floor(y / 30);
+    const key = `${gridX}_${gridY}`;
+    occupiedPositions.set(key, { nodeId, x, y });
 
-  // Сохраняем реальные границы блока
-  occupiedRectangles.set(nodeId, {
-    id: nodeId,
-    x: x,
-    y: y,
-    width: width,
-    height: height,
-    right: x + width,
-    bottom: y + height
-  });
+    occupiedRectangles.set(nodeId, {
+        id: nodeId,
+        x: x,
+        y: y,
+        width: width,
+        height: height,
+        right: x + width,
+        bottom: y + height
+    });
 }
 
 // Функция проверки пересечения двух прямоугольников
 function rectanglesIntersect(rect1, rect2, padding = 20) {
-  return !(rect1.right <= rect2.x - padding ||
-           rect1.x >= rect2.right + padding ||
-           rect1.bottom <= rect2.y - padding ||
-           rect1.y >= rect2.bottom + padding);
+    return !(rect1.right <= rect2.x - padding ||
+             rect1.x >= rect2.right + padding ||
+             rect1.bottom <= rect2.y - padding ||
+             rect1.y >= rect2.bottom + padding);
 }
 
 // Функция проверки пересечения с любым существующим блоком
 function intersectsWithAnyBlock(x, y, width = LAYOUT_CONFIG.NODE_WIDTH, height = LAYOUT_CONFIG.NODE_HEIGHT, excludeId = null) {
-  const testRect = {
-    x: x,
-    y: y,
-    width: width,
-    height: height,
-    right: x + width,
-    bottom: y + height
-  };
+    const testRect = {
+        x: x,
+        y: y,
+        width: width,
+        height: height,
+        right: x + width,
+        bottom: y + height
+    };
 
-  for (const [nodeId, rect] of occupiedRectangles) {
-    if (excludeId && nodeId === excludeId) continue;
-    if (rectanglesIntersect(testRect, rect)) {
-      return { intersects: true, with: nodeId };
+    for (const [nodeId, rect] of occupiedRectangles) {
+        if (excludeId && nodeId === excludeId) continue;
+        if (rectanglesIntersect(testRect, rect)) {
+            return { intersects: true, with: nodeId };
+        }
     }
-  }
-  return { intersects: false, with: null };
+    return { intersects: false, with: null };
+}
+
+// Функция для разбиения кривой Безье на сегменты с маской
+function getMaskedBezierSegments(fromX, fromY, toX, toY, controlOffset, excludeNodeIds = []) {
+    const segments = [];
+    const steps = 20;
+    let lastVisiblePoint = { x: fromX, y: fromY };
+    let isCurrentlyVisible = true;
+
+    for (let i = 0; i <= steps; i++) {
+        const t = i / steps;
+
+        // Координаты Безье для t
+        const bx = fromX * Math.pow(1 - t, 3) +
+                  3 * fromX * Math.pow(1 - t, 2) * t +
+                  3 * toX * (1 - t) * Math.pow(t, 2) +
+                  toX * Math.pow(t, 3);
+        const by = fromY * Math.pow(1 - t, 3) +
+                  3 * (fromY + controlOffset) * Math.pow(1 - t, 2) * t +
+                  3 * (toY - controlOffset) * (1 - t) * Math.pow(t, 2) +
+                  toY * Math.pow(t, 3);
+
+        // Проверяем, находится ли эта точка внутри какого-либо блока
+        let pointInsideBlock = false;
+        for (const [nodeId, rect] of occupiedRectangles) {
+            if (excludeNodeIds.includes(nodeId)) continue;
+
+            const node = byId(nodeId);
+            if (node && node.classList.contains('hidden')) continue;
+
+            if (bx >= rect.x && bx <= rect.right && by >= rect.y && by <= rect.bottom) {
+                pointInsideBlock = true;
+                break;
+            }
+        }
+
+        if (pointInsideBlock) {
+            // Точка внутри блока
+            if (isCurrentlyVisible) {
+                // Заканчиваем предыдущий видимый сегмент
+                if (i > 0) {
+                    segments.push({
+                        x1: lastVisiblePoint.x,
+                        y1: lastVisiblePoint.y,
+                        x2: bx,
+                        y2: by,
+                        visible: true
+                    });
+                }
+                isCurrentlyVisible = false;
+            }
+        } else {
+            // Точка вне блока
+            if (!isCurrentlyVisible) {
+                // Начинаем новый видимый сегмент
+                lastVisiblePoint = { x: bx, y: by };
+                isCurrentlyVisible = true;
+            } else if (i > 0) {
+                // Продолжаем текущий видимый сегмент
+                segments.push({
+                    x1: lastVisiblePoint.x,
+                    y1: lastVisiblePoint.y,
+                    x2: bx,
+                    y2: by,
+                    visible: true
+                });
+                lastVisiblePoint = { x: bx, y: by };
+            }
+        }
+    }
+
+    return segments;
+}
+
+// Функция для создания пути из сегментов
+function createPathFromSegments(segments) {
+    if (segments.length === 0) return '';
+
+    let pathData = `M ${segments[0].x1} ${segments[0].y1}`;
+
+    for (const segment of segments) {
+        if (segment.visible) {
+            pathData += ` L ${segment.x2} ${segment.y2}`;
+        }
+    }
+
+    return pathData;
 }
 
 function isPositionFree(x, y, width = LAYOUT_CONFIG.NODE_WIDTH, height = LAYOUT_CONFIG.NODE_HEIGHT, excludeId = null) {
-  // Проверяем границы с учетом размера блока
-  if (x < BOUNDARIES.minX || y < BOUNDARIES.minY) {
-    return false;
-  }
-  if (x + width > BOUNDARIES.maxX || y + height > BOUNDARIES.maxY) {
-    return false;
-  }
+    if (x < BOUNDARIES.minX || y < BOUNDARIES.minY) {
+        return false;
+    }
+    if (x + width > BOUNDARIES.maxX || y + height > BOUNDARIES.maxY) {
+        return false;
+    }
 
-  // Проверяем пересечение с другими блоками
-  return !intersectsWithAnyBlock(x, y, width, height, excludeId).intersects;
+    return !intersectsWithAnyBlock(x, y, width, height, excludeId).intersects;
 }
 
 function getViewportCenter() {
-  // Получаем центр видимой области
-  const containerWidth = canvasContainer.clientWidth;
-  const containerHeight = canvasContainer.clientHeight;
+    const containerWidth = canvasContainer.clientWidth;
+    const containerHeight = canvasContainer.clientHeight;
 
-  // Преобразуем экранные координаты в мировые
-  const worldX = (-translateX + containerWidth / 2) / scale;
-  const worldY = (-translateY + containerHeight / 2) / scale;
+    const worldX = (-translateX + containerWidth / 2) / scale;
+    const worldY = (-translateY + containerHeight / 2) / scale;
 
-  return {
-    x: worldX - LAYOUT_CONFIG.NODE_WIDTH / 2,
-    y: worldY - LAYOUT_CONFIG.NODE_HEIGHT / 2
-  };
+    return {
+        x: worldX - LAYOUT_CONFIG.NODE_WIDTH / 2,
+        y: worldY - LAYOUT_CONFIG.NODE_HEIGHT / 2
+    };
 }
 
 function findFreePosition(nearX, nearY, parentId = null, verticalOffset = 0) {
-  // Если указан родитель, стараемся разместить под родительским блоком
-  if (parentId) {
-    const parentRect = occupiedRectangles.get(parentId);
-    if (parentRect) {
-      // Позиция под родителем с отступом
-      let baseX = parentRect.x;
-      let baseY = parentRect.bottom + LAYOUT_CONFIG.ROW_SPACING + verticalOffset;
+    if (parentId) {
+        const parentRect = occupiedRectangles.get(parentId);
+        if (parentRect) {
+            let baseX = parentRect.x;
+            let baseY = parentRect.bottom + LAYOUT_CONFIG.ROW_SPACING + verticalOffset;
 
-      // Проверяем эту позицию
-      if (isPositionFree(baseX, baseY)) {
-        const clampedPos = clampToBoundaries(baseX, baseY);
-        return { x: clampedPos.x, y: clampedPos.y };
-      }
+            if (isPositionFree(baseX, baseY)) {
+                const clampedPos = clampToBoundaries(baseX, baseY);
+                return { x: clampedPos.x, y: clampedPos.y };
+            }
 
-      // Если занято, ищем рядом
-      for (let offset = 1; offset <= 10; offset++) {
-        // Пробуем смещения вправо
-        const rightX = parentRect.x + offset * 30;
-        if (isPositionFree(rightX, baseY)) {
-          const clampedPos = clampToBoundaries(rightX, baseY);
-          return { x: clampedPos.x, y: clampedPos.y };
+            for (let offset = 1; offset <= 10; offset++) {
+                const rightX = parentRect.x + offset * 30;
+                if (isPositionFree(rightX, baseY)) {
+                    const clampedPos = clampToBoundaries(rightX, baseY);
+                    return { x: clampedPos.x, y: clampedPos.y };
+                }
+
+                const leftX = parentRect.x - offset * 30;
+                if (isPositionFree(leftX, baseY)) {
+                    const clampedPos = clampToBoundaries(leftX, baseY);
+                    return { x: clampedPos.x, y: clampedPos.y };
+                }
+            }
         }
-
-        // Пробуем смещения влево
-        const leftX = parentRect.x - offset * 30;
-        if (isPositionFree(leftX, baseY)) {
-          const clampedPos = clampToBoundaries(leftX, baseY);
-          return { x: clampedPos.x, y: clampedPos.y };
-        }
-      }
     }
-  }
 
-  // Если координаты не указаны, используем центр видимой области
-  let targetX = nearX;
-  let targetY = nearY;
+    let targetX = nearX;
+    let targetY = nearY;
 
-  if ((!targetX && targetX !== 0) || (!targetY && targetY !== 0)) {
-    const viewportCenter = getViewportCenter();
-    targetX = viewportCenter.x;
-    targetY = viewportCenter.y;
-  }
+    if ((!targetX && targetX !== 0) || (!targetY && targetY !== 0)) {
+        const viewportCenter = getViewportCenter();
+        targetX = viewportCenter.x;
+        targetY = viewportCenter.y;
+    }
 
-  // Сначала проверяем указанную позицию
-  if (isPositionFree(targetX, targetY)) {
+    if (isPositionFree(targetX, targetY)) {
+        const clampedPos = clampToBoundaries(targetX, targetY);
+        return { x: clampedPos.x, y: clampedPos.y };
+    }
+
+    for (let radius = 1; radius <= 15; radius++) {
+        const points = 12;
+        for (let i = 0; i < points; i++) {
+            const angle = (i * 360) / points;
+            const rad = angle * Math.PI / 180;
+            const x = targetX + Math.cos(rad) * radius * 100;
+            const y = targetY + Math.sin(rad) * radius * 80;
+
+            if (isPositionFree(x, y)) {
+                const clampedPos = clampToBoundaries(x, y);
+                return { x: clampedPos.x, y: clampedPos.y };
+            }
+        }
+    }
+
     const clampedPos = clampToBoundaries(targetX, targetY);
     return { x: clampedPos.x, y: clampedPos.y };
-  }
-
-  // Ищем свободное место по спирали от указанной точки
-  for (let radius = 1; radius <= 15; radius++) {
-    const points = 12;
-    for (let i = 0; i < points; i++) {
-      const angle = (i * 360) / points;
-      const rad = angle * Math.PI / 180;
-      const x = targetX + Math.cos(rad) * radius * 100;
-      const y = targetY + Math.sin(rad) * radius * 80;
-
-      if (isPositionFree(x, y)) {
-        const clampedPos = clampToBoundaries(x, y);
-        return { x: clampedPos.x, y: clampedPos.y };
-      }
-    }
-  }
-
-  // Если не нашли, возвращаем позицию в пределах границ
-  const clampedPos = clampToBoundaries(targetX, targetY);
-  return { x: clampedPos.x, y: clampedPos.y };
 }
 
 function clampToBoundaries(x, y, width = LAYOUT_CONFIG.NODE_WIDTH, height = LAYOUT_CONFIG.NODE_HEIGHT) {
-  const clampedX = Math.max(BOUNDARIES.minX, Math.min(BOUNDARIES.maxX - width, x));
-  const clampedY = Math.max(BOUNDARIES.minY, Math.min(BOUNDARIES.maxY - height, y));
-  return { x: clampedX, y: clampedY };
+    const clampedX = Math.max(BOUNDARIES.minX, Math.min(BOUNDARIES.maxX - width, x));
+    const clampedY = Math.max(BOUNDARIES.minY, Math.min(BOUNDARIES.maxY - height, y));
+    return { x: clampedX, y: clampedY };
 }
 
 // ========== СОХРАНЕНИЕ И ЗАГРУЗКА ==========
-function saveState(debounceMs = 200){
-  if(_saveTimeout) clearTimeout(_saveTimeout);
-  _saveTimeout = setTimeout(()=> {
+function saveState(debounceMs = 200) {
+    if (_saveTimeout) clearTimeout(_saveTimeout);
+    _saveTimeout = setTimeout(() => {
+        try {
+            const state = serializeState();
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        } catch (e) { console.error('saveState', e); }
+    }, debounceMs);
+}
+
+function serializeState() {
+    const nodes = Array.from(document.querySelectorAll('.node[data-id]')).map(n => ({
+        id: n.dataset.id,
+        left: parseFloat(n.style.left) || 0,
+        top: parseFloat(n.style.top) || 0,
+        title: n.querySelector('.title')?.innerText || '',
+        type: n.dataset.type || '',
+        collapsed: n.dataset.collapsed === 'true'
+    }));
+
+    const panelRect = sidePanel.getBoundingClientRect();
+    const editorRect = document.getElementById('editorPage').getBoundingClientRect();
+    const panelState = {
+        left: panelRect.left - editorRect.left,
+        top: panelRect.top - editorRect.top,
+        width: panelRect.width,
+        height: panelRect.height,
+        collapsed: sidePanel.dataset.collapsed === '1',
+        hidden: sidePanel.style.display === 'none'
+    };
+
+    const viewState = { scale, translateX, translateY };
+
+    return {
+        version: 3,
+        nodes,
+        edges,
+        nodeCounter,
+        aiOutput: document.getElementById('ai-output')?.innerHTML || '',
+        isLockedUntil,
+        viewState,
+        panelState
+    };
+}
+
+function loadState() {
     try {
-      const state = serializeState();
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    } catch(e){ console.error('saveState', e); }
-  }, debounceMs);
-}
+        const raw = localStorage.getItem(STORAGE_KEY);
 
-function serializeState(){
-  const nodes = Array.from(document.querySelectorAll('.node[data-id]')).map(n => ({
-    id: n.dataset.id,
-    left: parseFloat(n.style.left) || 0,
-    top: parseFloat(n.style.top) || 0,
-    title: n.querySelector('.title')?.innerText || '',
-    type: n.dataset.type || '',
-    collapsed: n.dataset.collapsed === 'true'
-  }));
+        if (raw) {
+            const s = JSON.parse(raw);
+            if (s) {
+                if (typeof s.nodeCounter === 'number') nodeCounter = s.nodeCounter;
 
-  const panelRect = sidePanel.getBoundingClientRect();
-  const editorRect = document.getElementById('editorPage').getBoundingClientRect();
-  const panelState = {
-    left: panelRect.left - editorRect.left,
-    top: panelRect.top - editorRect.top,
-    width: panelRect.width,
-    height: panelRect.height,
-    collapsed: sidePanel.dataset.collapsed === '1',
-    hidden: sidePanel.style.display === 'none'
-  };
+                resetOccupiedPositions();
 
-  const viewState = { scale, translateX, translateY };
+                if (s.viewState && s.version >= 3) {
+                    scale = s.viewState.scale || ZOOM_CONFIG.default;
+                    translateX = s.viewState.translateX || 0;
+                    translateY = s.viewState.translateY || 0;
+                }
 
-  return {
-    version: 3,
-    nodes,
-    edges,
-    nodeCounter,
-    aiOutput: document.getElementById('ai-output')?.innerHTML || '',
-    isLockedUntil,
-    viewState,
-    panelState
-  };
-}
+                const root = document.querySelector('[data-id="root"]');
+                if (root) {
+                    const savedRoot = (s.nodes || []).find(n => n.id === 'root');
+                    if (savedRoot) {
+                        const clampedPos = clampToBoundaries(savedRoot.left || 0, savedRoot.top || 0);
+                        root.style.left = clampedPos.x + 'px';
+                        root.style.top = clampedPos.y + 'px';
+                        const t = root.querySelector('.title');
+                        if (t) t.innerText = savedRoot.title || '';
+                        registerPosition('root', clampedPos.x, clampedPos.y);
+                    }
+                }
 
-function loadState(){
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+                document.querySelectorAll('.node').forEach(n => { if (n.dataset.id !== 'root') n.remove(); });
+                edges = [];
 
-    // Всегда центрируем на корневом блоке при загрузке
-    if(raw) {
-      const s = JSON.parse(raw);
-      if(s) {
-        if(typeof s.nodeCounter === 'number') nodeCounter = s.nodeCounter;
+                if (Array.isArray(s.nodes)) {
+                    s.nodes.forEach(n => {
+                        if (n.id === 'root') return;
 
-        resetOccupiedPositions();
+                        let yPos = n.top || 100;
+                        const isProCon = n.type && (n.type === 'pro' || n.type === 'con' ||
+                            n.type === 'pros-container' || n.type === 'cons-container');
 
-        if (s.viewState && s.version >= 3) {
-          scale = s.viewState.scale || ZOOM_CONFIG.default;
-          translateX = s.viewState.translateX || 0;
-          translateY = s.viewState.translateY || 0;
-        }
+                        if (isProCon) {
+                            const parentEdge = (s.edges || []).find(e => e.to === n.id);
+                            if (parentEdge) {
+                                const parentNode = s.nodes.find(node => node.id === parentEdge.from);
+                                if (parentNode) {
+                                    const minY = (parentNode.top || 0) + LAYOUT_CONFIG.NODE_HEIGHT + 40;
+                                    yPos = Math.max(yPos, minY);
+                                }
+                            }
+                        }
 
-        const root = document.querySelector('[data-id="root"]');
-        if(root){
-          const savedRoot = (s.nodes || []).find(n=>n.id === 'root');
-          if(savedRoot){
-            const clampedPos = clampToBoundaries(savedRoot.left||0, savedRoot.top||0);
-            root.style.left = clampedPos.x + 'px';
-            root.style.top = clampedPos.y + 'px';
-            const t = root.querySelector('.title');
-            if(t) t.innerText = savedRoot.title || '';
-            registerPosition('root', clampedPos.x, clampedPos.y);
-          }
-        }
+                        const clampedPos = clampToBoundaries(n.left || 100, yPos);
+                        const node = recreateNode(n.id, clampedPos.x, clampedPos.y, n.title || 'Новый исход');
+                        if (n.type) node.dataset.type = n.type;
+                        if (n.collapsed) {
+                            node.dataset.collapsed = 'true';
+                            addToggleButton(node);
+                        }
+                        registerPosition(n.id, clampedPos.x, clampedPos.y);
+                    });
+                }
 
-        document.querySelectorAll('.node').forEach(n => { if(n.dataset.id !== 'root') n.remove(); });
-        edges = [];
+                if (Array.isArray(s.edges)) edges = s.edges.slice();
+                if (s.aiOutput !== undefined) document.getElementById('ai-output').innerHTML = s.aiOutput || '';
 
-        if(Array.isArray(s.nodes)){
-          s.nodes.forEach(n => {
-            if(n.id === 'root') return;
-            const clampedPos = clampToBoundaries(n.left || 100, n.top || 100);
-            const node = recreateNode(n.id, clampedPos.x, clampedPos.y, n.title || 'Новый исход');
-            if(n.type) node.dataset.type = n.type;
-            if(n.collapsed) {
-              node.dataset.collapsed = 'true';
-              addToggleButton(node);
+                if (s.panelState) {
+                    const editorRect = document.getElementById('editorPage').getBoundingClientRect();
+                    sidePanel.style.left = (s.panelState.left || 0) + 'px';
+                    sidePanel.style.top = (s.panelState.top || 0) + 'px';
+                    sidePanel.style.right = 'auto';
+                    if (s.panelState.width) sidePanel.style.width = s.panelState.width + 'px';
+                    if (s.panelState.height) sidePanel.style.height = s.panelState.height + 'px';
+                    if (s.panelState.collapsed) sidePanel.dataset.collapsed = '1';
+                    if (s.panelState.hidden) {
+                        sidePanel.style.display = 'none';
+                        openPanelBtn.classList.add('visible');
+                    }
+                }
+
+                if (s.isLockedUntil) {
+                    isLockedUntil = s.isLockedUntil;
+                    updateTimerUI();
+                    if (isLockedUntil > Date.now()) {
+                        timerInterval && clearInterval(timerInterval);
+                        timerInterval = setInterval(updateTimerUI, 250);
+                    }
+                }
             }
-            registerPosition(n.id, clampedPos.x, clampedPos.y);
-          });
+        } else {
+            const root = document.querySelector('[data-id="root"]');
+            if (root) {
+                const centerX = LAYOUT_CONFIG.CANVAS_WIDTH / 2 - LAYOUT_CONFIG.NODE_WIDTH / 2;
+                const centerY = LAYOUT_CONFIG.CANVAS_HEIGHT / 2 - LAYOUT_CONFIG.NODE_HEIGHT / 2;
+
+                root.style.left = centerX + 'px';
+                root.style.top = centerY + 'px';
+                registerPosition('root', centerX, centerY);
+            }
         }
 
-        if(Array.isArray(s.edges)) edges = s.edges.slice();
-        if(s.aiOutput !== undefined) document.getElementById('ai-output').innerHTML = s.aiOutput || '';
+        centerOnRoot();
 
-        if(s.panelState){
-          const editorRect = document.getElementById('editorPage').getBoundingClientRect();
-          sidePanel.style.left = (s.panelState.left || 0) + 'px';
-          sidePanel.style.top = (s.panelState.top || 0) + 'px';
-          sidePanel.style.right = 'auto';
-          if(s.panelState.width) sidePanel.style.width = s.panelState.width + 'px';
-          if(s.panelState.height) sidePanel.style.height = s.panelState.height + 'px';
-          if(s.panelState.collapsed) sidePanel.dataset.collapsed = '1';
-          if(s.panelState.hidden) {
-            sidePanel.style.display = 'none';
-            openPanelBtn.classList.add('visible');
-          }
-        }
+        setTimeout(() => {
+            fixProConPositions();
+            restoreCollapsedState();
+            renderConnections();
+            updateAIPreview();
+        }, 800);
 
-        if(s.isLockedUntil){
-          isLockedUntil = s.isLockedUntil;
-          updateTimerUI();
-          if(isLockedUntil > Date.now()){
-            timerInterval && clearInterval(timerInterval);
-            timerInterval = setInterval(updateTimerUI, 250);
-          }
-        }
-      }
-    } else {
-      // Первый запуск - создаем корневой блок в центре
-      const root = document.querySelector('[data-id="root"]');
-      if(root) {
-        const centerX = LAYOUT_CONFIG.CANVAS_WIDTH / 2 - LAYOUT_CONFIG.NODE_WIDTH / 2;
-        const centerY = LAYOUT_CONFIG.CANVAS_HEIGHT / 2 - LAYOUT_CONFIG.NODE_HEIGHT / 2;
-
-        root.style.left = centerX + 'px';
-        root.style.top = centerY + 'px';
-        registerPosition('root', centerX, centerY);
-      }
-    }
-
-    // ВСЕГДА центрируем на корневом блоке после загрузки
-    centerOnRoot();
-
-    restoreCollapsedState();
-    renderConnections();
-    updateAIPreview();
-  } catch(e){ console.error('loadState', e); }
+    } catch (e) { console.error('loadState', e); }
 }
 
 // ========== ТАЙМЕР ==========
-function setLock(seconds){
-  isLockedUntil = Date.now() + seconds*1000;
-  updateTimerUI();
-  timerInterval && clearInterval(timerInterval);
-  timerInterval = setInterval(updateTimerUI, 250);
-  saveState();
+function setLock(seconds) {
+    isLockedUntil = Date.now() + seconds * 1000;
+    updateTimerUI();
+    timerInterval && clearInterval(timerInterval);
+    timerInterval = setInterval(updateTimerUI, 250);
+    saveState();
 }
 
-function updateTimerUI(){
-  const el = document.getElementById('ai-timer');
-  const runBtn = document.getElementById('ai-run');
-  const remaining = Math.max(0, Math.ceil((isLockedUntil - Date.now()) / 1000));
-  if(remaining > 0){
-    el.innerText = `${remaining}s`;
-    runBtn.disabled = true;
-    runBtn.style.opacity='0.6';
-  } else {
-    el.innerText = '—';
-    runBtn.disabled = false;
-    runBtn.style.opacity='';
-    if(timerInterval){
-      clearInterval(timerInterval);
-      timerInterval=null;
+function updateTimerUI() {
+    const el = document.getElementById('ai-timer');
+    const runBtn = document.getElementById('ai-run');
+    const remaining = Math.max(0, Math.ceil((isLockedUntil - Date.now()) / 1000));
+    if (remaining > 0) {
+        el.innerText = `${remaining}s`;
+        runBtn.disabled = true;
+        runBtn.style.opacity = '0.6';
+    } else {
+        el.innerText = '—';
+        runBtn.disabled = false;
+        runBtn.style.opacity = '';
+        if (timerInterval) {
+            clearInterval(timerInterval);
+            timerInterval = null;
+        }
+        if (isLockedUntil !== 0) {
+            isLockedUntil = 0;
+            saveState();
+        }
     }
-    if(isLockedUntil !== 0){
-      isLockedUntil = 0;
-      saveState();
-    }
-  }
 }
 
 // ========== УЗЛЫ И ИНТЕРФЕЙС ==========
-function byId(id){ return document.querySelector(`[data-id="${id}"]`); }
-function genId(){ nodeCounter = (nodeCounter||0) + 1; saveState(); return 'node-' + nodeCounter; }
+function byId(id) { return document.querySelector(`[data-id="${id}"]`); }
+function genId() { nodeCounter = (nodeCounter || 0) + 1; saveState(); return 'node-' + nodeCounter; }
 
-function recreateNode(id, x=100, y=200, text='Новый исход'){
-  const div = document.createElement('div');
-  div.className = 'node';
+function recreateNode(id, x = 100, y = 200, text = 'Новый исход') {
+    const div = document.createElement('div');
+    div.className = 'node';
 
-  const clampedPos = clampToBoundaries(x, y);
-  div.style.left = clampedPos.x + 'px';
-  div.style.top = clampedPos.y + 'px';
+    const clampedPos = clampToBoundaries(x, y);
+    div.style.left = clampedPos.x + 'px';
+    div.style.top = clampedPos.y + 'px';
 
-  div.dataset.id = id;
-  div.innerHTML = `
+    div.dataset.id = id;
+    div.innerHTML = `
     <div contenteditable class="title">${text}</div>
     <div class="controls">
-      <div class="small-muted">${id==='root' ? 'Главный пункт' : 'Исход'}</div>
+      <div class="small-muted">${id === 'root' ? 'Главный пункт' : 'Исход'}</div>
       <div class="buttons-container">
         <div class="add-btn" title="Добавить исход" data-add>+</div>
-        ${id==='root' ? '' : '<div class="remove-btn" title="Удалить узел">✕</div>'}
+        ${id === 'root' ? '' : '<div class="remove-btn" title="Удалить узел">✕</div>'}
       </div>
     </div>
   `;
-  canvasContent.appendChild(div);
-  makeDraggable(div);
-  setupNodeButtons(div);
-  const t = div.querySelector('.title');
-  if(t) t.addEventListener('input', ()=>{ updateAIPreview(); saveState(); });
+    canvasContent.appendChild(div);
+    makeDraggable(div);
+    setupNodeButtons(div);
+    const t = div.querySelector('.title');
+    if (t) t.addEventListener('input', () => { updateAIPreview(); saveState(); });
 
-  // Регистрируем блок
-  registerPosition(id, clampedPos.x, clampedPos.y, div.offsetWidth, div.offsetHeight);
+    registerPosition(id, clampedPos.x, clampedPos.y, div.offsetWidth, div.offsetHeight);
 
-  return div;
+    return div;
 }
 
-function createNode(x=100, y=200, text='Новый исход', parentId=null, type=null){
-  const id = genId();
+function createNode(x = 100, y = 200, text = 'Новый исход', parentId = null, type = null) {
+    const id = genId();
 
-  // Определяем вертикальный отступ в зависимости от типа
-  let verticalOffset = 0;
-  if (type === 'pro' || type === 'con') {
-    // Для плюсов/минусов используем PRO_CON_SPACING
-    verticalOffset = LAYOUT_CONFIG.PRO_CON_SPACING * 1.5; // Уменьшено
-  }
+    const isProCon = type && (type === 'pro' || type === 'con' ||
+        type === 'pros-container' || type === 'cons-container');
 
-  const freePos = findFreePosition(x, y, parentId, verticalOffset);
+    let targetX = x;
+    let targetY = y;
 
-  const node = recreateNode(id, freePos.x, freePos.y, text);
-  if(type) node.dataset.type = type;
-  if(parentId) addEdge(parentId, id);
+    if (isProCon && parentId) {
+        const parentRect = occupiedRectangles.get(parentId);
+        if (parentRect) {
+            const minY = parentRect.bottom + LAYOUT_CONFIG.MIN_DISTANCE_FROM_PARENT;
 
-  updateAIPreview();
-  renderConnections();
-  saveState();
-  return id;
-}
+            let foundSpot = false;
 
-function makeDraggable(elem){
-  let dragging=false, startX=0, startY=0, origLeft=0, origTop=0;
-  const nodeId = elem.dataset.id;
-  let lastRenderTime = 0;
-  const RENDER_THROTTLE_MS = 16; // ~60fps
+            for (let horizontalAttempt = 0; horizontalAttempt < 5; horizontalAttempt++) {
+                const offsetX = (horizontalAttempt - 2) * 50;
+                const testX = parentRect.x + offsetX;
 
-  elem.addEventListener('mousedown', e=>{
-    if(e.target.closest('.add-btn, .remove-btn, .toggle-btn')) return;
-    if(e.target.closest('.title')) return;
-    dragging=true;
-    startX=e.clientX;
-    startY=e.clientY;
-    origLeft=parseFloat(elem.style.left)||0;
-    origTop=parseFloat(elem.style.top)||0;
-    e.preventDefault();
-    elem.style.zIndex = '1000';
-  });
+                for (let verticalAttempt = 0; verticalAttempt < 8; verticalAttempt++) {
+                    const testY = minY + verticalAttempt * 45;
 
-  document.addEventListener('mousemove', e=>{
-    if(!dragging) return;
+                    if (isPositionFree(testX, testY, LAYOUT_CONFIG.NODE_WIDTH, LAYOUT_CONFIG.NODE_HEIGHT)) {
+                        targetX = testX;
+                        targetY = testY;
+                        foundSpot = true;
+                        break;
+                    }
+                }
+                if (foundSpot) break;
+            }
 
-    const dx=e.clientX-startX;
-    const dy=e.clientY-startY;
+            if (!foundSpot) {
+                targetX = parentRect.x;
+                targetY = minY;
 
-    let newLeft = origLeft+dx;
-    let newTop = origTop+dy;
+                const clamped = clampToBoundaries(targetX, targetY);
+                targetX = clamped.x;
+                targetY = clamped.y;
+            }
+        }
+    } else {
+        let verticalOffset = 0;
+        let horizontalOffset = 0;
 
-    // Применяем границы при перемещении
-    const clampedPos = clampToBoundaries(newLeft, newTop);
-    newLeft = clampedPos.x;
-    newTop = clampedPos.y;
+        if (type === 'pro' || type === 'con') {
+            verticalOffset = 80;
+        } else if (type === 'pros-container' || type === 'cons-container') {
+            horizontalOffset = type === 'pros-container' ? -400 : 400;
+        }
 
-    // Проверяем пересечение с другими блоками
-    const intersection = intersectsWithAnyBlock(newLeft, newTop,
-                                                elem.offsetWidth, elem.offsetHeight,
-                                                nodeId);
-
-    if (!intersection.intersects) {
-      elem.style.left=newLeft+'px';
-      elem.style.top=newTop+'px';
-
-      // Троттлинг перерисовки соединений
-      const now = Date.now();
-      if (now - lastRenderTime >= RENDER_THROTTLE_MS) {
-        renderConnections();
-        lastRenderTime = now;
-      }
+        targetX = x + horizontalOffset;
+        targetY = y + verticalOffset;
     }
-  });
 
-  document.addEventListener('mouseup', ()=>{
-    if(!dragging) return;
-    dragging=false;
-    elem.style.zIndex='';
+    let freePos = findFreePosition(targetX, targetY, parentId, 0);
 
-    const finalLeft = parseFloat(elem.style.left)||0;
-    const finalTop = parseFloat(elem.style.top)||0;
+    if (isProCon && parentId) {
+        const parentRect = occupiedRectangles.get(parentId);
+        if (parentRect) {
+            if (freePos.y < parentRect.bottom + LAYOUT_CONFIG.MIN_DISTANCE_FROM_PARENT) {
+                let correctedY = parentRect.bottom + LAYOUT_CONFIG.MIN_DISTANCE_FROM_PARENT;
+                let correctedX = freePos.x;
 
-    // Обновляем позицию в системе
-    occupiedRectangles.delete(nodeId);
-    registerPosition(nodeId, finalLeft, finalTop, elem.offsetWidth, elem.offsetHeight);
+                for (let attempt = 0; attempt < 10; attempt++) {
+                    if (isPositionFree(correctedX, correctedY)) {
+                        freePos = { x: correctedX, y: correctedY };
+                        break;
+                    }
+                    correctedY += 30;
+                }
 
-    // Финальная перерисовка
+                freePos.y = Math.max(freePos.y, parentRect.bottom + LAYOUT_CONFIG.MIN_DISTANCE_FROM_PARENT);
+            }
+        }
+    }
+
+    const node = recreateNode(id, freePos.x, freePos.y, text);
+    if (type) node.dataset.type = type;
+    if (parentId) addEdge(parentId, id);
+
+    if (isProCon && parentId) {
+        setTimeout(() => {
+            const nodeRect = occupiedRectangles.get(id);
+            const parentRect = occupiedRectangles.get(parentId);
+
+            if (nodeRect && parentRect && nodeRect.y < parentRect.bottom + 10) {
+                node.style.top = (parentRect.bottom + LAYOUT_CONFIG.MIN_DISTANCE_FROM_PARENT) + 'px';
+
+                occupiedRectangles.delete(id);
+                registerPosition(id, nodeRect.x, parentRect.bottom + LAYOUT_CONFIG.MIN_DISTANCE_FROM_PARENT,
+                    node.offsetWidth, node.offsetHeight);
+
+                renderConnections();
+                saveState();
+            }
+        }, 100);
+    }
+
+    updateAIPreview();
     renderConnections();
     saveState();
-  });
+    return id;
 }
 
+function makeDraggable(elem) {
+    let dragging = false, startX = 0, startY = 0, origLeft = 0, origTop = 0;
+    const nodeId = elem.dataset.id;
+    const nodeType = elem.dataset.type || '';
+    const isProCon = nodeType.includes('pro') || nodeType.includes('con');
 
-function setupNodeButtons(node){
-  const addBtn = node.querySelector('[data-add]');
-  const removeBtn = node.querySelector('.remove-btn');
-  const toggleBtn = node.querySelector('.toggle-btn');
+    elem.addEventListener('mousedown', e => {
+        if (e.target.closest('.add-btn, .remove-btn, .toggle-btn, .title')) return;
+        if (e.button !== 0) return;
 
-  if(addBtn) addBtn.addEventListener('click', e=>{
-    e.stopPropagation();
-    const nodeId = node.dataset.id;
-    const nodeRect = occupiedRectangles.get(nodeId);
+        dragging = true;
+        startX = e.clientX;
+        startY = e.clientY;
+        origLeft = parseFloat(elem.style.left) || 0;
+        origTop = parseFloat(elem.style.top) || 0;
 
-    if (!nodeRect) return;
+        e.preventDefault();
+        elem.style.zIndex = '1000';
+        canvasContainer.classList.add('canvas-panning');
+    });
 
-    // Находим позицию под текущим блоком
-    const freePos = findFreePosition(nodeRect.x, nodeRect.bottom + 20, nodeId);
+    document.addEventListener('mousemove', e => {
+        if (!dragging) return;
 
-    createNode(freePos.x, freePos.y, 'Новый пункт', nodeId);
-  });
+        const dx = e.clientX - startX;
+        const dy = e.clientY - startY;
 
-  if(removeBtn) removeBtn.addEventListener('click', e=>{
-    e.stopPropagation();
-    removeNode(node.dataset.id);
-  });
+        let newLeft = origLeft + dx;
+        let newTop = origTop + dy;
 
-  if(toggleBtn) toggleBtn.addEventListener('click', e=>{
-    e.stopPropagation();
-    toggleCollapse(node);
-  });
+        if (isProCon) {
+            const parentEdge = edges.find(e => e.to === nodeId);
+            if (parentEdge) {
+                const parentRect = occupiedRectangles.get(parentEdge.from);
+                if (parentRect) {
+                    const minY = parentRect.bottom + LAYOUT_CONFIG.MIN_DISTANCE_FROM_PARENT;
+                    if (newTop < minY) {
+                        newTop = minY;
+                    }
+                }
+            }
+        }
+
+        const clampedPos = clampToBoundaries(newLeft, newTop);
+        newLeft = clampedPos.x;
+        newTop = clampedPos.y;
+
+        elem.style.left = newLeft + 'px';
+        elem.style.top = newTop + 'px';
+
+        renderConnections();
+    });
+
+    document.addEventListener('mouseup', () => {
+        if (!dragging) return;
+        dragging = false;
+        elem.style.zIndex = '';
+        canvasContainer.classList.remove('canvas-panning');
+
+        const finalLeft = parseFloat(elem.style.left) || 0;
+        const finalTop = parseFloat(elem.style.top) || 0;
+
+        occupiedRectangles.delete(nodeId);
+        registerPosition(nodeId, finalLeft, finalTop, elem.offsetWidth, elem.offsetHeight);
+
+        renderConnections();
+        saveState();
+    });
+
+    elem.addEventListener('contextmenu', e => {
+        if (dragging) {
+            e.preventDefault();
+        }
+    });
+}
+
+function fixProConPositions() {
+    const proConNodes = Array.from(document.querySelectorAll('.node[data-id]'))
+        .filter(n => {
+            const nodeType = n.dataset.type;
+            return nodeType && (nodeType === 'pro' || nodeType === 'con' ||
+                nodeType === 'pros-container' || nodeType === 'cons-container');
+        });
+
+    let fixedCount = 0;
+
+    proConNodes.forEach(node => {
+        const nodeId = node.dataset.id;
+
+        const parentEdge = edges.find(e => e.to === nodeId);
+        if (!parentEdge) return;
+
+        const parentRect = occupiedRectangles.get(parentEdge.from);
+        if (!parentRect) return;
+
+        const currentX = parseFloat(node.style.left) || 0;
+        let currentY = parseFloat(node.style.top) || 0;
+
+        const MIN_ALLOWED_Y = parentRect.bottom + LAYOUT_CONFIG.MIN_DISTANCE_FROM_PARENT;
+
+        if (currentY < MIN_ALLOWED_Y) {
+            let foundY = MIN_ALLOWED_Y;
+
+            for (let offsetY = 0; offsetY < 15; offsetY++) {
+                const testY = MIN_ALLOWED_Y + offsetY * 35;
+                if (isPositionFree(currentX, testY, node.offsetWidth, node.offsetHeight, nodeId)) {
+                    foundY = testY;
+                    break;
+                }
+            }
+
+            foundY = Math.max(foundY, MIN_ALLOWED_Y);
+
+            node.style.top = foundY + 'px';
+
+            occupiedRectangles.delete(nodeId);
+            registerPosition(nodeId, currentX, foundY, node.offsetWidth, node.offsetHeight);
+
+            fixedCount++;
+        }
+    });
+
+    if (fixedCount > 0) {
+        console.log(`Исправлено ${fixedCount} pro/con узлов`);
+        renderConnections();
+        saveState();
+    }
+}
+
+function setupNodeButtons(node) {
+    const addBtn = node.querySelector('[data-add]');
+    const removeBtn = node.querySelector('.remove-btn');
+    const toggleBtn = node.querySelector('.toggle-btn');
+
+    if (addBtn) addBtn.addEventListener('click', e => {
+        e.stopPropagation();
+        const nodeId = node.dataset.id;
+        const nodeRect = occupiedRectangles.get(nodeId);
+
+        if (!nodeRect) return;
+
+        const freePos = findFreePosition(nodeRect.x, nodeRect.bottom + 20, nodeId);
+
+        createNode(freePos.x, freePos.y, 'Новый пункт', nodeId);
+    });
+
+    if (removeBtn) removeBtn.addEventListener('click', e => {
+        e.stopPropagation();
+        removeNode(node.dataset.id);
+    });
+
+    if (toggleBtn) toggleBtn.addEventListener('click', e => {
+        e.stopPropagation();
+        toggleCollapse(node);
+    });
 }
 
 function addToggleButton(node) {
-  const buttonsContainer = node.querySelector('.buttons-container');
-  if (!buttonsContainer) return;
+    const buttonsContainer = node.querySelector('.buttons-container');
+    if (!buttonsContainer) return;
 
-  if (!buttonsContainer.querySelector('.toggle-btn')) {
-    const toggleBtn = document.createElement('div');
-    toggleBtn.className = 'toggle-btn';
-    toggleBtn.title = 'Свернуть/развернуть';
-    toggleBtn.textContent = '−';
-    buttonsContainer.appendChild(toggleBtn);
-    setupNodeButtons(node);
-  }
+    if (!buttonsContainer.querySelector('.toggle-btn')) {
+        const toggleBtn = document.createElement('div');
+        toggleBtn.className = 'toggle-btn';
+        toggleBtn.title = 'Свернуть/развернуть';
+        toggleBtn.textContent = '−';
+        buttonsContainer.appendChild(toggleBtn);
+        setupNodeButtons(node);
+    }
 }
 
-// РЕКУРСИВНОЕ СВОРАЧИВАНИЕ ВСЕХ ПОСЛЕДУЮЩИХ БЛОКОВ
 function toggleCollapse(node) {
-  const isCollapsed = node.dataset.collapsed === 'true';
-  node.dataset.collapsed = (!isCollapsed).toString();
+    const isCollapsed = node.dataset.collapsed === 'true';
+    node.dataset.collapsed = (!isCollapsed).toString();
 
-  const toggleBtn = node.querySelector('.toggle-btn');
-  if (toggleBtn) {
-    toggleBtn.textContent = isCollapsed ? '−' : '+';
-  }
+    const toggleBtn = node.querySelector('.toggle-btn');
+    if (toggleBtn) {
+        toggleBtn.textContent = isCollapsed ? '−' : '+';
+    }
 
-  collapseAllChildren(node, !isCollapsed);
-  saveState();
+    collapseAllChildren(node, !isCollapsed);
+    saveState();
 }
 
 function collapseAllChildren(parentNode, shouldCollapse) {
-  const parentId = parentNode.dataset.id;
+    const parentId = parentNode.dataset.id;
 
-  const childNodes = findAllChildNodes(parentId);
+    const childNodes = findAllChildNodes(parentId);
 
-  childNodes.forEach(childNode => {
-    if (shouldCollapse) {
-      childNode.classList.add('hidden');
-    } else {
-      childNode.classList.remove('hidden');
-      // После раскрытия перерисовываем соединения
-      setTimeout(() => {
-        renderConnections();
-      }, 50);
-    }
+    childNodes.forEach(childNode => {
+        if (shouldCollapse) {
+            childNode.classList.add('hidden');
+        } else {
+            childNode.classList.remove('hidden');
+            setTimeout(() => {
+                renderConnections();
+            }, 50);
+        }
 
-    const childToggleBtn = childNode.querySelector('.toggle-btn');
-    if (childToggleBtn && childNode.dataset.type &&
-        (childNode.dataset.type.includes('container') || childNode.dataset.collapsed === 'true')) {
-      childToggleBtn.textContent = shouldCollapse ? '+' : '−';
-    }
-  });
+        const childToggleBtn = childNode.querySelector('.toggle-btn');
+        if (childToggleBtn && childNode.dataset.type &&
+            (childNode.dataset.type.includes('container') || childNode.dataset.collapsed === 'true')) {
+            childToggleBtn.textContent = shouldCollapse ? '+' : '−';
+        }
+    });
 
-  renderConnections();
+    renderConnections();
 }
 
 function findAllChildNodes(parentId) {
-  const children = [];
-  const visited = new Set();
+    const children = [];
+    const visited = new Set();
 
-  function findChildrenRecursive(id) {
-    if (visited.has(id)) return;
-    visited.add(id);
+    function findChildrenRecursive(id) {
+        if (visited.has(id)) return;
+        visited.add(id);
 
-    edges.forEach(edge => {
-      if (edge.from === id) {
-        const childNode = byId(edge.to);
-        if (childNode && !children.includes(childNode)) {
-          children.push(childNode);
-          findChildrenRecursive(edge.to);
-        }
-      }
-    });
-  }
+        edges.forEach(edge => {
+            if (edge.from === id) {
+                const childNode = byId(edge.to);
+                if (childNode && !children.includes(childNode)) {
+                    children.push(childNode);
+                    findChildrenRecursive(edge.to);
+                }
+            }
+        });
+    }
 
-  findChildrenRecursive(parentId);
-  return children;
+    findChildrenRecursive(parentId);
+    return children;
 }
 
 function restoreCollapsedState() {
-  document.querySelectorAll('.node[data-collapsed="true"]').forEach(node => {
-    collapseAllChildren(node, true);
-  });
-}
-
-function getAllProConConnections() {
-  const proConNodes = Array.from(document.querySelectorAll('.node[data-id]'))
-    .filter(n => {
-      const nodeType = n.dataset.type;
-      return nodeType && (nodeType.includes('pro') || nodeType.includes('con'));
+    document.querySelectorAll('.node[data-collapsed="true"]').forEach(node => {
+        collapseAllChildren(node, true);
     });
-
-  console.log('Found pro/con nodes:', proConNodes.length);
-  proConNodes.forEach(node => {
-    console.log('Node:', node.dataset.id, 'type:', node.dataset.type, 'title:', node.querySelector('.title')?.innerText);
-  });
 }
 
-function removeNode(id){
-  const node = byId(id);
-  if(!node) return;
+function removeNode(id) {
+    const node = byId(id);
+    if (!node) return;
 
-  const childEdges = edges.filter(e => e.from === id);
-  childEdges.forEach(e => removeNode(e.to));
+    const childEdges = edges.filter(e => e.from === id);
+    childEdges.forEach(e => removeNode(e.to));
 
-  edges = edges.filter(e => e.from !== id && e.to !== id);
+    edges = edges.filter(e => e.from !== id && e.to !== id);
 
-  // Удаляем из системы
-  occupiedRectangles.delete(id);
+    occupiedRectangles.delete(id);
 
-  node.remove();
-  updateAIPreview();
-  renderConnections();
-  saveState();
+    node.remove();
+    updateAIPreview();
+    renderConnections();
+    saveState();
 }
 
-function addEdge(fromId, toId){
-  edges.push({from: fromId, to: toId});
-  renderConnections();
+function addEdge(fromId, toId) {
+    edges.push({ from: fromId, to: toId });
+    renderConnections();
 }
 
-function renderConnections(){
-  const svg = connectorsSvg;
-  svg.innerHTML = '';
+// ========== ОТРИСОВКА СОЕДИНЕНИЙ С МАСКИРОВАНИЕМ ЗА БЛОКАМИ ==========
+function renderConnections() {
+    const svg = connectorsSvg;
 
-  edges.forEach(e => {
-    const fromNode = byId(e.from);
-    const toNode = byId(e.to);
-    if(!fromNode || !toNode) return;
+    if (!renderConnections._frame) {
+        renderConnections._frame = requestAnimationFrame(() => {
+            svg.innerHTML = '';
+            edges.forEach(e => {
+                const fromNode = byId(e.from);
+                const toNode = byId(e.to);
+                if (!fromNode || !toNode) return;
 
-    if (fromNode.classList.contains('hidden') || toNode.classList.contains('hidden')) return;
+                if (fromNode.classList.contains('hidden') || toNode.classList.contains('hidden')) return;
 
-    const fromX = parseFloat(fromNode.style.left) + fromNode.offsetWidth / 2;
-    const fromY = parseFloat(fromNode.style.top) + fromNode.offsetHeight;
-    const toX = parseFloat(toNode.style.left) + toNode.offsetWidth / 2;
-    const toY = parseFloat(toNode.style.top);
+                const fromX = parseFloat(fromNode.style.left) + fromNode.offsetWidth / 2;
+                const fromY = parseFloat(fromNode.style.top) + fromNode.offsetHeight;
+                const toX = parseFloat(toNode.style.left) + toNode.offsetWidth / 2;
+                const toY = parseFloat(toNode.style.top);
 
-    // Определяем тип соединения для регулировки кривизны
-    const fromType = fromNode.dataset.type || '';
-    const toType = toNode.dataset.type || '';
+                const fromType = fromNode.dataset.type || '';
+                const toType = toNode.dataset.type || '';
 
-    // Определяем, является ли соединение между плюсами/минусами
-    const isProConConnection =
-      (fromType.includes('pro') && toType.includes('pro')) ||
-      (fromType.includes('con') && toType.includes('con'));
+                const isProConnection = (fromType.includes('pro') || toType.includes('pro'));
+                const isConConnection = (fromType.includes('con') || toType.includes('con'));
+                const isProConConnection = isProConnection || isConConnection;
 
-    // Для отладки - выводим в консоль
-    if (isProConConnection) {
-      console.log('Pro/Con connection detected:', e.from, '->', e.to, 'types:', fromType, toType);
+                const isContainerCollapsed =
+                    (fromNode.dataset.type && fromNode.dataset.type.includes('container') && fromNode.dataset.collapsed === 'true') ||
+                    (toNode.dataset.type && toNode.dataset.type.includes('container') && toNode.dataset.collapsed === 'true');
+
+                const isInCollapsedContainer = isContainerCollapsed && isProConConnection;
+
+                let controlOffset;
+                const horizontalDistance = Math.abs(toX - fromX);
+                const verticalDistance = Math.abs(toY - fromY);
+
+                controlOffset = Math.min(Math.max(horizontalDistance * 0.4, verticalDistance * 0.3), 100);
+
+                if (isProConConnection && verticalDistance > horizontalDistance) {
+                    controlOffset = Math.min(horizontalDistance * 0.2, 40);
+                }
+
+                // Получаем сегменты кривой с учетом маскирования
+                const excludeNodeIds = [e.from, e.to];
+                const segments = getMaskedBezierSegments(fromX, fromY, toX, toY, controlOffset, excludeNodeIds);
+
+                // Если нет видимых сегментов, не отрисовываем соединение
+                const hasVisibleSegments = segments.some(segment => segment.visible);
+                if (!hasVisibleSegments && !isInCollapsedContainer) {
+                    return;
+                }
+
+                // Создаем путь из сегментов
+                const pathData = createPathFromSegments(segments);
+                if (!pathData) return;
+
+                // Глоу эффект
+                const glow = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                glow.setAttribute('d', pathData);
+
+                let glowColor = 'var(--glow-neon)';
+                let glowWidth = '8';
+
+                if (isProConnection) {
+                    glowColor = 'var(--glow-pro)';
+                    glowWidth = '6';
+                } else if (isConConnection) {
+                    glowColor = 'var(--glow-con)';
+                    glowWidth = '6';
+                }
+
+                glow.setAttribute('stroke', isInCollapsedContainer ? 'rgba(255,255,255,0.02)' : glowColor);
+                glow.setAttribute('stroke-width', isInCollapsedContainer ? '4' : glowWidth);
+                glow.setAttribute('fill', 'none');
+                glow.setAttribute('stroke-linecap', 'round');
+                glow.classList.add('connector-glow');
+                svg.appendChild(glow);
+
+                // Основная линия
+                const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                path.setAttribute('d', pathData);
+
+                let strokeColor = 'var(--neon)';
+                let strokeWidth = 3;
+                let strokeOpacity = 0.98;
+                let cssClass = 'connector-line';
+
+                if (isProConnection) {
+                    strokeColor = 'var(--pro-color)';
+                    strokeWidth = 2.5;
+                    strokeOpacity = 1;
+                    cssClass = 'connector-pro';
+                } else if (isConConnection) {
+                    strokeColor = 'var(--con-color)';
+                    strokeWidth = 2.5;
+                    strokeOpacity = 1;
+                    cssClass = 'connector-con';
+                }
+
+                if (isInCollapsedContainer) {
+                    strokeWidth = 0.8;
+                    strokeOpacity = 0.3;
+                }
+
+                path.setAttribute('stroke', strokeColor);
+                path.setAttribute('stroke-width', strokeWidth.toString());
+                path.setAttribute('fill', 'none');
+                path.setAttribute('stroke-linecap', 'round');
+                path.style.opacity = strokeOpacity.toString();
+                path.classList.add(cssClass);
+                svg.appendChild(path);
+
+                // Стрелка (только если последний сегмент видим)
+                if (!isInCollapsedContainer && segments.length > 0 && segments[segments.length - 1].visible) {
+                    const arrowSize = isProConConnection ? 6 : 8;
+
+                    // Берем последние две точки для расчета угла
+                    const lastSegment = segments[segments.length - 1];
+                    const angle = Math.atan2(lastSegment.y2 - lastSegment.y1, lastSegment.x2 - lastSegment.x1);
+
+                    const arrow = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+                    const points = `
+                        ${lastSegment.x2},${lastSegment.y2}
+                        ${lastSegment.x2 - arrowSize * Math.cos(angle - Math.PI/6)},${lastSegment.y2 - arrowSize * Math.sin(angle - Math.PI/6)}
+                        ${lastSegment.x2 - arrowSize * Math.cos(angle + Math.PI/6)},${lastSegment.y2 - arrowSize * Math.sin(angle + Math.PI/6)}
+                    `;
+                    arrow.setAttribute('points', points);
+                    arrow.setAttribute('fill', strokeColor);
+                    arrow.style.opacity = strokeOpacity.toString();
+
+                    if (isProConnection) {
+                        arrow.classList.add('arrow-pro');
+                    } else if (isConConnection) {
+                        arrow.classList.add('arrow-con');
+                    } else {
+                        arrow.classList.add('connector-arrow');
+                    }
+                    svg.appendChild(arrow);
+                }
+            });
+            renderConnections._frame = null;
+        });
     }
-
-    // Определяем смещение для кривизны
-    let controlOffset;
-
-    // Для почти вертикальных соединений делаем прямую линию
-    const horizontalDistance = Math.abs(toX - fromX);
-    const verticalDistance = Math.abs(toY - fromY);
-
-    if (horizontalDistance < 50 || isProConConnection) {
-      // Прямая линия для почти вертикальных соединений и плюсов/минусов
-      controlOffset = 5; // Минимальное смещение для плавности
-    } else {
-      // Стандартная кривая для других соединений
-      controlOffset = Math.min(horizontalDistance * 0.3, 80);
-    }
-
-    // Для плюсов/минусов делаем почти прямую линию
-    if (isProConConnection) {
-      controlOffset = 2; // Почти прямая линия
-    }
-
-    const pathData = `M ${fromX} ${fromY}
-                     C ${fromX} ${fromY + controlOffset},
-                       ${toX} ${toY - controlOffset},
-                       ${toX} ${toY}`;
-
-    // Глоу эффект
-    const glow = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    glow.setAttribute('d', pathData);
-    glow.setAttribute('stroke', 'rgba(0,217,255,0.15)');
-    glow.setAttribute('stroke-width', isProConConnection ? '4' : '8');
-    glow.setAttribute('fill', 'none');
-    glow.setAttribute('stroke-linecap', 'round');
-    glow.style.filter = 'blur(8px)';
-    svg.appendChild(glow);
-
-    // Основная линия
-    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    path.setAttribute('d', pathData);
-
-    // Цвет линии в зависимости от типа
-    let strokeColor = 'var(--neon)';
-    if (fromType.includes('pro') || toType.includes('pro')) {
-      strokeColor = 'var(--pro-color)';
-    } else if (fromType.includes('con') || toType.includes('con')) {
-      strokeColor = 'var(--con-color)';
-    }
-
-    path.setAttribute('stroke', strokeColor);
-    path.setAttribute('stroke-width', isProConConnection ? '1.5' : '3');
-    path.setAttribute('fill', 'none');
-    path.setAttribute('stroke-linecap', 'round');
-    path.style.filter = isProConConnection ? 'none' : 'drop-shadow(0 0 6px rgba(0,217,255,0.3))';
-    svg.appendChild(path);
-
-    // Стрелка только для не-плюсов/минусов соединений
-    if (!isProConConnection) {
-      const arrowSize = 8;
-      const angle = Math.atan2(toY - (fromY + controlOffset), toX - fromX);
-
-      const arrow = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
-      const points = `
-        ${toX},${toY}
-        ${toX - arrowSize * Math.cos(angle - Math.PI/6)},${toY - arrowSize * Math.sin(angle - Math.PI/6)}
-        ${toX - arrowSize * Math.cos(angle + Math.PI/6)},${toY - arrowSize * Math.sin(angle + Math.PI/6)}
-      `;
-      arrow.setAttribute('points', points);
-      arrow.setAttribute('fill', strokeColor);
-      arrow.style.filter = 'drop-shadow(0 0 4px rgba(0,217,255,0.5))';
-      svg.appendChild(arrow);
-    }
-  });
 }
-
 
 // ========== AI И ПАРСИНГ ==========
-function collectTreeText(){
-  const root = byId('root');
-  const title = root ? root.querySelector('.title').innerText.trim() : '';
-
-  const outcomes = Array.from(document.querySelectorAll('.node[data-id]:not([data-id="root"])'))
-                    .filter(n => {
-                      const nodeType = n.dataset.type;
-                      return !nodeType || (nodeType !== 'pro' && nodeType !== 'con' && nodeType !== 'pros-container' && nodeType !== 'cons-container');
-                    })
-                    .map(n => n.querySelector('.title').innerText.trim())
-                    .filter(Boolean);
-
-  return { title, outcomes };
-}
-
-function updateAIPreview(){
-  const {title,outcomes} = collectTreeText();
-  document.getElementById('ai-title').innerText = title || '—';
-  document.getElementById('ai-outcomes').innerText = outcomes.length ? ('• ' + outcomes.join('\n• ')) : '—';
-}
-
-// УЛУЧШЕННАЯ ФУНКЦИЯ ПАРСИНГА
-function parseProsConsFromText(text){
-  if(!text) return { description: '', pros: [], cons: [] };
-
-  const normalized = text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').trim();
-
-  let description = '';
-  let pros = [];
-  let cons = [];
-
-  // Пытаемся найти структурированные разделы
-  const prosMatch = normalized.match(/ПЛЮСЫ?[:\s]*([^]*?)(?=\s*МИНУСЫ?|$)/i);
-  const consMatch = normalized.match(/МИНУСЫ?[:\s]*([^]*?)$/i);
-
-  // Если есть структурированные разделы, парсим их
-  if (prosMatch || consMatch) {
-    // Описание - все что до первого раздела
-    if (prosMatch) {
-      description = normalized.substring(0, prosMatch.index).trim();
-    } else if (consMatch) {
-      description = normalized.substring(0, consMatch.index).trim();
-    }
-
-    // Парсим плюсы
-    if (prosMatch && prosMatch[1]) {
-      const prosText = prosMatch[1].trim();
-      pros = prosText.split('\n')
-        .map(item => item.trim().replace(/^[\-\*\•\d\.\s]+/, ''))
-        .filter(item => item && item.length > 2)
-        .slice(0, 6);
-    }
-
-    // Парсим минусы
-    if (consMatch && consMatch[1]) {
-      const consText = consMatch[1].trim();
-      cons = consText.split('\n')
-        .map(item => item.trim().replace(/^[\-\*\•\d\.\s]+/, ''))
-        .filter(item => item && item.length > 2)
-        .slice(0, 6);
-    }
-  } else {
-    // Если нет структурированных разделов, используем весь текст как описание
-    description = normalized;
-    // И генерируем стандартные плюсы/минусы
-    pros = ["Высокая эффективность", "Быстрая реализация"];
-    cons = ["Риск неудачи", "Ограниченный масштаб"];
-  }
-
-  // Очищаем описание от маркеров списков
-  description = description.replace(/^[\-\*\•\d\.\s]+/gm, '').trim();
-
-  return { description, pros, cons };
-}
-
-// ОБНОВЛЕННАЯ ФУНКЦИЯ СОЗДАНИЯ ВЕТОК ПЛЮСОВ И МИНУСОВ
-function createProConNodesForOutcome(outcomeText, pros, cons, outcomeIndex){
-  const nodes = Array.from(document.querySelectorAll('.node[data-id]'));
-
-  // Ищем узел с соответствующим текстом, который не является контейнером плюсов/минусов
-  let outcomeNode = nodes.find(n => {
-    const nodeText = (n.querySelector('.title')?.innerText || '').trim();
-    const nodeType = n.dataset.type;
-    return nodeText === outcomeText &&
-           !nodeType &&
-           n.dataset.id !== 'root';
-  });
-
-  if(!outcomeNode){
+function collectTreeText() {
     const root = byId('root');
-    const rootX = parseFloat(root.style.left) || 0;
-    const rootY = parseFloat(root.style.top) || 0;
+    const title = root ? root.querySelector('.title').innerText.trim() : '';
 
-    // Создаем новый исход под корневым узлом с отступом
-    const x = rootX;
-    const y = rootY + (outcomeIndex + 1) * LAYOUT_CONFIG.ROW_SPACING;
+    const outcomes = Array.from(document.querySelectorAll('.node[data-id]:not([data-id="root"])'))
+        .filter(n => {
+            const nodeType = n.dataset.type;
+            return !nodeType || (nodeType !== 'pro' && nodeType !== 'con' && nodeType !== 'pros-container' && nodeType !== 'cons-container');
+        })
+        .map(n => n.querySelector('.title').innerText.trim())
+        .filter(Boolean);
 
-    // Корректируем позицию, чтобы не выходить за границы
-    const clampedY = Math.min(y, BOUNDARIES.maxY - LAYOUT_CONFIG.NODE_HEIGHT);
+    return { title, outcomes };
+}
 
-    createNode(x, clampedY, outcomeText, 'root');
+function updateAIPreview() {
+    const { title, outcomes } = collectTreeText();
+    document.getElementById('ai-title').innerText = title || '—';
+    document.getElementById('ai-outcomes').innerText = outcomes.length ? ('• ' + outcomes.join('\n• ')) : '—';
+}
 
-    // Ждем немного и пытаемся найти созданный узел
-    setTimeout(() => {
-      const newNodes = Array.from(document.querySelectorAll('.node[data-id]'));
-      outcomeNode = newNodes.find(n => {
+function parseProsConsFromText(text) {
+    if (!text) return { description: '', pros: [], cons: [] };
+
+    const normalized = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim();
+
+    let description = '';
+    let pros = [];
+    let cons = [];
+
+    const prosMatch = normalized.match(/ПЛЮСЫ?[:\s]*([^]*?)(?=\s*МИНУСЫ?|$)/i);
+    const consMatch = normalized.match(/МИНУСЫ?[:\s]*([^]*?)$/i);
+
+    if (prosMatch || consMatch) {
+        if (prosMatch) {
+            description = normalized.substring(0, prosMatch.index).trim();
+        } else if (consMatch) {
+            description = normalized.substring(0, consMatch.index).trim();
+        }
+
+        if (prosMatch && prosMatch[1]) {
+            const prosText = prosMatch[1].trim();
+            pros = prosText.split('\n')
+                .map(item => item.trim().replace(/^[\-\*\•\d\.\s]+/, ''))
+                .filter(item => item && item.length > 2)
+                .slice(0, 6);
+        }
+
+        if (consMatch && consMatch[1]) {
+            const consText = consMatch[1].trim();
+            cons = consText.split('\n')
+                .map(item => item.trim().replace(/^[\-\*\•\d\.\s]+/, ''))
+                .filter(item => item && item.length > 2)
+                .slice(0, 6);
+        }
+    } else {
+        description = normalized;
+        pros = ["Высокая эффективность", "Быстрая реализация"];
+        cons = ["Риск неудачи", "Ограниченный масштаб"];
+    }
+
+    description = description.replace(/^[\-\*\•\d\.\s]+/gm, '').trim();
+
+    return { description, pros, cons };
+}
+
+function createProConNodesForOutcome(outcomeText, pros, cons, outcomeIndex) {
+    const nodes = Array.from(document.querySelectorAll('.node[data-id]'));
+
+    let outcomeNode = nodes.find(n => {
         const nodeText = (n.querySelector('.title')?.innerText || '').trim();
         const nodeType = n.dataset.type;
         return nodeText === outcomeText &&
-               !nodeType &&
-               n.dataset.id !== 'root';
-      });
+            !nodeType &&
+            n.dataset.id !== 'root';
+    });
 
-      if(outcomeNode) {
-        createProConBranches(outcomeNode, pros, cons, outcomeIndex);
-      }
-    }, 200);
-  } else {
-    createProConBranches(outcomeNode, pros, cons, outcomeIndex);
-  }
+    if (!outcomeNode) {
+        const root = byId('root');
+        const rootX = parseFloat(root.style.left) || 0;
+        const rootY = parseFloat(root.style.top) || 0;
+
+        const freePos = findFreePosition(
+            rootX,
+            rootY + (outcomeIndex + 1) * LAYOUT_CONFIG.ROW_SPACING,
+            'root'
+        );
+
+        const rootRect = occupiedRectangles.get('root');
+        if (rootRect && freePos.y < rootRect.bottom + 50) {
+            freePos.y = rootRect.bottom + 50;
+        }
+
+        const newOutcomeId = createNode(freePos.x, freePos.y, outcomeText, 'root');
+
+        setTimeout(() => {
+            outcomeNode = byId(newOutcomeId);
+            if (outcomeNode) {
+                setTimeout(() => {
+                    createProConBranches(outcomeNode, pros, cons, outcomeIndex);
+                }, 400);
+            }
+        }, 300);
+    } else {
+        setTimeout(() => {
+            createProConBranches(outcomeNode, pros, cons, outcomeIndex);
+        }, 100);
+    }
 }
 
-// ИСПРАВЛЕННАЯ ФУНКЦИЯ СОЗДАНИЯ ВЕТОК ПЛЮСОВ И МИНУСОВ
-function createProConBranches(outcomeNode, pros, cons, outcomeIndex){
-  const outcomeId = outcomeNode.dataset.id;
-  const outcomeRect = occupiedRectangles.get(outcomeId);
+function createProConBranches(outcomeNode, pros, cons, outcomeIndex) {
+    const outcomeId = outcomeNode.dataset.id;
+    const outcomeRect = occupiedRectangles.get(outcomeId);
 
-  if (!outcomeRect) return;
+    if (!outcomeRect) {
+        setTimeout(() => {
+            const rect = occupiedRectangles.get(outcomeId);
+            if (rect) {
+                createProConBranches(outcomeNode, pros, cons, outcomeIndex);
+            }
+        }, 100);
+        return;
+    }
 
-  // Создаем контейнер для плюсов СЛЕВА и НИЖЕ
-  if(pros.length > 0) {
-    // Находим позицию слева и ниже основного блока
-    const proContainerX = outcomeRect.x - LAYOUT_CONFIG.HORIZONTAL_OFFSET;
-    const proContainerY = outcomeRect.bottom + 40;
-
-    // Корректируем позицию, чтобы не выходить за границы
-    const clampedProX = Math.max(BOUNDARIES.minX, proContainerX);
-    const clampedProY = Math.min(proContainerY, BOUNDARIES.maxY - LAYOUT_CONFIG.NODE_HEIGHT);
-
-    const prosContainerId = createNode(clampedProX, clampedProY, 'Плюсы', outcomeId, 'pros-container');
-    const prosContainer = byId(prosContainerId);
-
-    prosContainer.dataset.collapsed = 'true';
-    addToggleButton(prosContainer);
-
-    // Создаем плюсы как отдельные блоки с соединениями ВНИЗ друг за другом
-    let previousProId = prosContainerId;
-    let currentProY = clampedProY + LAYOUT_CONFIG.NODE_HEIGHT + LAYOUT_CONFIG.PRO_CON_SPACING / 2; // ИСПРАВЛЕНО: используем PRO_CON_SPACING
-
-    pros.forEach((pro, idx) => {
-      // Рассчитываем вертикальную позицию с учетом отступов
-      const proX = clampedProX;
-      const proY = currentProY;
-
-      // Корректируем позицию, чтобы не выходить за границы
-      const clampedProItemY = Math.min(proY, BOUNDARIES.maxY - LAYOUT_CONFIG.NODE_HEIGHT);
-
-      const proId = createNode(proX, clampedProItemY, pro, previousProId, 'pro');
-      previousProId = proId;
-
-      // Обновляем позицию для следующего блока
-      const proNode = byId(proId);
-      if (proNode) {
-        currentProY = parseFloat(proNode.style.top) + proNode.offsetHeight + LAYOUT_CONFIG.PRO_CON_SPACING / 3; // ИСПРАВЛЕНО: используем PRO_CON_SPACING
-      }
+    // Собираем все существующие блоки плюсов/минусов для этого outcome
+    const existingProConRects = [];
+    const allProConNodes = Array.from(document.querySelectorAll('.node[data-id]')).filter(n => {
+        const nodeType = n.dataset.type;
+        return nodeType && (nodeType.includes('pro') || nodeType.includes('con'));
     });
 
-    collapseAllChildren(prosContainer, true);
-  }
-
-  // Создаем контейнер для минусов СПРАВА и НИЖЕ
-  if(cons.length > 0) {
-    // Находим позицию справа и ниже основного блока
-    const conContainerX = outcomeRect.x + LAYOUT_CONFIG.HORIZONTAL_OFFSET;
-    const conContainerY = outcomeRect.bottom + 40;
-
-    // Корректируем позицию, чтобы не выходить за границы
-    const clampedConX = Math.min(conContainerX, BOUNDARIES.maxX - LAYOUT_CONFIG.NODE_WIDTH);
-    const clampedConY = Math.min(conContainerY, BOUNDARIES.maxY - LAYOUT_CONFIG.NODE_HEIGHT);
-
-    const consContainerId = createNode(clampedConX, clampedConY, 'Минусы', outcomeId, 'cons-container');
-    const consContainer = byId(consContainerId);
-
-    consContainer.dataset.collapsed = 'true';
-    addToggleButton(consContainer);
-
-    // Создаем минусы как отдельные блоки с соединениями ВНИЗ друг за другом
-    let previousConId = consContainerId;
-    let currentConY = clampedConY + LAYOUT_CONFIG.NODE_HEIGHT + LAYOUT_CONFIG.PRO_CON_SPACING / 2; // ИСПРАВЛЕНО: используем PRO_CON_SPACING
-
-    cons.forEach((con, idx) => {
-      // Рассчитываем вертикальную позицию с учетом отступов
-      const conX = clampedConX;
-      const conY = currentConY;
-
-      // Корректируем позицию, чтобы не выходить за границы
-      const clampedConItemY = Math.min(conY, BOUNDARIES.maxY - LAYOUT_CONFIG.NODE_HEIGHT);
-
-      const conId = createNode(conX, clampedConItemY, con, previousConId, 'con');
-      previousConId = conId;
-
-      // Обновляем позицию для следующего блока
-      const conNode = byId(conId);
-      if (conNode) {
-        currentConY = parseFloat(conNode.style.top) + conNode.offsetHeight + LAYOUT_CONFIG.PRO_CON_SPACING / 3; // ИСПРАВЛЕНО: используем PRO_CON_SPACING
-      }
+    // Находим родителей этих блоков
+    allProConNodes.forEach(node => {
+        const parentEdge = edges.find(e => e.to === node.dataset.id);
+        if (parentEdge) {
+            const parentNode = byId(parentEdge.from);
+            if (parentNode && parentNode !== outcomeNode) {
+                const rect = occupiedRectangles.get(node.dataset.id);
+                if (rect) {
+                    existingProConRects.push(rect);
+                }
+            }
+        }
     });
 
-    collapseAllChildren(consContainer, true);
-  }
+    // Функция для проверки, свободно ли место
+    function isPositionAvailable(x, y, width, height, excludeId = null) {
+        // Проверяем границы
+        if (x < BOUNDARIES.minX || y < BOUNDARIES.minY) return false;
+        if (x + width > BOUNDARIES.maxX || y + height > BOUNDARIES.maxY) return false;
 
-  setTimeout(() => {
+        // Проверяем, что не выше родителя
+        if (y < outcomeRect.bottom + LAYOUT_CONFIG.MIN_DISTANCE_FROM_PARENT) return false;
+
+        // Проверяем пересечения с существующими блоками
+        const testRect = {
+            x: x,
+            y: y,
+            width: width,
+            height: height,
+            right: x + width,
+            bottom: y + height
+        };
+
+        for (const rect of existingProConRects) {
+            if (rectanglesIntersect(testRect, rect, 10)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    // Функция для поиска свободной позиции
+    function findAvailablePosition(startX, startY, width, height) {
+        let currentY = startY;
+        const MAX_ATTEMPTS = 30;
+
+        for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+            if (isPositionAvailable(startX, currentY, width, height)) {
+                return { x: startX, y: currentY };
+            }
+            // Двигаемся вниз
+            currentY += height + LAYOUT_CONFIG.PRO_CON_VERTICAL_SPACING;
+        }
+
+        // Если не нашли, возвращаем последнюю проверенную позицию
+        return { x: startX, y: currentY };
+    }
+
+    // Создаем блоки плюсов
+    if (pros.length > 0) {
+        const proContainerX = outcomeRect.x - LAYOUT_CONFIG.HORIZONTAL_OFFSET;
+        const proContainerY = outcomeRect.bottom + LAYOUT_CONFIG.MIN_DISTANCE_FROM_PARENT;
+
+        const clampedProX = Math.max(BOUNDARIES.minX, proContainerX);
+        let clampedProY = Math.max(proContainerY, outcomeRect.bottom + LAYOUT_CONFIG.MIN_DISTANCE_FROM_PARENT);
+
+        // Ищем свободное место для контейнера плюсов
+        let containerFound = false;
+        for (let offsetY = 0; offsetY < 10; offsetY++) {
+            const testY = clampedProY + offsetY * 50;
+            if (isPositionAvailable(clampedProX, testY, LAYOUT_CONFIG.NODE_WIDTH, LAYOUT_CONFIG.NODE_HEIGHT)) {
+                clampedProY = testY;
+                containerFound = true;
+                break;
+            }
+        }
+
+        if (!containerFound) {
+            clampedProY = outcomeRect.bottom + LAYOUT_CONFIG.MIN_DISTANCE_FROM_PARENT;
+        }
+
+        const prosContainerId = createNode(clampedProX, clampedProY, 'Плюсы', outcomeId, 'pros-container');
+        const prosContainer = byId(prosContainerId);
+
+        if (prosContainer) {
+            prosContainer.dataset.collapsed = 'true';
+            addToggleButton(prosContainer);
+
+            // Создаем отдельные плюсы
+            let currentProY = clampedProY + LAYOUT_CONFIG.NODE_HEIGHT + LAYOUT_CONFIG.PRO_CON_VERTICAL_SPACING;
+
+            pros.forEach((pro, idx) => {
+                const pos = findAvailablePosition(clampedProX, currentProY,
+                    LAYOUT_CONFIG.NODE_WIDTH, LAYOUT_CONFIG.PRO_CON_ITEM_HEIGHT);
+
+                const proId = createNode(pos.x, pos.y, pro, prosContainerId, 'pro');
+
+                // Добавляем созданный блок в список для проверки
+                const createdNode = byId(proId);
+                if (createdNode) {
+                    setTimeout(() => {
+                        const rect = occupiedRectangles.get(proId);
+                        if (rect) {
+                            existingProConRects.push(rect);
+                        }
+                    }, 50);
+                }
+
+                // Обновляем Y для следующего блока
+                currentProY = pos.y + LAYOUT_CONFIG.PRO_CON_ITEM_HEIGHT + LAYOUT_CONFIG.PRO_CON_VERTICAL_SPACING;
+            });
+
+            collapseAllChildren(prosContainer, true);
+        }
+    }
+
+    // Создаем блоки минусов
+    if (cons.length > 0) {
+        const conContainerX = outcomeRect.x + LAYOUT_CONFIG.HORIZONTAL_OFFSET;
+        const conContainerY = outcomeRect.bottom + LAYOUT_CONFIG.MIN_DISTANCE_FROM_PARENT;
+
+        const clampedConX = Math.min(conContainerX, BOUNDARIES.maxX - LAYOUT_CONFIG.NODE_WIDTH);
+        let clampedConY = Math.max(conContainerY, outcomeRect.bottom + LAYOUT_CONFIG.MIN_DISTANCE_FROM_PARENT);
+
+        // Ищем свободное место для контейнера минусов
+        let containerFound = false;
+        for (let offsetY = 0; offsetY < 10; offsetY++) {
+            const testY = clampedConY + offsetY * 50;
+            if (isPositionAvailable(clampedConX, testY, LAYOUT_CONFIG.NODE_WIDTH, LAYOUT_CONFIG.NODE_HEIGHT)) {
+                clampedConY = testY;
+                containerFound = true;
+                break;
+            }
+        }
+
+        if (!containerFound) {
+            clampedConY = outcomeRect.bottom + LAYOUT_CONFIG.MIN_DISTANCE_FROM_PARENT;
+        }
+
+        const consContainerId = createNode(clampedConX, clampedConY, 'Минусы', outcomeId, 'cons-container');
+        const consContainer = byId(consContainerId);
+
+        if (consContainer) {
+            consContainer.dataset.collapsed = 'true';
+            addToggleButton(consContainer);
+
+            // Создаем отдельные минусы
+            let currentConY = clampedConY + LAYOUT_CONFIG.NODE_HEIGHT + LAYOUT_CONFIG.PRO_CON_VERTICAL_SPACING;
+
+            cons.forEach((con, idx) => {
+                const pos = findAvailablePosition(clampedConX, currentConY,
+                    LAYOUT_CONFIG.NODE_WIDTH, LAYOUT_CONFIG.PRO_CON_ITEM_HEIGHT);
+
+                const conId = createNode(pos.x, pos.y, con, consContainerId, 'con');
+
+                // Добавляем созданный блок в список для проверки
+                const createdNode = byId(conId);
+                if (createdNode) {
+                    setTimeout(() => {
+                        const rect = occupiedRectangles.get(conId);
+                        if (rect) {
+                            existingProConRects.push(rect);
+                        }
+                    }, 50);
+                }
+
+                // Обновляем Y для следующего блока
+                currentConY = pos.y + LAYOUT_CONFIG.PRO_CON_ITEM_HEIGHT + LAYOUT_CONFIG.PRO_CON_VERTICAL_SPACING;
+            });
+
+            collapseAllChildren(consContainer, true);
+        }
+    }
+
+    setTimeout(() => {
+        fixProConPositions();
+        renderConnections();
+        saveState();
+    }, 500);
+}
+
+async function resetAIResponses() {
+    const result = await showModal('Сброс ответов', 'Удалить все плюсы и минусы, созданные ИИ? Исходные варианты решений останутся.');
+    if (!result) return;
+
+    const proConNodes = Array.from(document.querySelectorAll('.node[data-id]:not([data-id="root"])'))
+        .filter(n => {
+            const nodeType = n.dataset.type;
+            return nodeType && (nodeType.includes('pro') || nodeType.includes('con') || nodeType.includes('pros-container') || nodeType.includes('cons-container'));
+        });
+
+    proConNodes.forEach(node => {
+        const nodeId = node.dataset.id;
+        edges = edges.filter(e => e.from !== nodeId && e.to !== nodeId);
+
+        occupiedRectangles.delete(nodeId);
+
+        node.remove();
+    });
+
+    document.getElementById('ai-output').innerHTML = '';
+    updateTimerUI();
+    updateAIPreview();
     renderConnections();
     saveState();
-  }, 200);
-}
-
-// ========== СБРОС ОТВЕТОВ AI ==========
-async function resetAIResponses() {
-  const result = await showModal('Сброс ответов', 'Удалить все плюсы и минусы, созданные ИИ? Исходные варианты решений останутся.');
-  if (!result) return;
-
-  const proConNodes = Array.from(document.querySelectorAll('.node[data-id]:not([data-id="root"])'))
-    .filter(n => {
-      const nodeType = n.dataset.type;
-      return nodeType && (nodeType.includes('pro') || nodeType.includes('con') || nodeType.includes('pros-container') || nodeType.includes('cons-container'));
-    });
-
-  proConNodes.forEach(node => {
-    const nodeId = node.dataset.id;
-    edges = edges.filter(e => e.from !== nodeId && e.to !== nodeId);
-
-    // Удаляем из системы
-    occupiedRectangles.delete(nodeId);
-
-    node.remove();
-  });
-
-  document.getElementById('ai-output').innerHTML = '';
-  updateTimerUI();
-  updateAIPreview();
-  renderConnections();
-  saveState();
 }
 
 // ========== ЗАПРОСЫ К СЕРВЕРУ ==========
-async function sendAiRequestWithRetries(payload, maxRetries = MAX_RETRIES){
-  let lastError = null;
-  for(let attempt = 1; attempt <= maxRetries; attempt++){
-    try{
-      const res = await fetch('/run-ai-life', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify(payload)
-      });
+async function sendAiRequestWithRetries(payload, maxRetries = MAX_RETRIES) {
+    let lastError = null;
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+            const res = await fetch('/run-ai-life', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
 
-      if(!res.ok){
-        lastError = new Error('HTTP ' + res.status);
-      } else {
-        const data = await res.json();
-        return { success: true, data };
-      }
-    } catch(err){ lastError = err; }
+            if (!res.ok) {
+                lastError = new Error('HTTP ' + res.status);
+            } else {
+                const data = await res.json();
+                return { success: true, data };
+            }
+        } catch (err) { lastError = err; }
 
-    const backoff = 200 * attempt;
-    await new Promise(r => setTimeout(r, backoff));
-  }
-  return { success: false, error: lastError };
+        const backoff = 200 * attempt;
+        await new Promise(r => setTimeout(r, backoff));
+    }
+    return { success: false, error: lastError };
 }
 
 // ========== AI UI ==========
 const aiRunBtn = document.getElementById('ai-run');
 const aiResetBtn = document.getElementById('ai-reset');
 
-aiRunBtn.addEventListener('click', async ()=>{
-  if(isLockedUntil > Date.now()) return;
+aiRunBtn.addEventListener('click', async () => {
+    if (isLockedUntil > Date.now()) return;
 
-  const { title, outcomes } = collectTreeText();
-  const outBox = document.getElementById('ai-output');
+    const { title, outcomes } = collectTreeText();
+    const outBox = document.getElementById('ai-output');
 
-  if(!title){
-    outBox.innerText = 'Пожалуйста, опишите проблему.';
-    return;
-  }
+    if (!title) {
+        outBox.innerText = 'Пожалуйста, опишите проблему.';
+        return;
+    }
 
-  if(!outcomes.length){
-    outBox.innerText = 'Добавьте варианты решения.';
-    return;
-  }
+    if (!outcomes.length) {
+        outBox.innerText = 'Добавьте варианты решения.';
+        return;
+    }
 
-  outBox.innerHTML = '';
-  const loading = document.createElement('div');
-  loading.className = 'ai-response';
-  loading.innerHTML = `<div class="meta"><b>Анализируем ${outcomes.length} исходов...</b></div>`;
-  outBox.appendChild(loading);
-  outBox.scrollTop = outBox.scrollHeight;
+    outBox.innerHTML = '';
+    const loading = document.createElement('div');
+    loading.className = 'ai-response';
+    loading.innerHTML = `<div class="meta"><b>Анализируем ${outcomes.length} исходов...</b></div>`;
+    outBox.appendChild(loading);
+    outBox.scrollTop = outBox.scrollHeight;
 
-  aiRunBtn.disabled = true;
-  aiRunBtn.style.opacity = '0.6';
+    aiRunBtn.disabled = true;
+    aiRunBtn.style.opacity = '0.6';
 
-  const payload = { title, outcomes };
-  const result = await sendAiRequestWithRetries(payload, MAX_RETRIES);
+    const payload = { title, outcomes };
+    const result = await sendAiRequestWithRetries(payload, MAX_RETRIES);
 
-  if(result.success){
-    const data = result.data || {};
-    const results = Array.isArray(data.results) ? data.results : [];
+    if (result.success) {
+        const data = result.data || {};
+        const results = Array.isArray(data.results) ? data.results : [];
 
-    if(outBox.lastElementChild === loading) outBox.removeChild(loading);
+        if (outBox.lastElementChild === loading) outBox.removeChild(loading);
 
-    if(results.length === 0){
-      const empty = document.createElement('div');
-      empty.className = 'ai-response';
-      empty.innerText = 'Пустой результат от сервера.';
-      outBox.appendChild(empty);
-    } else {
-      results.forEach((item, index) => {
-        const block = document.createElement('div');
-        block.className = 'ai-response result-highlight';
-        const outcomeText = item.outcome || outcomes[index] || `Исход ${index + 1}`;
-        const resultText = item.result || '';
+        if (results.length === 0) {
+            const empty = document.createElement('div');
+            empty.className = 'ai-response';
+            empty.innerText = 'Пустой результат от сервера.';
+            outBox.appendChild(empty);
+        } else {
+            results.forEach((item, index) => {
+                const block = document.createElement('div');
+                block.className = 'ai-response result-highlight';
+                const outcomeText = item.outcome || outcomes[index] || `Исход ${index + 1}`;
+                const resultText = item.result || '';
 
-        const { description, pros, cons } = parseProsConsFromText(resultText);
+                const { description, pros, cons } = parseProsConsFromText(resultText);
 
-        // ИСПРАВЛЕННЫЙ ВЫВОД - всегда показываем описание, плюсы и минусы
-        block.innerHTML = `
+                block.innerHTML = `
           <div class="meta"><b>Исход ${index + 1}:</b> ${escapeHtml(outcomeText)}</div>
 
           <div style="margin-top: 8px;">
@@ -2219,30 +2603,30 @@ aiRunBtn.addEventListener('click', async ()=>{
           ` : ''}
         `;
 
-        outBox.appendChild(block);
+                outBox.appendChild(block);
 
-        if(pros.length > 0 || cons.length > 0) {
-          createProConNodesForOutcome(outcomeText, pros, cons, index);
+                if (pros.length > 0 || cons.length > 0) {
+                    createProConNodesForOutcome(outcomeText, pros, cons, index);
+                }
+            });
         }
-      });
-    }
 
-    setLock(60);
-    saveState();
-  } else {
-    if(outBox.lastElementChild === loading) {
-      loading.innerHTML = `<div class="meta"><b>Ошибка при запросе к AI. Попытки исчерпаны.</b></div>`;
+        setLock(60);
+        saveState();
     } else {
-      const err = document.createElement('div');
-      err.className = 'ai-response';
-      err.innerText = 'Ошибка при запросе к AI. Попытки исчерпаны.';
-      outBox.appendChild(err);
+        if (outBox.lastElementChild === loading) {
+            loading.innerHTML = `<div class="meta"><b>Ошибка при запросе к AI. Попытки исчерпаны.</b></div>`;
+        } else {
+            const err = document.createElement('div');
+            err.className = 'ai-response';
+            err.innerText = 'Ошибка при запросе к AI. Попытки исчерпаны.';
+            outBox.appendChild(err);
+        }
+        console.error('AI request failed', result.error);
     }
-    console.error('AI request failed', result.error);
-  }
 
-  aiRunBtn.disabled = false;
-  aiRunBtn.style.opacity = '';
+    aiRunBtn.disabled = false;
+    aiRunBtn.style.opacity = '';
 });
 
 aiResetBtn.addEventListener('click', resetAIResponses);
@@ -2258,124 +2642,131 @@ let panelStartLeft = 0;
 let panelStartTop = 0;
 
 sideHeader.addEventListener('mousedown', e => {
-  if(e.target.closest('button')) return;
-  panelDragging = true;
-  panelStartX = e.clientX;
-  panelStartY = e.clientY;
-  panelStartLeft = parseInt(sidePanel.style.left) || 0;
-  panelStartTop = parseInt(sidePanel.style.top) || 0;
-  sidePanel.style.right = 'auto';
-  document.body.style.userSelect = 'none';
-  e.preventDefault();
+    if (e.target.closest('button')) return;
+    panelDragging = true;
+    panelStartX = e.clientX;
+    panelStartY = e.clientY;
+    panelStartLeft = parseInt(sidePanel.style.left) || 0;
+    panelStartTop = parseInt(sidePanel.style.top) || 0;
+    sidePanel.style.right = 'auto';
+    document.body.style.userSelect = 'none';
+    e.preventDefault();
 });
 
 panelHandle.addEventListener('mousedown', e => {
-  panelResizing = true;
-  panelStartX = e.clientX;
-  panelStartY = e.clientY;
-  panelStartWidth = sidePanel.offsetWidth;
-  panelStartHeight = sidePanel.offsetHeight;
-  document.body.style.userSelect = 'none';
-  e.preventDefault();
+    panelResizing = true;
+    panelStartX = e.clientX;
+    panelStartY = e.clientY;
+    panelStartWidth = sidePanel.offsetWidth;
+    panelStartHeight = sidePanel.offsetHeight;
+    document.body.style.userSelect = 'none';
+    e.preventDefault();
 });
 
 document.addEventListener('mousemove', e => {
-  if(panelDragging){
-    const dx = e.clientX - panelStartX;
-    const dy = e.clientY - panelStartY;
-    sidePanel.style.left = (panelStartLeft + dx) + 'px';
-    sidePanel.style.top = (panelStartTop + dy) + 'px';
-  }
-  if(panelResizing){
-    const dx = e.clientX - panelStartX;
-    const newWidth = Math.max(300, Math.min(800, panelStartWidth - dx));
-    sidePanel.style.width = newWidth + 'px';
-    renderConnections();
-  }
+    if (panelDragging) {
+        const dx = e.clientX - panelStartX;
+        const dy = e.clientY - panelStartY;
+        sidePanel.style.left = (panelStartLeft + dx) + 'px';
+        sidePanel.style.top = (panelStartTop + dy) + 'px';
+    }
+    if (panelResizing) {
+        const dx = e.clientX - panelStartX;
+        const newWidth = Math.max(300, Math.min(800, panelStartWidth - dx));
+        sidePanel.style.width = newWidth + 'px';
+        renderConnections();
+    }
 });
 
 document.addEventListener('mouseup', () => {
-  if(panelDragging || panelResizing){
-    panelDragging = false;
-    panelResizing = false;
-    document.body.style.userSelect = '';
-    saveState();
-  }
+    if (panelDragging || panelResizing) {
+        panelDragging = false;
+        panelResizing = false;
+        document.body.style.userSelect = '';
+        saveState();
+    }
 });
 
 panelCollapseBtn.addEventListener('click', () => {
-  if(sidePanel.dataset.collapsed === '1'){
-    sidePanel.style.width = '320px';
-    sidePanel.style.height = 'calc(100vh - 40px)';
-    sidePanel.dataset.collapsed = '0';
-  } else {
-    sidePanel.style.width = '60px';
-    sidePanel.style.height = '60px';
-    sidePanel.dataset.collapsed = '1';
-  }
-  saveState();
+    if (sidePanel.dataset.collapsed === '1') {
+        sidePanel.style.width = '320px';
+        sidePanel.style.height = 'calc(100vh - 40px)';
+        sidePanel.dataset.collapsed = '0';
+    } else {
+        sidePanel.style.width = '60px';
+        sidePanel.style.height = '60px';
+        sidePanel.dataset.collapsed = '1';
+    }
+    saveState();
 });
 
 panelCloseBtn.addEventListener('click', () => {
-  sidePanel.style.display = 'none';
-  openPanelBtn.classList.add('visible');
-  saveState();
+    sidePanel.style.display = 'none';
+    openPanelBtn.classList.add('visible');
+    saveState();
 });
 
 openPanelBtn.addEventListener('click', () => {
-  sidePanel.style.display = 'flex';
-  openPanelBtn.classList.remove('visible');
-  saveState();
+    sidePanel.style.display = 'flex';
+    openPanelBtn.classList.remove('visible');
+    saveState();
 });
 
 // ========== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ==========
-function escapeHtml(s){
-  if(!s && s!==0) return '';
-  return String(s)
-    .replaceAll('&','&amp;')
-    .replaceAll('<','&lt;')
-    .replaceAll('>','&gt;')
-    .replaceAll('"','&quot;')
-    .replaceAll("'",'&#39;');
+function escapeHtml(s) {
+    if (!s && s !== 0) return '';
+    return String(s)
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
 }
 
-// ========== ИНИЦИАЛИЗАЦИЯ ==========
-function init(){
-  loadState();
-  updateTimerUI();
-  updateAIPreview();
+function init() {
+    loadState();
+    updateTimerUI();
+    updateAIPreview();
 
-  const root = byId('root');
-  if(root){
-    makeDraggable(root);
-    setupNodeButtons(root);
-    const t = root.querySelector('.title');
-    if(t) t.addEventListener('input', ()=>{ updateAIPreview(); saveState(); });
-  }
-
-  // Double-click on canvas to create new node
-  canvasContent.addEventListener('dblclick', e => {
-    const target = e.target;
-    if(target.closest('.node') || target.closest('.add-btn') || target.closest('.remove-btn')) return;
-
-    const rect = canvasContent.getBoundingClientRect();
-    const x = e.clientX - rect.left - LAYOUT_CONFIG.NODE_WIDTH / 2;
-    const y = e.clientY - rect.top - LAYOUT_CONFIG.NODE_HEIGHT / 2;
-
-    createNode(x, y, 'Новый исход');
-  });
-
-  // Auto-save on title edits
-  document.addEventListener('input', e => {
-    if(e.target.classList.contains('title')){
-      updateAIPreview();
-      saveState();
+    const root = byId('root');
+    if (root) {
+        makeDraggable(root);
+        setupNodeButtons(root);
+        const t = root.querySelector('.title');
+        if (t) t.addEventListener('input', () => { updateAIPreview(); saveState(); });
     }
-  });
 
-  // Periodically save state
-  setInterval(saveState, 30000);
+    canvasContent.addEventListener('dblclick', e => {
+        const target = e.target;
+        if (target.closest('.node') || target.closest('.add-btn') || target.closest('.remove-btn')) return;
+
+        const rect = canvasContent.getBoundingClientRect();
+        const x = e.clientX - rect.left - LAYOUT_CONFIG.NODE_WIDTH / 2;
+        const y = e.clientY - rect.top - LAYOUT_CONFIG.NODE_HEIGHT / 2;
+
+        createNode(x, y, 'Новый исход');
+    });
+
+    document.addEventListener('input', e => {
+        if (e.target.classList.contains('title')) {
+            updateAIPreview();
+            saveState();
+        }
+    });
+
+    setInterval(() => {
+        fixProConPositions();
+    }, 5000);
+
+    setInterval(saveState, 30000);
+
+    window.addEventListener('beforeunload', () => {
+        if (renderConnections._frame) {
+            cancelAnimationFrame(renderConnections._frame);
+        }
+    });
 }
+
 init();
 </script>
 </body>
