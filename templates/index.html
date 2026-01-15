@@ -1,455 +1,152 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Путь Жизни — Viora</title>
-<link rel="stylesheet" href="/static/styles.css">
-<style>
-:root { --panel-bg: rgba(8,8,10,0.6); --accent: #7dd3fc; }
-body { margin:0; font-family: Inter, Arial, sans-serif; background: #09090b; color: #fff; }
-.editor-page { width:100vw; height:100vh; display:flex; gap:20px; padding:20px; box-sizing:border-box; align-items:stretch; }
-.canvas-area { flex:1 1 auto; border-radius:18px; background: rgba(10,10,15,0.45); backdrop-filter: blur(8px); position:relative; overflow:auto; padding:40px; min-height:80vh; }
-.side-panel { width:420px; max-width:40%; background:var(--panel-bg); border-radius:16px; padding:18px; box-shadow:0 8px 30px rgba(0,0,0,0.6); }
-.node { width:260px; min-height:56px; background: rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:12px; position:absolute; display:flex; flex-direction:column; gap:8px; cursor:move; }
-.node .title { font-weight:600; font-size:14px; color:#fff; outline:none; min-height:20px; background:transparent; border:none; width:100%; }
-.controls { display:flex; align-items:center; justify-content:space-between; margin-top:8px; }
-.buttons-container { display:flex; gap:6px; align-items:center; }
-.add-btn, .remove-btn { width:28px; height:28px; border-radius:8px; display:inline-flex; align-items:center; justify-content:center; background: rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); color:#fff; cursor:pointer; }
-.add-btn { font-weight:700; font-size:16px; }
-.remove-btn { font-size:14px; }
-.small-muted { color: rgba(255,255,255,0.55); font-size:13px; }
-.back-link { position:fixed; top:14px; left:14px; z-index:9999; background: rgba(255,255,255,0.06); color:#fff; text-decoration:none; display:inline-flex; gap:8px; padding:8px 10px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); font-weight:600; }
-.connector-svg { position:absolute; inset:0; pointer-events:none; }
-.ai-box { background: rgba(255,255,255,0.02); padding:12px; border-radius:10px; min-height:120px; overflow:auto; max-height:360px; font-size:14px; line-height:1.45; }
-.ai-box .ai-response { margin-bottom:12px; padding:10px; background: rgba(255,255,255,0.02); border-radius:8px; border:1px solid rgba(255,255,255,0.04); }
-.ai-box .ai-response .meta { font-size:13px; color:rgba(255,255,255,0.85); }
-.ai-box .ai-response pre { white-space:pre-wrap; word-break:break-word; margin:6px 0 0 0; font-family:inherit; font-size:13px; }
-.action-row { display:flex; gap:10px; margin-top:12px; }
-.button-primary { background: var(--accent); color:#0a0a0f; padding:10px 12px; border-radius:10px; cursor:pointer; border:none; }
-.button-ghost { background:transparent; color:#fff; border:1px solid rgba(255,255,255,0.08); padding:10px 12px; border-radius:10px; cursor:pointer; }
-.title[contenteditable]:empty:before { content: attr(data-placeholder); color: rgba(255,255,255,0.35); display:block; }
-</style>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="description" content="Viora - Сделай свой выбор видимым. Космический портал для осознанных решений.">
+    <title>Viora - Портал осознанных решений</title>
+    <link rel="stylesheet" href="/static/styles_index.css">
+
 </head>
 <body>
-  <a class="back-link" href="/">← Назад</a>
-  <div class="editor-page">
-    <div class="canvas-area" id="canvasArea">
-      <svg class="connector-svg" id="connectors" width="100%" height="100%"></svg>
+    <canvas id="stars-bg" class="canvas-layer"></canvas>
+    <canvas id="nebula" class="canvas-layer"></canvas>
+    <canvas id="stars-mid" class="canvas-layer"></canvas>
+    <canvas id="stars-front" class="canvas-layer"></canvas>
+    <canvas id="comets" class="canvas-layer"></canvas>
+    <canvas id="particles" class="canvas-layer"></canvas>
 
-      <div class="node" id="node-root" style="left: calc(50% - 110px); top: 80px;" data-id="root">
-        <div contenteditable class="title" data-placeholder="Опишите проблему...">Нажмите и впишите проблему</div>
-        <div class="controls">
-          <div class="small-muted">Главный пункт</div>
-          <div class="buttons-container">
-            <div class="add-btn" title="Добавить исход" data-add>+</div>
-          </div>
+    <div id="logo-screen" class="screen active">
+        <svg id="viora-logo" viewBox="0 0 550 200" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stop-color="#00d9ff" />
+                    <stop offset="50%" stop-color="#a855f7" />
+                    <stop offset="100%" stop-color="#00d9ff" />
+                </linearGradient>
+                <filter id="glow">
+                    <feGaussianBlur stdDeviation="6" result="coloredBlur"/>
+                    <feMerge>
+                        <feMergeNode in="coloredBlur"/>
+                        <feMergeNode in="SourceGraphic"/>
+                    </feMerge>
+                </filter>
+            </defs>
+            <g id="letter-v">
+                <path id="v-1" d="M 60 60 L 100 160" stroke="url(#logoGradient)" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)"/>
+                <path id="v-2" d="M 140 60 L 100 160" stroke="url(#logoGradient)" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)"/>
+            </g>
+            <path id="letter-i" d="M 180 60 L 180 160" stroke="url(#logoGradient)" stroke-width="4" fill="none" stroke-linecap="round" filter="url(#glow)"/>
+            <circle id="letter-o" cx="280" cy="110" r="50" stroke="url(#logoGradient)" stroke-width="4" fill="none" filter="url(#glow)"/>
+            <g id="letter-r">
+                <path id="r-1" d="M 360 60 L 360 160" stroke="url(#logoGradient)" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)"/>
+                <path id="r-2" d="M 360 60 L 400 60 Q 430 60 430 85 Q 430 110 400 110 L 360 110" stroke="url(#logoGradient)" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)"/>
+                <path id="r-3" d="M 400 110 L 430 160" stroke="url(#logoGradient)" stroke-width="4" fill="none" stroke-linecap="round" filter="url(#glow)"/>
+            </g>
+            <g id="letter-a">
+                <path id="a-1" d="M 450 160 L 490 60 L 530 160" stroke="url(#logoGradient)" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)"/>
+                <path id="a-2" d="M 465 120 L 515 120" stroke="url(#logoGradient)" stroke-width="4" fill="none" stroke-linecap="round" filter="url(#glow)"/>
+            </g>
+        </svg>
+    </div>
+
+    <div id="main-screen" class="screen">
+        <div class="main-container">
+            <div class="buttons-wrapper">
+                <a class="glass-button cyan-button" href="/life" >
+                    <div class="button-glow"></div>
+                    <div class="button-content">
+                        <svg class="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/>
+                        </svg>
+                        <h2 class="button-title">Путь Жизни</h2>
+                        <p class="button-description">Построй дерево решений<br>о твоей жизни</p>
+                    </div>
+                </a>
+
+                <a class="glass-button purple-button" href="/flow">
+                    <div class="button-glow"></div>
+                    <div class="button-content">
+                        <svg class="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z"/>
+                        </svg>
+                        <h2 class="button-title">Поток Кадров</h2>
+                        <p class="button-description">Создавай сюжеты для видео<br>и презентаций</p>
+                    </div>
+                </a>
+            </div>
+
+            <p class="tagline">Сделай свой выбор видимым</p>
         </div>
-      </div>
+
+        <div id="wallpaper-toggle-container">
+            <span class="toggle-label">Живые обои</span>
+            <label class="toggle-switch">
+                <input type="checkbox" id="wallpaper-toggle" checked>
+                <span class="slider round"></span>
+            </label>
+        </div>
+
+        <div id="profile-avatar">
+            <svg class="icon" viewBox="0 0 24 24">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                <circle cx="9" cy="7" r="4"></circle>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+            </svg>
+        </div>
+
+        <div id="registration-modal" class="modal-backdrop">
+            <div class="modal-box">
+                <h3 class="modal-title">Приветствие в Viora</h3>
+                <div class="input-group">
+                    <label for="reg-name-input">Назовите себя, чтобы войти в Портал:</label>
+                    <input type="text" id="reg-name-input" class="name-input" placeholder="Введите ваше имя">
+                </div>
+                <div class="modal-actions">
+                    <button class="action-button no" id="reg-no">
+                        <svg class="icon" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    </button>
+                    <button class="action-button yes" id="reg-yes" disabled>
+                        <svg class="icon" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="profile-modal" class="modal-backdrop">
+            <div class="modal-box" id="profile-modal-box">
+                <div class="profile-avatar-display">
+                    <svg class="icon" viewBox="0 0 24 24">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                    </svg>
+                    <div class="edit-icon" id="edit-profile-icon">
+                        <svg class="icon" viewBox="0 0 24 24"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
+                    </div>
+                </div>
+
+                <div class="profile-info">
+                    Вы: <span id="profile-name-display" class="profile-username">Гость</span>
+                    <input type="text" id="profile-name-input" class="profile-input-edit" style="display: none;">
+                </div>
+
+                <div class="modal-actions">
+                    <button class="action-button no" id="profile-no">
+                        <svg class="icon" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    </button>
+                    <button class="action-button yes" id="profile-yes" disabled>
+                        <svg class="icon" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
-
-    <div class="side-panel">
-      <h3>ИИ-помощник</h3>
-      <div class="small-muted">Он читает заголовок (проблему) и все исходы, затем предлагает варианты: плюсы и минусы для каждого исхода.</div>
-      <div style="height:12px"></div>
-      <div style="font-weight:600">Заголовок (проблема)</div>
-      <div id="ai-title" class="small-muted" style="min-height:34px">—</div>
-      <div style="height:10px"></div>
-      <div style="font-weight:600">Исходы (варианты решения)</div>
-      <div id="ai-outcomes" class="small-muted" style="min-height:60px">—</div>
-      <div style="height:12px"></div>
-      <div class="ai-box" id="ai-output">Нажмите «Предложить», чтобы ИИ проанализировал варианты.</div>
-      <div class="action-row">
-        <button class="button-primary" id="ai-run">Предложить</button>
-        <button class="button-ghost" id="ai-reset">Сбросить ответы</button>
-      </div>
-      <div style="height:8px"></div>
-      <div class="small-muted">Таймер блокировки: <span id="ai-timer">—</span></div>
-      <div style="height:10px"></div>
-      <div class="small-muted">Поддержка: узлы редактируемы, перетаскивайте их, нажмите «+» на узле чтобы создать исход.</div>
-    </div>
-  </div>
-
-<script>
-const STORAGE_KEY = 'viora_state_v1';
-const canvas = document.getElementById('canvasArea');
-const connectorsSvg = document.getElementById('connectors');
-
-let edges = [];
-let nodeCounter = 1;
-const MAX_RETRIES = 4;
-let isLockedUntil = 0, timerInterval = null;
-let _saveTimeout = null;
-
-// -------------------- State Save/Load --------------------
-function saveState(debounceMs = 200) {
-  if (_saveTimeout) clearTimeout(_saveTimeout);
-  _saveTimeout = setTimeout(() => {
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(serializeState())); }
-    catch(e){ console.error(e); }
-  }, debounceMs);
-}
-
-function serializeState() {
-  const nodes = Array.from(document.querySelectorAll('.node[data-id]')).map(n => ({
-    id: n.dataset.id,
-    left: parseFloat(n.style.left) || 0,
-    top: parseFloat(n.style.top) || 0,
-    title: n.querySelector('.title')?.innerText || ''
-  }));
-  return {
-    version: 1,
-    nodes,
-    edges,
-    nodeCounter,
-    aiOutput: document.getElementById('ai-output')?.innerHTML || '',
-    isLockedUntil,
-    canvasScroll: { left: canvas.scrollLeft, top: canvas.scrollTop }
-  };
-}
-
-function loadState() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return;
-    const s = JSON.parse(raw);
-    if (!s) return;
-
-    if (typeof s.nodeCounter === 'number') nodeCounter = s.nodeCounter;
-
-    const root = document.querySelector('[data-id="root"]');
-    if(root) {
-      const savedRoot = (s.nodes || []).find(n => n.id === 'root');
-      if(savedRoot) {
-        root.style.left = (savedRoot.left || 0) + 'px';
-        root.style.top = (savedRoot.top || 0) + 'px';
-        const t = root.querySelector('.title');
-        if(t) t.innerText = savedRoot.title || '';
-      }
-    }
-
-    document.querySelectorAll('.node').forEach(n => { if(n.dataset.id !== 'root') n.remove(); });
-
-    edges = [];
-    if(Array.isArray(s.nodes)){
-      s.nodes.forEach(n => {
-        if(n.id !== 'root') recreateNode(n.id, n.left || 100, n.top || 100, n.title || 'Новый исход');
-      });
-    }
-
-    if(Array.isArray(s.edges)) edges = s.edges.slice();
-    if(s.aiOutput !== undefined) document.getElementById('ai-output').innerHTML = s.aiOutput || '';
-
-    if(s.isLockedUntil){
-      isLockedUntil = s.isLockedUntil;
-      updateTimerUI();
-      if(isLockedUntil > Date.now()){
-        timerInterval && clearInterval(timerInterval);
-        timerInterval = setInterval(updateTimerUI, 250);
-      }
-    }
-
-    if(s.canvasScroll){
-      requestAnimationFrame(() => {
-        canvas.scrollLeft = s.canvasScroll.left || 0;
-        canvas.scrollTop = s.canvasScroll.top || 0;
-        renderConnections();
-      });
-    }
-
-    renderConnections();
-    updateAIPreview();
-  } catch(e){ console.error('loadState error', e); }
-}
-
-// -------------------- Timer --------------------
-function setLock(seconds){
-  isLockedUntil = Date.now() + seconds * 1000;
-  updateTimerUI();
-  timerInterval && clearInterval(timerInterval);
-  timerInterval = setInterval(updateTimerUI, 250);
-  saveState();
-}
-
-function updateTimerUI(){
-  const timerEl = document.getElementById('ai-timer');
-  const runBtn = document.getElementById('ai-run');
-  const remaining = Math.max(0, Math.ceil((isLockedUntil - Date.now()) / 1000));
-  if(remaining > 0){
-    timerEl.innerText = `${remaining}s`;
-    runBtn.disabled = true;
-    runBtn.style.opacity = '0.6';
-  } else {
-    timerEl.innerText = '—';
-    runBtn.disabled = false;
-    runBtn.style.opacity = '';
-    if(timerInterval){ clearInterval(timerInterval); timerInterval = null; }
-    if(isLockedUntil !== 0){ isLockedUntil = 0; saveState(); }
-  }
-}
-
-// -------------------- Node Utilities --------------------
-function byId(id){ return document.querySelector(`[data-id="${id}"]`); }
-
-function recreateNode(id, x=100, y=200, text='Новый исход'){
-  const div = document.createElement('div');
-  div.className = 'node';
-  div.style.left = x + 'px';
-  div.style.top = y + 'px';
-  div.dataset.id = id;
-  div.innerHTML = `
-    <div contenteditable class="title">${text}</div>
-    <div class="controls">
-      <div class="small-muted">Исход</div>
-      <div class="buttons-container">
-        <div class="add-btn" title="Добавить исход" data-add>+</div>
-        <div class="remove-btn" title="Удалить узел">✕</div>
-      </div>
-    </div>`;
-  canvas.appendChild(div);
-  makeDraggable(div);
-  setupNodeButtons(div);
-  return id;
-}
-
-function createNode(x=100, y=200, text='Новый исход', parentId=null){
-  const id = 'node-' + (++nodeCounter);
-  const div = recreateNode(id, x, y, text);
-  if(parentId) addEdge(parentId, id);
-  updateAIPreview();
-  renderConnections();
-  saveState();
-  return id;
-}
-
-function makeDraggable(elem){
-  let dragging=false, dx=0, dy=0;
-  const canvasRect = ()=>canvas.getBoundingClientRect();
-
-  elem.addEventListener('mousedown', e=>{
-    if(e.target.closest('[data-add]') || e.target.classList.contains('remove-btn')) return;
-    if(e.target.closest('.title') || e.target.isContentEditable) return;
-    dragging=true;
-    const rect=elem.getBoundingClientRect();
-    dx=e.clientX-rect.left;
-    dy=e.clientY-rect.top;
-    elem.style.zIndex=1000;
-  });
-
-  document.addEventListener('mousemove', e=>{
-    if(!dragging) return;
-    const rect = canvasRect();
-    elem.style.left = (e.clientX - rect.left - dx) + 'px';
-    elem.style.top = (e.clientY - rect.top - dy) + 'px';
-    renderConnections();
-  });
-
-  document.addEventListener('mouseup', ()=>{
-    if(dragging){ dragging=false; elem.style.zIndex=''; saveState(); }
-  });
-
-  elem.addEventListener('touchstart', e=>{
-    const t = e.touches[0]; if(!t) return;
-    const target = document.elementFromPoint(t.clientX, t.clientY);
-    if(!target) return;
-    if(target.closest('[data-add]') || target.classList.contains('remove-btn') || target.closest('.title')) return;
-    dragging = true;
-    const rect=elem.getBoundingClientRect();
-    dx=t.clientX-rect.left;
-    dy=t.clientY-rect.top;
-    elem.style.zIndex=1000;
-    e.preventDefault();
-  }, {passive:false});
-
-  document.addEventListener('touchmove', e=>{
-    if(!dragging) return;
-    const t = e.touches[0]; if(!t) return;
-    const rect = canvas.getBoundingClientRect();
-    elem.style.left = (t.clientX-rect.left-dx) + 'px';
-    elem.style.top = (t.clientY-rect.top-dy) + 'px';
-    renderConnections();
-    e.preventDefault();
-  }, {passive:false});
-
-  document.addEventListener('touchend', ()=>{
-    if(dragging){ dragging=false; elem.style.zIndex=''; saveState(); }
-  });
-}
-
-function setupNodeButtons(nodeElem){
-  const addBtn = nodeElem.querySelector('[data-add]');
-  const removeBtn = nodeElem.querySelector('.remove-btn');
-  const title = nodeElem.querySelector('.title');
-
-  if(title){
-    title.addEventListener('mousedown', e=>e.stopPropagation());
-    title.addEventListener('touchstart', e=>e.stopPropagation(), {passive:false});
-    title.addEventListener('input', ()=>{ updateAIPreview(); saveState(); });
-  }
-
-  addBtn && addBtn.addEventListener('click', e=>{
-    e.stopPropagation();
-    const rect = nodeElem.getBoundingClientRect(), canvasRect = canvas.getBoundingClientRect();
-    const childCount = edges.filter(en=>en.from===nodeElem.dataset.id).length;
-    const newId = createNode(rect.left - canvasRect.left + rect.width + 40, rect.top - canvasRect.top + (childCount*80), 'Вариант решения...', nodeElem.dataset.id);
-    document.querySelector(`[data-id="${newId}"] .title`)?.focus();
-  });
-
-  removeBtn && removeBtn.addEventListener('click', e=>{
-    e.stopPropagation();
-    removeNode(nodeElem.dataset.id);
-  });
-}
-
-function removeNode(nodeId){
-  const node = byId(nodeId); if(!node) return;
-  edges = edges.filter(e => e.from !== nodeId && e.to !== nodeId);
-  node.remove();
-  renderConnections();
-  updateAIPreview();
-  saveState();
-}
-
-function addEdge(fromId, toId){
-  if(!edges.some(e=>e.from===fromId && e.to===toId)){
-    edges.push({from:fromId, to:toId});
-    renderConnections();
-    saveState();
-  }
-}
-
-function renderConnections(){
-  connectorsSvg.innerHTML='';
-  edges.forEach(e=>{
-    const a = byId(e.from);
-    const b = byId(e.to);
-    if(!a || !b) return;
-    const ra = a.getBoundingClientRect(), rb = b.getBoundingClientRect(), cr = canvas.getBoundingClientRect();
-    const x1 = ra.left + ra.width/2 - cr.left, y1 = ra.top + ra.height - cr.top;
-    const x2 = rb.left + rb.width/2 - cr.left, y2 = rb.top - cr.top;
-    const dx = Math.max(40, Math.abs(x2-x1)/2);
-    const path = document.createElementNS('http://www.w3.org/2000/svg','path');
-    path.setAttribute('d', `M ${x1} ${y1} C ${x1} ${y1+dx} ${x2} ${y2-dx} ${x2} ${y2}`);
-    path.setAttribute('stroke','rgba(255,255,255,0.12)');
-    path.setAttribute('stroke-width','2');
-    path.setAttribute('fill','none');
-    connectorsSvg.appendChild(path);
-  });
-}
-
-// -------------------- AI --------------------
-function collectTreeText(){
-  const root = byId('root');
-  const title = root ? root.querySelector('.title').innerText.trim() : '';
-  const outcomes = Array.from(document.querySelectorAll('.node[data-id]:not([data-id="root"])'))
-                      .map(n=>n.querySelector('.title').innerText.trim()).filter(Boolean);
-  return {title, outcomes};
-}
-
-function updateAIPreview(){
-  const {title, outcomes} = collectTreeText();
-  document.getElementById('ai-title').innerText = title || '—';
-  document.getElementById('ai-outcomes').innerText = outcomes.length ? ('• ' + outcomes.join('\n• ')) : '—';
-}
-
-async function sendAiRequestWithRetries(payload, maxRetries=MAX_RETRIES){
-  let lastError = null;
-  for(let attempt=1; attempt<=maxRetries; attempt++){
-    try{
-      const res = await fetch('/run-ai', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)});
-      if(!res.ok){ lastError = new Error('HTTP '+res.status); }
-      else { const data = await res.json(); return {success:true, data}; }
-    } catch(err){ lastError = err; }
-    const backoff = 200*attempt; await new Promise(r=>setTimeout(r, backoff));
-  }
-  return {success:false, error:lastError};
-}
-
-const aiRunBtn = document.getElementById('ai-run');
-const aiResetBtn = document.getElementById('ai-reset');
-
-aiRunBtn.addEventListener('click', async ()=>{
-  if(isLockedUntil > Date.now()) return;
-
-  const {title, outcomes} = collectTreeText();
-  const outBox = document.getElementById('ai-output');
-
-  if(!title){ outBox.innerText = 'Пожалуйста, опишите проблему.'; return; }
-  if(!outcomes.length){ outBox.innerText = 'Добавьте варианты решения.'; return; }
-
-  outBox.innerHTML = '';
-  const loadingBlock = document.createElement('div');
-  loadingBlock.className='ai-response';
-  loadingBlock.innerHTML=`<div class="meta"><b>Запрос отправлен — ожидаем ответы...</b></div>`;
-  outBox.appendChild(loadingBlock);
-  outBox.scrollTop = outBox.scrollHeight;
-
-  aiRunBtn.disabled = true; aiRunBtn.style.opacity='0.6';
-
-  const payload = {title, outcomes};
-  const result = await sendAiRequestWithRetries(payload, MAX_RETRIES);
-
-  if(result.success){
-    const data = result.data || {};
-    const results = Array.isArray(data.results) ? data.results : [];
-    if(outBox.lastElementChild===loadingBlock) outBox.removeChild(loadingBlock);
-
-    if(results.length === 0){
-      const empty = document.createElement('div'); empty.className='ai-response'; empty.innerText='Пустой результат от сервера.'; outBox.appendChild(empty);
-    } else {
-      results.forEach(item=>{
-        const block = document.createElement('div'); block.className='ai-response';
-        const modelLabel = item.model || 'unknown';
-        const resultText = item.result || '';
-        const outcomeText = item.outcome || '';
-        block.innerHTML=`<div class="meta"><b>Исход ${escapeHtml(item.index||'')}:</b> ${escapeHtml(outcomeText)}</div>
-                         <div class="meta" style="font-size:12px;color:rgba(255,255,255,0.65);margin-top:4px;"><b>Модель:</b> ${escapeHtml(modelLabel)}</div>
-                         <pre>${escapeHtml(resultText)}</pre>`;
-        outBox.appendChild(block);
-      });
-    }
-    outBox.scrollTop = outBox.scrollHeight;
-    setLock(60);
-    saveState();
-  } else {
-    if(outBox.lastElementChild === loadingBlock){
-      loadingBlock.innerHTML=`<div class="meta"><b>Ошибка при запросе к AI. Попытки исчерпаны.</b></div>`;
-    } else {
-      const err = document.createElement('div'); err.className='ai-response'; err.innerText='Ошибка при запросе к AI. Попытки исчерпаны.'; outBox.appendChild(err);
-    }
-    console.error('AI request failed:', result.error);
-    aiRunBtn.disabled = false; aiRunBtn.style.opacity='';
-    saveState();
-  }
-});
-
-aiResetBtn.addEventListener('click', ()=>{
-  document.getElementById('ai-output').innerText = 'Сброшено.';
-  saveState();
-});
-
-// -------------------- Misc --------------------
-function escapeHtml(str){
-  if(!str && str!==0) return '';
-  return String(str).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'","&#39;");
-}
-
-// -------------------- Init --------------------
-document.querySelectorAll('.node').forEach(n=>{
-  makeDraggable(n);
-  setupNodeButtons(n);
-  const t = n.querySelector('.title');
-  if(t) t.addEventListener('input', ()=>{ updateAIPreview(); saveState(); });
-});
-
-canvas.addEventListener('scroll', ()=>{ saveState(); renderConnections(); });
-window.addEventListener('resize', renderConnections);
-window.addEventListener('beforeunload', ()=>{ try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(serializeState())); }catch(e){} });
-
-updateAIPreview();
-renderConnections();
-updateTimerUI();
-loadState();
-</script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js" integrity="sha384-I7E8VVD/ismYTF4hNIPjVp/Zjvgyol6VFvRkX/vR+Vc4jQkC+hVqc2pM8ODewa9r" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.min.js" integrity="sha384-G/EV+4j2dNv+tEPo3++6LCgdCROaejBqfUeNjuKAiuXbjrxilcCdDz6ZAVfHWe1Y" crossorigin="anonymous"></script>
+    <script src="/static/scripts/index.js"></script>
 </body>
 </html>
