@@ -19,6 +19,7 @@ const resetZoomBtn = document.getElementById('resetZoom');
 const zoomLevelDisplay = document.getElementById('zoomLevel');
 const aiNextFrameBtn = document.getElementById('ai-next-frame');
 const aiAnalyzeFramesBtn = document.getElementById('ai-analyze-frames');
+const aiResetFramesBtn = document.getElementById('ai-reset-frames');
 
 let edges = [];
 let nodeCounter = 1;
@@ -47,8 +48,8 @@ const ZOOM_CONFIG = {
 const LAYOUT_CONFIG = {
   NODE_WIDTH: 300,
   NODE_HEIGHT: 80,
-  COLUMN_SPACING: 400,
-  ROW_SPACING: 150,
+  COLUMN_SPACING: 220,
+  ROW_SPACING: 90,
   CANVAS_WIDTH: 5000,
   CANVAS_HEIGHT: 5000
 };
@@ -175,38 +176,45 @@ document.addEventListener('mouseup', () => {
 });
 
 // ========== УПРАВЛЕНИЕ ПОЗИЦИЯМИ С ГРАНИЦАМИ ==========
-let occupiedPositions = new Map();
+// ── Карта прямоугольников: nodeId → {x, y, w, h} (источник правды) ──
+let occupiedRectangles = new Map();
 
 function resetOccupiedPositions() {
-  occupiedPositions = new Map();
+  occupiedPositions = new Map(); // оставляем для обратной совместимости с saveState
+  occupiedRectangles = new Map();
 }
 
-function registerPosition(nodeId, x, y) {
-  const gridX = Math.floor(x / 30);
-  const gridY = Math.floor(y / 30);
-  const key = `${gridX}_${gridY}`;
-  occupiedPositions.set(key, { nodeId, x, y });
+function registerPosition(nodeId, x, y, width, height) {
+  const node = byId(nodeId);
+  const w = width  || (node ? node.offsetWidth  : 0) || LAYOUT_CONFIG.NODE_WIDTH;
+  const h = height || (node ? node.offsetHeight : 0) || LAYOUT_CONFIG.NODE_HEIGHT;
+  occupiedRectangles.set(nodeId, { x, y, w, h });
+  // ОБ совместимость с прежним кодом, читающим occupiedPositions:
+  const gridX = Math.floor(x / 30), gridY = Math.floor(y / 30);
+  occupiedPositions.set(`${gridX}_${gridY}`, { nodeId, x, y });
 }
 
-function isPositionFree(x, y, width = LAYOUT_CONFIG.NODE_WIDTH, height = LAYOUT_CONFIG.NODE_HEIGHT) {
-  // Проверяем границы с учетом размера блока
-  if (x < BOUNDARIES.minX || y < BOUNDARIES.minY) {
-    return false;
+function unregisterPosition(nodeId) {
+  occupiedRectangles.delete(nodeId);
+  for (const [key, val] of occupiedPositions) {
+    if (val.nodeId === nodeId) occupiedPositions.delete(key);
   }
-  if (x + width > BOUNDARIES.maxX || y + height > BOUNDARIES.maxY) {
-    return false;
-  }
+}
 
-  const startGridX = Math.floor(x / 30);
-  const startGridY = Math.floor(y / 30);
-  const endGridX = Math.floor((x + width) / 30);
-  const endGridY = Math.floor((y + height) / 30);
+function rectsOverlap(a, b, pad = 10) {
+  return !(a.x + a.w + pad <= b.x ||
+           b.x + b.w + pad <= a.x ||
+           a.y + a.h + pad <= b.y ||
+           b.y + b.h + pad <= a.y);
+}
 
-  for (let gridX = startGridX; gridX <= endGridX; gridX++) {
-    for (let gridY = startGridY; gridY <= endGridY; gridY++) {
-      const key = `${gridX}_${gridY}`;
-      if (occupiedPositions.has(key)) return false;
-    }
+function isPositionFree(x, y, width = LAYOUT_CONFIG.NODE_WIDTH, height = LAYOUT_CONFIG.NODE_HEIGHT, excludeId = null) {
+  if (x < BOUNDARIES.minX || y < BOUNDARIES.minY) return false;
+  if (x + width > BOUNDARIES.maxX || y + height > BOUNDARIES.maxY) return false;
+  const candidate = { x, y, w: width, h: height };
+  for (const [id, rect] of occupiedRectangles) {
+    if (id === excludeId) continue;
+    if (rectsOverlap(candidate, rect)) return false;
   }
   return true;
 }
@@ -226,42 +234,52 @@ function getViewportCenter() {
   };
 }
 
+// ── Поиск свободного места: компактная "решётка-спираль" с шагом узла ──
 function findFreePosition(nearX, nearY) {
-  // Если координаты не указаны, используем центр видимой области
-  let targetX = nearX;
-  let targetY = nearY;
-
+  let targetX = nearX, targetY = nearY;
   if ((!targetX && targetX !== 0) || (!targetY && targetY !== 0)) {
-    const viewportCenter = getViewportCenter();
-    targetX = viewportCenter.x;
-    targetY = viewportCenter.y;
+    const c = getViewportCenter();
+    targetX = c.x;
+    targetY = c.y;
   }
 
-  // Сначала проверяем указанную позицию
+  const W = LAYOUT_CONFIG.NODE_WIDTH;
+  const H = LAYOUT_CONFIG.NODE_HEIGHT;
+  const stepX = W + 40;   // шаг по горизонтали с зазором
+  const stepY = H + 30;   // шаг по вертикали с зазором
+
   if (isPositionFree(targetX, targetY)) {
-    const clampedPos = clampToBoundaries(targetX, targetY);
-    return { x: clampedPos.x, y: clampedPos.y };
+    return clampToBoundaries(targetX, targetY);
   }
 
-  // Ищем свободное место по спирали от указанной точки
-  for (let radius = 1; radius <= 15; radius++) {
-    const points = 8;
-    for (let i = 0; i < points; i++) {
-      const angle = (i * 360) / points;
-      const rad = angle * Math.PI / 180;
-      const x = targetX + Math.cos(rad) * radius * 120;
-      const y = targetY + Math.sin(rad) * radius * 100;
-
-      if (isPositionFree(x, y)) {
-        const clampedPos = clampToBoundaries(x, y);
-        return { x: clampedPos.x, y: clampedPos.y };
-      }
+  // 1) сначала пробуем горизонтальные смещения (типичная цепочка кадров идёт вправо)
+  for (let dx = 1; dx <= 8; dx++) {
+    for (const sign of [1, -1]) {
+      const x = targetX + sign * dx * stepX;
+      if (isPositionFree(x, targetY)) return clampToBoundaries(x, targetY);
     }
   }
 
-  // Если не нашли, возвращаем позицию в пределах границ
-  const clampedPos = clampToBoundaries(targetX, targetY);
-  return { x: clampedPos.x, y: clampedPos.y };
+  // 2) вертикальные смещения
+  for (let dy = 1; dy <= 8; dy++) {
+    for (const sign of [1, -1]) {
+      const y = targetY + sign * dy * stepY;
+      if (isPositionFree(targetX, y)) return clampToBoundaries(targetX, y);
+    }
+  }
+
+  // 3) диагональная спираль в качестве фолбэка
+  for (let r = 1; r <= 12; r++) {
+    const samples = 12;
+    for (let i = 0; i < samples; i++) {
+      const angle = (i * 2 * Math.PI) / samples;
+      const x = targetX + Math.cos(angle) * r * stepX * 0.7;
+      const y = targetY + Math.sin(angle) * r * stepY * 0.9;
+      if (isPositionFree(x, y)) return clampToBoundaries(x, y);
+    }
+  }
+
+  return clampToBoundaries(targetX, targetY);
 }
 
 function clampToBoundaries(x, y, width = LAYOUT_CONFIG.NODE_WIDTH, height = LAYOUT_CONFIG.NODE_HEIGHT) {
@@ -298,7 +316,8 @@ function serializeState(){
     top: panelRect.top - editorRect.top,
     width: panelRect.width,
     height: panelRect.height,
-    hidden: sidePanel.style.display === 'none'
+    hidden: sidePanel.style.display === 'none',
+    collapsed: sidePanel.dataset.collapsed === '1'
   };
 
   const viewState = { scale, translateX, translateY };
@@ -364,12 +383,17 @@ function loadState(){
         if(s.aiOutput !== undefined) document.getElementById('ai-output').innerHTML = s.aiOutput || '';
 
         if(s.panelState){
-          const editorRect = document.getElementById('editorPage').getBoundingClientRect();
+          // Восстанавливаем позицию панели
           sidePanel.style.left = (s.panelState.left || 0) + 'px';
           sidePanel.style.top = (s.panelState.top || 0) + 'px';
           sidePanel.style.right = 'auto';
+
+          // Панель ВСЕГДА стартует раскрытой — иначе при перезагрузке
+          // пользователь видит просто полоску-шапку, что неудобно.
+          // Свернуть можно вручную кнопкой ↔ в любой момент.
           if(s.panelState.width) sidePanel.style.width = s.panelState.width + 'px';
           if(s.panelState.height) sidePanel.style.height = s.panelState.height + 'px';
+
           if(s.panelState.hidden) {
             sidePanel.style.display = 'none';
             openPanelBtn.classList.add('visible');
@@ -573,6 +597,7 @@ function removeNode(id){
   const childEdges = edges.filter(e => e.from === id);
   childEdges.forEach(e => removeNode(e.to));
   edges = edges.filter(e => e.from !== id && e.to !== id);
+  unregisterPosition(id);
   node.remove();
   updateAIPreview();
   renderConnections();
@@ -599,7 +624,7 @@ function renderConnections(){
     const toY = parseFloat(toNode.style.top);
 
     const midY = (fromY + toY) / 2;
-    const controlOffset = Math.min(Math.abs(toX - fromX) * 0.5, 150);
+    const controlOffset = Math.min(Math.abs(toX - fromX) * 0.3, 55);
 
     const pathData = `M ${fromX} ${fromY}
                      C ${fromX} ${fromY + controlOffset},
@@ -659,34 +684,115 @@ function updateAIPreview(){
   document.getElementById('ai-outcomes').innerText = outcomes.length ? ('• ' + outcomes.join('\n• ')) : '—';
 }
 
+function flowNextFrameFromResponse(data) {
+  if (!data) return parseNextFrameResponse('');
+  const hasStructured = data.next_frame != null || Array.isArray(data.visual_elements) ||
+    Array.isArray(data.emotional_impact);
+  if (!hasStructured) return parseNextFrameResponse(data.result || '');
+  return {
+    nextFrame: data.next_frame || '',
+    visualElements: data.visual_elements || [],
+    emotionalImpact: data.emotional_impact || [],
+    composition: data.composition || [],
+    soundRhythm: data.sound_rhythm || [],
+    transition: data.transition || '',
+  };
+}
+
+function flowAnalysisFromResponse(data) {
+  if (!data) return parseFrameAnalysisResponse('');
+  const hasStructured = data.best_frame != null || Array.isArray(data.composition) ||
+    Array.isArray(data.strengths);
+  if (!hasStructured) return parseFrameAnalysisResponse(data.result || '');
+  return {
+    bestFrame: data.best_frame || '',
+    explanation: data.explanation || '',
+    composition: data.composition || [],
+    atmosphere: data.atmosphere || [],
+    dramaturgy: data.dramaturgy || [],
+    strengths: data.strengths || [],
+    improvements: data.improvements || [],
+    nextSteps: data.next_steps || [],
+    score: data.score || '',
+    verdict: data.verdict || '',
+  };
+}
+
 function parseNextFrameResponse(text){
-  if(!text) return { nextFrame: '', visualElements: [], emotionalImpact: [] };
+  if(!text) return { nextFrame: '', visualElements: [], emotionalImpact: [], composition: [], soundRhythm: [], transition: '' };
 
-  const nextFrameMatch = text.match(/СЛЕДУЮЩИЙ КАДР:\s*([^\n]+)/i);
-  const visualMatch = text.match(/ВИЗУАЛЬНЫЕ ЭЛЕМЕНТЫ:\s*([^\n]+)/i);
-  const emotionalMatch = text.match(/ЭМОЦИОНАЛЬНОЕ ВОЗДЕЙСТВИЕ:\s*([^\n]+)/i);
+  const m = (re) => {
+    const x = text.match(re);
+    return x ? x[1].trim() : '';
+  };
+  const list = (s) => s ? s.split(/[;\n]/).map(x => x.replace(/^[\-\*\•]\s*/, '').trim()).filter(Boolean) : [];
 
-  const nextFrame = nextFrameMatch ? nextFrameMatch[1].trim() : '';
-  const visualElements = visualMatch ? visualMatch[1].split(';').map(item => item.trim()).filter(Boolean) : [];
-  const emotionalImpact = emotionalMatch ? emotionalMatch[1].split(';').map(item => item.trim()).filter(Boolean) : [];
-
-  return { nextFrame, visualElements, emotionalImpact };
+  return {
+    nextFrame: m(/СЛЕДУЮЩИЙ КАДР:\s*([^\n]+)/i),
+    visualElements: list(m(/ВИЗУАЛЬНЫЕ ЭЛЕМЕНТЫ:\s*([^\n]+)/i)),
+    emotionalImpact: list(m(/ЭМОЦИОНАЛЬНОЕ ВОЗДЕЙСТВИЕ:\s*([^\n]+)/i)),
+    composition: list(m(/КОМПОЗИЦИЯ:\s*([^\n]+)/i)),
+    soundRhythm: list(m(/ЗВУК\s+И\s+РИТМ:\s*([^\n]+)/i)),
+    transition: m(/ПЕРЕХОД:\s*([^\n]+)/i),
+  };
 }
 
 function parseFrameAnalysisResponse(text){
-  if(!text) return { bestFrame: '', explanation: '', strengths: [], improvements: [] };
+  const empty = {
+    bestFrame: '', explanation: '',
+    composition: [], atmosphere: [], dramaturgy: [],
+    strengths: [], improvements: [], nextSteps: [],
+    score: '', verdict: '',
+  };
+  if(!text) return empty;
 
-  const bestFrameMatch = text.match(/ЛУЧШИЙ КАДР:\s*([^\n]+)/i);
-  const explanationMatch = text.match(/ПОЧЕМУ ЭТОТ КАДР:\s*([^\n]+)/i);
-  const strengthsMatch = text.match(/СИЛЬНЫЕ СТОРОНЫ:\s*([^\n]+)/i);
-  const improvementsMatch = text.match(/ВОЗМОЖНЫЕ УЛУЧШЕНИЯ:\s*([^\n]+)/i);
+  const m = (re) => {
+    const x = text.match(re);
+    return x ? x[1].trim() : '';
+  };
+  // Многострочный матч для развёрнутых полей (обоснование, вердикт) — берём всё до следующего заголовка.
+  const block = (label) => {
+    const re = new RegExp(label + '[\\s\\S]*?:\\s*([\\s\\S]*?)(?=\\n\\s*(?:КОМПОЗИЦИЯ|АТМОСФЕРА|ДРАМАТУРГИЯ|СИЛЬНЫЕ\\s+СТОРОНЫ|ВОЗМОЖНЫЕ\\s+УЛУЧШЕНИЯ|СЛЕДУЮЩИЙ\\s+ШАГ|ОЦЕНКА|ВЕРДИКТ|ПОЧЕМУ\\s+ЭТОТ\\s+КАДР|ЛУЧШИЙ\\s+КАДР)\\s*:|$)', 'i');
+    const x = text.match(re);
+    return x ? x[1].trim().replace(/\s+/g, ' ') : '';
+  };
+  const list = (s) => s ? s.split(/[;\n]/).map(x => x.replace(/^[\-\*\•]\s*/, '').trim()).filter(Boolean) : [];
 
-  const bestFrame = bestFrameMatch ? bestFrameMatch[1].trim() : '';
-  const explanation = explanationMatch ? explanationMatch[1].trim() : '';
-  const strengths = strengthsMatch ? strengthsMatch[1].split(';').map(item => item.trim()).filter(Boolean) : [];
-  const improvements = improvementsMatch ? improvementsMatch[1].split(';').map(item => item.trim()).filter(Boolean) : [];
+  return {
+    bestFrame: m(/ЛУЧШИЙ КАДР:\s*([^\n]+)/i),
+    explanation: block('ПОЧЕМУ\\s+ЭТОТ\\s+КАДР') || m(/ПОЧЕМУ ЭТОТ КАДР:\s*([^\n]+)/i),
+    composition: list(m(/КОМПОЗИЦИЯ:\s*([^\n]+)/i)),
+    atmosphere: list(m(/АТМОСФЕРА:\s*([^\n]+)/i)),
+    dramaturgy: list(m(/ДРАМАТУРГИЯ:\s*([^\n]+)/i)),
+    strengths: list(m(/СИЛЬНЫЕ СТОРОНЫ:\s*([^\n]+)/i)),
+    improvements: list(m(/ВОЗМОЖНЫЕ УЛУЧШЕНИЯ:\s*([^\n]+)/i)),
+    nextSteps: list(m(/СЛЕДУЮЩИЙ ШАГ:\s*([^\n]+)/i)),
+    score: m(/ОЦЕНКА:\s*([^\n]+)/i),
+    verdict: block('ВЕРДИКТ') || m(/ВЕРДИКТ:\s*([^\n]+)/i),
+  };
+}
 
-  return { bestFrame, explanation, strengths, improvements };
+// Маленький помощник: секция с цветным заголовком и списком пунктов.
+function renderListSection(title, color, items){
+  if(!items || !items.length) return '';
+  return `
+    <div style="margin-top: 8px;">
+      <div style="color: ${color}; font-weight: 600; font-size: 12px;">${title}</div>
+      <ul style="color: var(--text-muted); font-size: 12px; margin: 4px 0; padding-left: 16px;">
+        ${items.map(it => `<li>${escapeHtml(it)}</li>`).join('')}
+      </ul>
+    </div>
+  `;
+}
+
+function renderTextSection(title, color, text){
+  if(!text) return '';
+  return `
+    <div style="margin-top: 8px;">
+      <div style="color: ${color}; font-weight: 600; font-size: 12px;">${title}</div>
+      <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">${escapeHtml(text)}</div>
+    </div>
+  `;
 }
 
 // ========== ГЕНЕРАЦИЯ СЛЕДУЮЩЕГО КАДРА ==========
@@ -731,13 +837,13 @@ async function generateNextFrame(parentNode){
 
     if(outBox.lastElementChild === loading) outBox.removeChild(loading);
 
-    const { nextFrame, visualElements, emotionalImpact } = parseNextFrameResponse(result);
+    const { nextFrame, visualElements, emotionalImpact, composition, soundRhythm, transition } = flowNextFrameFromResponse(data);
 
     if(nextFrame) {
       const rect = parentNode.getBoundingClientRect();
       const canvasRect = canvasContent.getBoundingClientRect();
 
-      let newX = rect.left - canvasRect.left + 400;
+      let newX = rect.left - canvasRect.left + 220;
       let newY = rect.top - canvasRect.top;
 
       // Корректируем позицию, чтобы не выходить за границы
@@ -749,23 +855,12 @@ async function generateNextFrame(parentNode){
       // Показываем анализ в панели
       const analysisHTML = `
         <div class="ai-response result-highlight">
-          <div class="meta"><b>Сгенерирован следующий кадр:</b> ${nextFrame}</div>
-          ${visualElements.length > 0 ? `
-            <div style="margin-top: 8px;">
-              <div style="color: var(--visual-color); font-weight: 600; font-size: 12px;">🎬 Визуальные элементы:</div>
-              <ul class="visual-list">
-                ${visualElements.map(el => `<li>${escapeHtml(el)}</li>`).join('')}
-              </ul>
-            </div>
-          ` : ''}
-          ${emotionalImpact.length > 0 ? `
-            <div style="margin-top: 8px;">
-              <div style="color: var(--emotional-color); font-weight: 600; font-size: 12px;">💫 Эмоциональное воздействие:</div>
-              <ul class="emotional-list">
-                ${emotionalImpact.map(em => `<li>${escapeHtml(em)}</li>`).join('')}
-              </ul>
-            </div>
-          ` : ''}
+          <div class="meta"><b>Сгенерирован следующий кадр:</b> ${escapeHtml(nextFrame)}</div>
+          ${renderListSection('🎬 Визуальные элементы:', 'var(--visual-color)', visualElements)}
+          ${renderListSection('💫 Эмоциональное воздействие:', 'var(--emotional-color)', emotionalImpact)}
+          ${renderListSection('🎞️ Композиция:', 'var(--frame-color)', composition)}
+          ${renderListSection('🎵 Звук и ритм:', 'var(--accent)', soundRhythm)}
+          ${renderTextSection('🔗 Переход от предыдущего кадра:', 'var(--accent)', transition)}
         </div>
       `;
 
@@ -826,7 +921,7 @@ function showFrameAnalysisModal(){
 
 async function analyzeSelectedFrames(){
   if(selectedFramesForAnalysis.size < 2) {
-    alert('Выберите как минимум 2 кадра для анализа');
+    (window.Viora ? window.Viora.Toast.show("Выберите минимум 2 кадра для анализа", "warning") : alert("Выберите минимум 2 кадра для анализа"));
     return;
   }
 
@@ -858,39 +953,21 @@ async function analyzeSelectedFrames(){
 
     if(outBox.lastElementChild === loading) outBox.removeChild(loading);
 
-    const { bestFrame, explanation, strengths, improvements } = parseFrameAnalysisResponse(result);
+    const { bestFrame, explanation, composition, atmosphere, dramaturgy, strengths, improvements, nextSteps, score, verdict } = flowAnalysisFromResponse(data);
 
     const analysisHTML = `
       <div class="ai-response result-highlight">
         <div class="meta"><b>Анализ кадров:</b></div>
-        ${bestFrame ? `
-          <div style="margin-top: 8px;">
-            <div style="color: var(--frame-color); font-weight: 600; font-size: 12px;">🏆 Лучший кадр:</div>
-            <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">${bestFrame}</div>
-          </div>
-        ` : ''}
-        ${explanation ? `
-          <div style="margin-top: 8px;">
-            <div style="color: var(--accent); font-weight: 600; font-size: 12px;">📝 Обоснование:</div>
-            <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">${explanation}</div>
-          </div>
-        ` : ''}
-        ${strengths.length > 0 ? `
-          <div style="margin-top: 8px;">
-            <div style="color: var(--pro-color); font-weight: 600; font-size: 12px;">✅ Сильные стороны:</div>
-            <ul style="color: var(--text-muted); font-size: 12px; margin: 4px 0; padding-left: 16px;">
-              ${strengths.map(st => `<li>${escapeHtml(st)}</li>`).join('')}
-            </ul>
-          </div>
-        ` : ''}
-        ${improvements.length > 0 ? `
-          <div style="margin-top: 8px;">
-            <div style="color: var(--con-color); font-weight: 600; font-size: 12px;">💡 Возможные улучшения:</div>
-            <ul style="color: var(--text-muted); font-size: 12px; margin: 4px 0; padding-left: 16px;">
-              ${improvements.map(im => `<li>${escapeHtml(im)}</li>`).join('')}
-            </ul>
-          </div>
-        ` : ''}
+        ${renderTextSection('🏆 Лучший кадр:', 'var(--frame-color)', bestFrame)}
+        ${renderTextSection('📝 Обоснование:', 'var(--accent)', explanation)}
+        ${renderListSection('🎞️ Композиция и приёмы:', 'var(--visual-color)', composition)}
+        ${renderListSection('🌫️ Атмосфера:', 'var(--emotional-color)', atmosphere)}
+        ${renderListSection('🎭 Драматургия:', 'var(--frame-color)', dramaturgy)}
+        ${renderListSection('✅ Сильные стороны:', 'var(--pro-color)', strengths)}
+        ${renderListSection('💡 Возможные улучшения:', 'var(--con-color)', improvements)}
+        ${renderListSection('➡️ Следующий шаг:', 'var(--accent)', nextSteps)}
+        ${renderTextSection('⭐ Оценка:', 'var(--frame-color)', score)}
+        ${renderTextSection('🎬 Вердикт:', 'var(--accent)', verdict)}
       </div>
     `;
 
@@ -909,7 +986,54 @@ async function analyzeSelectedFrames(){
   aiAnalyzeFramesBtn.style.opacity = '';
 }
 
+// ========== СБРОС КАДРОВ ==========
+function resetAllFrames() {
+  const frameIds = Array.from(document.querySelectorAll('.node[data-id]'))
+    .filter(n => n.dataset.id !== 'root')
+    .map(n => n.dataset.id);
+
+  const outBox = document.getElementById('ai-output');
+  const defaultAiText = 'Используйте кнопки для добавления кадров или анализа сцены.';
+  const hasAiOutput = outBox && outBox.textContent.trim() && outBox.textContent.trim() !== defaultAiText;
+
+  if (frameIds.length === 0 && !hasAiOutput) {
+    if (window.Viora && window.Viora.Toast) {
+      window.Viora.Toast.show('Нечего сбрасывать', 'info');
+    }
+    return;
+  }
+
+  const confirmed = window.confirm(
+    'Удалить все кадры, кроме начального? Текст начального кадра и положение на холсте сохранятся.'
+  );
+  if (!confirmed) return;
+
+  frameIds.forEach(id => {
+    if (byId(id)) removeNode(id);
+  });
+
+  edges = edges.filter(e => e.from === 'root' || e.to === 'root');
+  selectedFramesForAnalysis.clear();
+  if (frameAnalysisModal) frameAnalysisModal.classList.remove('active');
+
+  if (outBox) outBox.innerHTML = defaultAiText;
+
+  isLockedUntil = 0;
+  updateTimerUI();
+  updateAIPreview();
+  renderConnections();
+  saveState();
+
+  if (window.Viora && window.Viora.Toast) {
+    window.Viora.Toast.show('Кадры сброшены', 'success');
+  }
+}
+
 // ========== ОБРАБОТЧИКИ КНОПОК ==========
+if (aiResetFramesBtn) {
+  aiResetFramesBtn.addEventListener('click', resetAllFrames);
+}
+
 aiNextFrameBtn.addEventListener('click', () => {
   const frames = Array.from(document.querySelectorAll('.node[data-type="frame"]'));
   const lastFrame = frames[frames.length - 1];
@@ -925,7 +1049,178 @@ modalCancel.addEventListener('click', () => {
   frameAnalysisModal.classList.remove('active');
 });
 
+// Сброс выбора кадров в модалке
+const modalReset = document.getElementById('modalReset');
+if (modalReset) {
+  modalReset.addEventListener('click', () => {
+    const boxes = frameList.querySelectorAll('input[type="checkbox"]');
+    let unchecked = 0;
+    boxes.forEach(cb => { if (cb.checked) { cb.checked = false; unchecked++; } });
+    if (window.Viora && window.Viora.Toast) {
+      window.Viora.Toast.show(unchecked ? `Снято галочек: ${unchecked}` : 'Нечего сбрасывать', unchecked ? 'success' : 'info', 1500);
+    }
+  });
+}
+
 // ========== ПАНЕЛЬ УПРАВЛЕНИЯ ==========
+// Сворачивание панели в полоску шапки (как на /life)
+const panelCollapseBtn = document.getElementById('panelCollapseBtn');
+if (panelCollapseBtn) {
+  panelCollapseBtn.addEventListener('click', () => {
+    const isCollapsing = sidePanel.dataset.collapsed !== '1';
+    if (isCollapsing) {
+      sidePanel.dataset.prevWidth = sidePanel.style.width || '';
+      sidePanel.dataset.prevHeight = sidePanel.style.height || '';
+      sidePanel.style.width = '';
+      sidePanel.style.height = '';
+      sidePanel.classList.add('collapsed');
+      sidePanel.dataset.collapsed = '1';
+      panelCollapseBtn.textContent = '⤢';
+      panelCollapseBtn.setAttribute('aria-expanded', 'false');
+      panelCollapseBtn.setAttribute('title', 'Развернуть');
+    } else {
+      sidePanel.classList.remove('collapsed');
+      sidePanel.dataset.collapsed = '0';
+      if (sidePanel.dataset.prevWidth) sidePanel.style.width = sidePanel.dataset.prevWidth;
+      if (sidePanel.dataset.prevHeight) sidePanel.style.height = sidePanel.dataset.prevHeight;
+      panelCollapseBtn.textContent = '↔';
+      panelCollapseBtn.setAttribute('aria-expanded', 'true');
+      panelCollapseBtn.setAttribute('title', 'Свернуть');
+    }
+    if (typeof saveState === 'function') saveState();
+  });
+}
+
+// ========== ИЗМЕНЕНИЕ ВЫСОТЫ ПАНЕЛИ ==========
+const panelBottomHandle = document.getElementById('panelBottomHandle');
+let panelResizing = false;
+let panelStartHeight = 0;
+let panelResizeStartY = 0;
+
+if (panelBottomHandle) {
+  panelBottomHandle.addEventListener('mousedown', e => {
+    panelResizing = true;
+    panelResizeStartY = e.clientY;
+    panelStartHeight = sidePanel.offsetHeight;
+    sidePanel.style.maxHeight = 'none';
+    document.body.style.userSelect = 'none';
+    e.preventDefault();
+  });
+}
+
+// ========== ПЕРЕТАСКИВАНИЕ ПАНЕЛИ (мышь + touch) ==========
+let panelDragging = false;
+let panelStartX = 0;
+let panelStartY = 0;
+let panelStartLeft = 0;
+let panelStartTop = 0;
+
+function clampPanelPosition(left, top) {
+  const editor = document.getElementById('editorPage');
+  const editorRect = editor ? editor.getBoundingClientRect() : { width: window.innerWidth, height: window.innerHeight };
+  const w = sidePanel.offsetWidth || 320;
+  const h = sidePanel.offsetHeight || 200;
+  const tail = 60; // минимум, который должен оставаться видимым
+  const minLeft = -(w - tail);
+  const maxLeft = editorRect.width - tail;
+  const minTop = 0;
+  const maxTop = Math.max(0, editorRect.height - tail);
+  return {
+    left: Math.min(Math.max(left, minLeft), maxLeft),
+    top: Math.min(Math.max(top, minTop), maxTop),
+  };
+}
+
+function panelDragStart(clientX, clientY, target) {
+  if (target && target.closest('button')) return false;
+  panelDragging = true;
+  panelStartX = clientX;
+  panelStartY = clientY;
+  const rect = sidePanel.getBoundingClientRect();
+  // Если ещё не было ручного позиционирования — берём текущие координаты из getBoundingClientRect
+  // относительно editor-page, чтобы переход с right: 10px на left: ... px был бесшовным.
+  const editor = document.getElementById('editorPage');
+  const editorRect = editor ? editor.getBoundingClientRect() : { left: 0, top: 0 };
+  panelStartLeft = parseFloat(sidePanel.style.left);
+  panelStartTop = parseFloat(sidePanel.style.top);
+  if (Number.isNaN(panelStartLeft)) panelStartLeft = rect.left - editorRect.left;
+  if (Number.isNaN(panelStartTop)) panelStartTop = rect.top - editorRect.top;
+  // Переключаем якорь с правого на левый, чтобы перетаскивание работало корректно
+  sidePanel.style.right = 'auto';
+  sidePanel.style.left = panelStartLeft + 'px';
+  sidePanel.style.top = panelStartTop + 'px';
+  document.body.style.userSelect = 'none';
+  return true;
+}
+
+function panelDragMove(clientX, clientY) {
+  if (!panelDragging) return;
+  const dx = clientX - panelStartX;
+  const dy = clientY - panelStartY;
+  const { left, top } = clampPanelPosition(panelStartLeft + dx, panelStartTop + dy);
+  sidePanel.style.left = left + 'px';
+  sidePanel.style.top = top + 'px';
+}
+
+function panelDragEnd() {
+  if (!panelDragging) return;
+  panelDragging = false;
+  document.body.style.userSelect = '';
+  if (typeof saveState === 'function') saveState();
+}
+
+if (sideHeader) {
+  sideHeader.addEventListener('mousedown', e => {
+    if (!panelDragStart(e.clientX, e.clientY, e.target)) return;
+    e.preventDefault();
+  });
+
+  sideHeader.addEventListener('touchstart', e => {
+    const t = e.touches[0];
+    if (!t) return;
+    if (!panelDragStart(t.clientX, t.clientY, e.target)) return;
+    e.preventDefault();
+  }, { passive: false });
+}
+
+document.addEventListener('mousemove', e => {
+  if (panelResizing) {
+    const dy = e.clientY - panelResizeStartY;
+    const maxH = window.innerHeight - 20;
+    sidePanel.style.height = Math.max(220, Math.min(maxH, panelStartHeight + dy)) + 'px';
+  }
+  if (panelDragging) panelDragMove(e.clientX, e.clientY);
+});
+
+document.addEventListener('touchmove', e => {
+  if (!panelDragging) return;
+  const t = e.touches[0];
+  if (!t) return;
+  panelDragMove(t.clientX, t.clientY);
+  e.preventDefault();
+}, { passive: false });
+
+document.addEventListener('mouseup', () => {
+  if (panelResizing) {
+    panelResizing = false;
+    document.body.style.userSelect = '';
+    if (typeof saveState === 'function') saveState();
+  }
+  panelDragEnd();
+});
+document.addEventListener('touchend', panelDragEnd);
+document.addEventListener('touchcancel', panelDragEnd);
+
+// При ресайзе окна — подтянуть панель обратно в видимую область, если она была вручную позиционирована.
+window.addEventListener('resize', () => {
+  if (!sidePanel.style.left) return;
+  const left = parseFloat(sidePanel.style.left) || 0;
+  const top = parseFloat(sidePanel.style.top) || 0;
+  const clamped = clampPanelPosition(left, top);
+  sidePanel.style.left = clamped.left + 'px';
+  sidePanel.style.top = clamped.top + 'px';
+});
+
 panelCloseBtn.addEventListener('click', () => {
   sidePanel.style.display = 'none';
   openPanelBtn.classList.add('visible');

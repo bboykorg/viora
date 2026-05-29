@@ -1,22 +1,35 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="ru" data-theme="dark">
 <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#0a0a0f" />
     <title>Путь Жизни — Viora</title>
-    <link rel="stylesheet" href="/static/css/styles_life.css">
+    <link rel="stylesheet" href="/static/css/common.css?v=6">
+    <link rel="stylesheet" href="/static/css/styles_life.css?v=5">
 </head>
 <body class="no-select">
-    <a class="back-link" href="/">← Назад</a>
+    <a class="back-link" href="/" aria-label="Вернуться на главную">← Назад</a>
 
-    <button class="open-panel-btn" id="openPanelBtn">Открыть ИИ</button>
+    <button class="open-panel-btn" id="openPanelBtn" type="button" aria-label="Открыть панель ИИ">Открыть ИИ</button>
 
-    <div class="zoom-controls">
-        <button class="zoom-btn" id="zoomIn" title="Увеличить">+</button>
-        <button class="zoom-btn" id="zoomOut" title="Уменьшить">−</button>
-        <button class="zoom-btn" id="resetZoom" title="Сбросить масштаб">↺</button>
-        <button class="zoom-btn" id="centerRoot" title="Центрировать на главном блоке">⌖</button>
-        <div class="zoom-display" id="zoomLevel">100%</div>
+    <!-- Тулбар: undo/redo, экспорт, импорт, помощь -->
+    <div class="viora-toolbar" role="toolbar" aria-label="Действия">
+        <button class="viora-icon-btn" id="vToolUndo" type="button" title="Отменить (Ctrl+Z)" aria-label="Отменить">↶</button>
+        <button class="viora-icon-btn" id="vToolRedo" type="button" title="Повторить (Ctrl+Shift+Z)" aria-label="Повторить">↷</button>
+        <button class="viora-icon-btn" id="vToolExport" type="button" title="Экспорт (Ctrl+S)" aria-label="Экспортировать дерево">⤓</button>
+        <button class="viora-icon-btn" id="vToolImport" type="button" title="Импорт JSON" aria-label="Импортировать JSON">⤒</button>
+        <button class="viora-icon-btn" id="vToolMarkdown" type="button" title="Экспорт в Markdown" aria-label="Экспортировать в Markdown">md</button>
+        <button class="viora-icon-btn" id="vToolTheme" type="button" title="Сменить тему" aria-label="Сменить тему">☾</button>
+        <button class="viora-icon-btn" id="vToolHelp" type="button" title="Горячие клавиши (?)" aria-label="Горячие клавиши">?</button>
+    </div>
+
+    <div class="zoom-controls" role="group" aria-label="Масштаб холста">
+        <button class="zoom-btn" id="zoomIn" type="button" title="Увеличить" aria-label="Увеличить">+</button>
+        <button class="zoom-btn" id="zoomOut" type="button" title="Уменьшить" aria-label="Уменьшить">−</button>
+        <button class="zoom-btn" id="resetZoom" type="button" title="Сбросить масштаб" aria-label="Сбросить масштаб">↺</button>
+        <button class="zoom-btn" id="centerRoot" type="button" title="Центрировать на главном блоке" aria-label="Центрировать на главном блоке">⌖</button>
+        <div class="zoom-display" id="zoomLevel" aria-live="polite">100%</div>
     </div>
 
     <div class="editor-page" id="editorPage">
@@ -24,14 +37,14 @@
             <div class="canvas-container" id="canvasContainer">
                 <div class="canvas-transform" id="canvasTransform">
                     <div class="canvas-content" id="canvasContent">
-                        <svg class="connector-svg" id="connectors"></svg>
+                        <svg class="connector-svg" id="connectors" aria-hidden="true"></svg>
 
                         <div class="node" id="node-root" style="left: calc(50% - 110px); top: 80px;" data-id="root">
-                            <div contenteditable class="title" data-placeholder="Опишите проблему...">Нажмите и впишите проблему</div>
+                            <div contenteditable="true" class="title" data-placeholder="Опишите проблему..." role="textbox" aria-label="Заголовок дерева">Нажмите и впишите проблему</div>
                             <div class="controls">
                                 <div class="small-muted">Главный пункт</div>
                                 <div class="buttons-container">
-                                    <div class="add-btn" title="Добавить исход" data-add>+</div>
+                                    <div class="add-btn" title="Добавить исход" data-add role="button" tabindex="0" aria-label="Добавить исход">+</div>
                                 </div>
                             </div>
                         </div>
@@ -41,49 +54,61 @@
         </div>
 
         <div class="side-panel" id="sidePanel" role="region" aria-label="ИИ-панель">
-            <div class="panel-left-handle" id="panelHandle" title="Перетащите чтобы изменить ширину"></div>
+            <div class="panel-left-handle" id="panelHandle" title="Перетащите чтобы изменить ширину" aria-hidden="true"></div>
+            <div class="panel-bottom-handle" id="panelBottomHandle" title="Перетащите чтобы изменить высоту" aria-hidden="true"></div>
             <div class="side-header" id="sideHeader">
                 <div>
                     <div class="side-title">ИИ-помощник</div>
-                    <div class="side-sub">Перетащите заголовок чтобы переместить панель; потяните слева чтобы изменить ширину.</div>
+                    <div class="side-sub">1) Вопрос и варианты → «Создать дерево»  2) «Проанализировать»</div>
                 </div>
                 <div style="display:flex;gap:8px;align-items:center">
-                    <button id="panelCollapseBtn" class="button-ghost" title="Свернуть/развернуть">↔</button>
-                    <button id="panelCloseBtn" class="button-ghost" title="Скрыть панель">✕</button>
+                    <button id="panelCollapseBtn" class="button-ghost" type="button" title="Свернуть/развернуть" aria-label="Свернуть/развернуть панель">↔</button>
+                    <button id="panelCloseBtn" class="button-ghost" type="button" title="Скрыть панель" aria-label="Скрыть панель">✕</button>
                 </div>
             </div>
 
-            <div style="font-weight:600">Заголовок (проблема)</div>
-            <div id="ai-title" class="small-muted" style="min-height:34px">—</div>
+            <section class="setup-form" id="setupForm" aria-label="Настройка дерева">
+                <label class="setup-label" for="setup-question">Ваш вопрос / проблема</label>
+                <textarea id="setup-question" class="setup-textarea" rows="3" placeholder="Например: Стоит ли менять работу в этом году?"></textarea>
 
-            <div style="height:10px"></div>
-            <div style="font-weight:600">Исходы (варианты решения)</div>
-            <div id="ai-outcomes" class="small-muted" style="min-height:60px">—</div>
+                <div class="setup-label-row">
+                    <span class="setup-label">Варианты решения</span>
+                </div>
+                <div id="setup-outcomes-list" class="setup-outcomes-list" role="list"></div>
+                <button type="button" class="button-ghost setup-add-btn" id="setup-add-outcome">+ Добавить вариант</button>
 
-            <div style="height:12px"></div>
-            <div class="ai-box" id="ai-output">Нажмите «Предложить», чтобы ИИ проанализировал варианты.</div>
+                <div class="action-row setup-actions">
+                    <button type="button" class="button-primary" id="setup-build-tree">Создать дерево</button>
+                </div>
+            </section>
+
+            <div class="setup-divider" aria-hidden="true"></div>
+
+            <div class="ai-box" id="ai-output" role="region" aria-live="polite" aria-label="Ответ ИИ">Создайте дерево на холсте, затем нажмите «Проанализировать».</div>
 
             <div class="action-row" style="margin-top:12px">
-                <button class="button-primary" id="ai-run">Предложить</button>
-                <button class="button-danger" id="ai-reset">Сброс ответов</button>
+                <button class="button-primary" id="ai-analyze" type="button">Проанализировать</button>
+                <button class="button-danger" id="ai-reset" type="button">Сброс ответов</button>
             </div>
 
             <div style="height:8px"></div>
-            <div class="small-muted">Таймер блокировки: <span id="ai-timer">—</span></div>
+            <div class="small-muted">Таймер блокировки: <span id="ai-timer" aria-live="polite">—</span></div>
         </div>
     </div>
 
-    <div class="modal-overlay" id="modalOverlay">
+    <div class="modal-overlay" id="modalOverlay" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
         <div class="modal-content">
             <div class="modal-title" id="modalTitle">Подтверждение</div>
             <div class="modal-text" id="modalText">Вы уверены, что хотите выполнить это действие?</div>
             <div class="modal-actions">
-                <button class="modal-button cancel" id="modalCancel">Отмена</button>
-                <button class="modal-button confirm" id="modalConfirm">ОК</button>
+                <button class="modal-button cancel" id="modalCancel" type="button">Отмена</button>
+                <button class="modal-button confirm" id="modalConfirm" type="button">ОК</button>
             </div>
         </div>
     </div>
 
-<script src="/static/scripts/life.js"></script>
+    <script src="/static/scripts/common.js?v=5"></script>
+    <script src="/static/scripts/life.js?v=7"></script>
+    <script src="/static/scripts/life-enhancements.js?v=5"></script>
 </body>
 </html>

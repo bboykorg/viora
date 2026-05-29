@@ -1,21 +1,33 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="ru" data-theme="dark">
 <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#0a0a0f" />
     <title>Поток Кадров — Viora</title>
+    <link rel="stylesheet" href="/static/css/common.css?v=6">
     <link rel="stylesheet" href="/static/css/styles_flow.css">
 </head>
 
 <body class="no-select">
-    <a class="back-link" href="/">← Назад</a>
-    <button class="open-panel-btn" id="openPanelBtn">Открыть ИИ</button>
+    <a class="back-link" href="/" aria-label="Вернуться на главную">← Назад</a>
+    <button class="open-panel-btn" id="openPanelBtn" type="button" aria-label="Открыть панель ИИ">Открыть ИИ</button>
 
-    <div class="zoom-controls">
-        <button class="zoom-btn" id="zoomIn" title="Увеличить">+</button>
-        <button class="zoom-btn" id="zoomOut" title="Уменьшить">−</button>
-        <button class="zoom-btn" id="resetZoom" title="Сбросить масштаб">↺</button>
-        <div class="zoom-display" id="zoomLevel">100%</div>
+    <div class="viora-toolbar" role="toolbar" aria-label="Действия">
+        <button class="viora-icon-btn" id="vToolUndo" type="button" title="Отменить (Ctrl+Z)" aria-label="Отменить">↶</button>
+        <button class="viora-icon-btn" id="vToolRedo" type="button" title="Повторить (Ctrl+Shift+Z)" aria-label="Повторить">↷</button>
+        <button class="viora-icon-btn" id="vToolExport" type="button" title="Экспорт (Ctrl+S)" aria-label="Экспортировать сценарий">⤓</button>
+        <button class="viora-icon-btn" id="vToolImport" type="button" title="Импорт JSON" aria-label="Импортировать JSON">⤒</button>
+        <button class="viora-icon-btn" id="vToolMarkdown" type="button" title="Экспорт в Markdown" aria-label="Экспортировать в Markdown">md</button>
+        <button class="viora-icon-btn" id="vToolTheme" type="button" title="Сменить тему" aria-label="Сменить тему">☾</button>
+        <button class="viora-icon-btn" id="vToolHelp" type="button" title="Горячие клавиши (?)" aria-label="Горячие клавиши">?</button>
+    </div>
+
+    <div class="zoom-controls" role="group" aria-label="Масштаб холста">
+        <button class="zoom-btn" id="zoomIn" type="button" title="Увеличить" aria-label="Увеличить">+</button>
+        <button class="zoom-btn" id="zoomOut" type="button" title="Уменьшить" aria-label="Уменьшить">−</button>
+        <button class="zoom-btn" id="resetZoom" type="button" title="Сбросить масштаб" aria-label="Сбросить масштаб">↺</button>
+        <div class="zoom-display" id="zoomLevel" aria-live="polite">100%</div>
     </div>
 
     <div class="editor-page" id="editorPage">
@@ -23,15 +35,15 @@
             <div class="canvas-container" id="canvasContainer">
                 <div class="canvas-transform" id="canvasTransform">
                     <div class="canvas-content" id="canvasContent">
-                        <svg class="connector-svg" id="connectors"></svg>
+                        <svg class="connector-svg" id="connectors" aria-hidden="true"></svg>
 
                         <div class="node" id="node-root" style="left: calc(50% - 110px); top: 80px;" data-id="root" data-type="frame">
-                            <div contenteditable class="title" data-placeholder="Опишите сцену...">Начните с первого кадра</div>
+                            <div contenteditable="true" class="title" data-placeholder="Опишите сцену..." role="textbox" aria-label="Описание сцены">Начните с первого кадра</div>
                             <div class="controls">
                                 <div class="small-muted">Начальный кадр</div>
                                 <div class="buttons-container">
-                                    <div class="add-btn" title="Добавить кадр" data-add>+</div>
-                                    <div class="next-frame-btn" title="Следующий кадр (ИИ)" data-next-frame>→</div>
+                                    <div class="add-btn" title="Добавить кадр" data-add role="button" tabindex="0" aria-label="Добавить кадр">+</div>
+                                    <div class="next-frame-btn" title="Следующий кадр (ИИ)" data-next-frame role="button" tabindex="0" aria-label="Сгенерировать следующий кадр">→</div>
                                 </div>
                             </div>
                         </div>
@@ -41,13 +53,15 @@
         </div>
 
         <div class="side-panel" id="sidePanel" role="region" aria-label="ИИ-панель">
+            <div class="panel-bottom-handle" id="panelBottomHandle" title="Перетащите чтобы изменить высоту" aria-hidden="true"></div>
             <div class="side-header" id="sideHeader">
                 <div>
                     <div class="side-title">Режиссер ИИ</div>
                     <div class="small-muted">Анализ и генерация кадров</div>
                 </div>
                 <div style="display:flex;gap:8px;align-items:center">
-                    <button id="panelCloseBtn" class="button-ghost" title="Скрыть панель">✕</button>
+                    <button id="panelCollapseBtn" class="button-ghost" type="button" title="Свернуть/развернуть" aria-label="Свернуть/развернуть панель">↔</button>
+                    <button id="panelCloseBtn" class="button-ghost" type="button" title="Скрыть панель" aria-label="Скрыть панель">✕</button>
                 </div>
             </div>
 
@@ -59,34 +73,36 @@
             <div id="ai-outcomes" class="small-muted" style="min-height:60px">—</div>
 
             <div style="height:12px"></div>
-            <div class="ai-box" id="ai-output">Используйте кнопки для добавления кадров или анализа сцены.</div>
+            <div class="ai-box" id="ai-output" role="region" aria-live="polite" aria-label="Ответ ИИ">Используйте кнопки для добавления кадров или анализа сцены.</div>
 
             <div class="action-row" style="margin-top:12px">
-                <button class="button-primary" id="ai-next-frame">Следующий кадр (ИИ)</button>
-                <button class="button-special" id="ai-analyze-frames">Анализ кадров</button>
+                <button class="button-primary" id="ai-next-frame" type="button">Следующий кадр (ИИ)</button>
+                <button class="button-special" id="ai-analyze-frames" type="button">Анализ кадров</button>
+                <button class="button-danger" id="ai-reset-frames" type="button">Сброс кадров</button>
             </div>
 
             <div style="height:8px"></div>
-            <div class="small-muted">Таймер блокировки: <span id="ai-timer">—</span></div>
+            <div class="small-muted">Таймер блокировки: <span id="ai-timer" aria-live="polite">—</span></div>
         </div>
     </div>
 
-    <div class="frame-analysis-modal" id="frameAnalysisModal">
+    <div class="frame-analysis-modal" id="frameAnalysisModal" role="dialog" aria-modal="true" aria-labelledby="frameAnalysisTitle">
         <div class="frame-analysis-content">
-            <div style="font-weight:600;font-size:18px;margin-bottom:15px;">Выбор кадров для анализа</div>
+            <div id="frameAnalysisTitle" style="font-weight:600;font-size:18px;margin-bottom:15px;">Выбор кадров для анализа</div>
             <div class="small-muted" style="margin-bottom:15px;">Выберите кадры для сравнения и анализа:</div>
 
-            <div class="frame-list" id="frameList">
-
-            </div>
+            <div class="frame-list" id="frameList"></div>
 
             <div class="action-row" style="margin-top:20px;">
-                <button class="button-ghost" id="modalCancel">Отмена</button>
-                <button class="button-special" id="modalAnalyze">Анализировать</button>
+                <button class="button-ghost" id="modalCancel" type="button">Отмена</button>
+                <button class="button-ghost" id="modalReset" type="button" title="Снять все галочки">Сбросить выбор</button>
+                <button class="button-special" id="modalAnalyze" type="button">Анализировать</button>
             </div>
         </div>
     </div>
 
-<script src="/static/scripts/flow.js"></script>
+    <script src="/static/scripts/common.js"></script>
+    <script src="/static/scripts/flow.js"></script>
+    <script src="/static/scripts/flow-enhancements.js"></script>
 </body>
 </html>

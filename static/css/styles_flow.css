@@ -83,10 +83,12 @@ body {
     position: absolute;
     right: 10px;
     top: 10px;
-    width: 320px;
-    max-width: 90vw;
-    height: calc(100vh - 40px);
-    max-height: 70vh;
+    width: 380px;
+    min-width: 260px;
+    max-width: min(92vw, 960px);
+    height: min(75vh, calc(100vh - 40px));
+    min-height: 220px;
+    max-height: calc(100vh - 20px);
     background: var(--panel-bg);
     border-radius: 10px;
     padding: 10px;
@@ -95,10 +97,52 @@ body {
     flex-direction: column;
     box-sizing: border-box;
     z-index: 1000;
-    touch-action: none;
+    resize: both;
+    overflow: auto;
+    transition: width 0.22s ease, height 0.22s ease, padding 0.22s ease;
 }
 .side-panel.hidden {
     display: none;
+}
+
+/* Свёрнутое состояние — остаётся только шапка */
+.side-panel.collapsed {
+    width: auto !important;
+    height: auto !important;
+    max-height: none;
+    padding: 6px;
+    resize: none;
+    min-width: 0;
+}
+.side-panel.collapsed > *:not(.side-header) {
+    display: none !important;
+}
+.side-panel.collapsed .panel-bottom-handle {
+    display: none !important;
+}
+.side-panel.collapsed .side-header {
+    margin-bottom: 0;
+    border-bottom: none;
+    padding: 4px 6px;
+    gap: 10px;
+}
+.side-panel.collapsed .side-title {
+    font-size: 13px;
+    white-space: nowrap;
+}
+.side-panel.collapsed .small-muted {
+    display: none;
+}
+.panel-bottom-handle {
+    position: absolute;
+    left: 8px;
+    right: 8px;
+    bottom: -6px;
+    height: 10px;
+    cursor: ns-resize;
+    border-radius: 6px;
+    background: rgba(255,255,255,0.08);
+    z-index: 2;
 }
 .open-panel-btn {
     position: fixed;

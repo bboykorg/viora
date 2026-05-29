@@ -1,23 +1,24 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="ru" data-theme="dark">
 <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <meta name="description" content="Viora - Сделай свой выбор видимым. Космический портал для осознанных решений.">
-    <title>Viora - Портал осознанных решений</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="description" content="Viora — космический портал для осознанных решений. Дерево решений + сценарный конструктор с ИИ.">
+    <meta name="theme-color" content="#0a0a0f" />
+    <title>Viora — портал осознанных решений</title>
+    <link rel="stylesheet" href="/static/css/common.css">
     <link rel="stylesheet" href="/static/css/styles_index.css">
-
 </head>
 <body>
-    <canvas id="stars-bg" class="canvas-layer"></canvas>
-    <canvas id="nebula" class="canvas-layer"></canvas>
-    <canvas id="stars-mid" class="canvas-layer"></canvas>
-    <canvas id="stars-front" class="canvas-layer"></canvas>
-    <canvas id="comets" class="canvas-layer"></canvas>
-    <canvas id="particles" class="canvas-layer"></canvas>
+    <canvas id="stars-bg" class="canvas-layer" aria-hidden="true"></canvas>
+    <canvas id="nebula" class="canvas-layer" aria-hidden="true"></canvas>
+    <canvas id="stars-mid" class="canvas-layer" aria-hidden="true"></canvas>
+    <canvas id="stars-front" class="canvas-layer" aria-hidden="true"></canvas>
+    <canvas id="comets" class="canvas-layer" aria-hidden="true"></canvas>
+    <canvas id="particles" class="canvas-layer" aria-hidden="true"></canvas>
 
-    <div id="logo-screen" class="screen active">
-        <svg id="viora-logo" viewBox="0 0 550 200" xmlns="http://www.w3.org/2000/svg">
+    <div id="logo-screen" class="screen active" aria-hidden="true">
+        <svg id="viora-logo" viewBox="0 0 550 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Логотип Viora">
             <defs>
                 <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="0%">
                     <stop offset="0%" stop-color="#00d9ff" />
@@ -48,15 +49,16 @@
                 <path id="a-2" d="M 465 120 L 515 120" stroke="url(#logoGradient)" stroke-width="4" fill="none" stroke-linecap="round" filter="url(#glow)"/>
             </g>
         </svg>
+        <button id="skip-logo" type="button" aria-label="Пропустить анимацию логотипа">Пропустить →</button>
     </div>
 
-    <div id="main-screen" class="screen">
+    <main id="main-screen" class="screen" aria-label="Главная">
         <div class="main-container">
-            <div class="buttons-wrapper">
-                <a class="glass-button cyan-button" href="/life" >
+            <nav class="buttons-wrapper" aria-label="Инструменты">
+                <a class="glass-button cyan-button" href="/life" aria-label="Открыть инструмент «Путь Жизни»">
                     <div class="button-glow"></div>
                     <div class="button-content">
-                        <svg class="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <svg class="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/>
                         </svg>
                         <h2 class="button-title">Путь Жизни</h2>
@@ -64,89 +66,91 @@
                     </div>
                 </a>
 
-                <a class="glass-button purple-button" href="/flow">
+                <a class="glass-button purple-button" href="/flow" aria-label="Открыть инструмент «Поток Кадров»">
                     <div class="button-glow"></div>
                     <div class="button-content">
-                        <svg class="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <svg class="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z"/>
                         </svg>
                         <h2 class="button-title">Поток Кадров</h2>
                         <p class="button-description">Создавай сюжеты для видео<br>и презентаций</p>
                     </div>
                 </a>
-            </div>
+            </nav>
 
             <p class="tagline">Сделай свой выбор видимым</p>
         </div>
 
         <div id="wallpaper-toggle-container">
-            <span class="toggle-label">Живые обои</span>
-            <label class="toggle-switch">
-                <input type="checkbox" id="wallpaper-toggle" checked>
-                <span class="slider round"></span>
+            <span class="toggle-label" id="wallpaper-toggle-label">Живые обои</span>
+            <label class="toggle-switch" for="wallpaper-toggle">
+                <input type="checkbox" id="wallpaper-toggle" checked aria-labelledby="wallpaper-toggle-label">
+                <span class="slider round" aria-hidden="true"></span>
             </label>
         </div>
 
-        <div id="profile-avatar">
-            <svg class="icon" viewBox="0 0 24 24">
+        <button id="profile-avatar" type="button" aria-label="Открыть профиль">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
                 <circle cx="9" cy="7" r="4"></circle>
                 <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
                 <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
             </svg>
-        </div>
+        </button>
 
-        <div id="registration-modal" class="modal-backdrop">
+        <div id="registration-modal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="reg-modal-title">
             <div class="modal-box">
-                <h3 class="modal-title">Приветствие в Viora</h3>
+                <h3 class="modal-title" id="reg-modal-title">Приветствие в Viora</h3>
                 <div class="input-group">
-                    <label for="reg-name-input">Назовите себя, чтобы войти в Портал:</label>
-                    <input type="text" id="reg-name-input" class="name-input" placeholder="Введите ваше имя">
+                    <label for="reg-name-input">Назовите себя, чтобы войти в портал:</label>
+                    <input type="text" id="reg-name-input" class="name-input" placeholder="Введите ваше имя" autocomplete="given-name" maxlength="40">
                 </div>
                 <div class="modal-actions">
-                    <button class="action-button no" id="reg-no">
-                        <svg class="icon" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    <button class="action-button no" id="reg-no" type="button" aria-label="Войти как Гость">
+                        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                     </button>
-                    <button class="action-button yes" id="reg-yes" disabled>
-                        <svg class="icon" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    <button class="action-button yes" id="reg-yes" type="button" disabled aria-label="Сохранить имя">
+                        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
                     </button>
                 </div>
             </div>
         </div>
 
-        <div id="profile-modal" class="modal-backdrop">
+        <div id="profile-modal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="profile-modal-title">
             <div class="modal-box" id="profile-modal-box">
                 <div class="profile-avatar-display">
-                    <svg class="icon" viewBox="0 0 24 24">
+                    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
                         <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
                         <circle cx="9" cy="7" r="4"></circle>
                         <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
                         <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
                     </svg>
-                    <div class="edit-icon" id="edit-profile-icon">
-                        <svg class="icon" viewBox="0 0 24 24"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
-                    </div>
+                    <button class="edit-icon" id="edit-profile-icon" type="button" aria-label="Редактировать имя">
+                        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
+                    </button>
                 </div>
 
+                <h3 id="profile-modal-title" class="sr-only">Профиль</h3>
                 <div class="profile-info">
                     Вы: <span id="profile-name-display" class="profile-username">Гость</span>
-                    <input type="text" id="profile-name-input" class="profile-input-edit" style="display: none;">
+                    <input type="text" id="profile-name-input" class="profile-input-edit" style="display: none;" maxlength="40">
                 </div>
 
                 <div class="modal-actions">
-                    <button class="action-button no" id="profile-no">
-                        <svg class="icon" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    <button class="action-button no" id="profile-no" type="button" aria-label="Отмена">
+                        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                     </button>
-                    <button class="action-button yes" id="profile-yes" disabled>
-                        <svg class="icon" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    <button class="action-button yes" id="profile-yes" type="button" disabled aria-label="Сохранить">
+                        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
                     </button>
                 </div>
             </div>
         </div>
-    </div>
+    </main>
+
+    <!-- GSAP — только то, что используется (минимум зависимостей). Bootstrap/Popper удалены — они не использовались. -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js" integrity="sha384-I7E8VVD/ismYTF4hNIPjVp/Zjvgyol6VFvRkX/vR+Vc4jQkC+hVqc2pM8ODewa9r" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.min.js" integrity="sha384-G/EV+4j2dNv+tEPo3++6LCgdCROaejBqfUeNjuKAiuXbjrxilcCdDz6ZAVfHWe1Y" crossorigin="anonymous"></script>
+    <script src="/static/scripts/common.js"></script>
     <script src="/static/scripts/index.js"></script>
 </body>
 </html>

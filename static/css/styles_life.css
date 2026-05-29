@@ -93,9 +93,11 @@ body {
     right: 10px;
     top: 10px;
     width: 320px;
-    max-width: 90vw;
-    height: calc(100vh - 40px);
-    max-height: 70vh;
+    min-width: 260px;
+    max-width: min(92vw, 960px);
+    height: min(70vh, calc(100vh - 40px));
+    min-height: 220px;
+    max-height: calc(100vh - 20px);
     background: var(--panel-bg);
     border-radius: 10px;
     padding: 10px;
@@ -105,8 +107,41 @@ body {
     box-sizing: border-box;
     z-index: 1000;
     touch-action: none;
+    transition: width 0.22s ease, height 0.22s ease, padding 0.22s ease;
+    resize: both;
+    overflow: auto;
 }
 .side-panel.hidden {
+    display: none;
+}
+
+/* Свёрнутое состояние — остаётся только шапка с кнопками */
+.side-panel.collapsed {
+    width: auto !important;
+    height: auto !important;
+    max-height: none;
+    padding: 6px;
+    resize: none;
+    min-width: 0;
+}
+.side-panel.collapsed > *:not(.side-header) {
+    display: none !important;
+}
+.side-panel.collapsed .panel-left-handle,
+.side-panel.collapsed .panel-bottom-handle {
+    display: none !important;
+}
+.side-panel.collapsed .side-header {
+    margin-bottom: 0;
+    border-bottom: none;
+    padding: 4px 6px;
+    gap: 10px;
+}
+.side-panel.collapsed .side-title {
+    font-size: 13px;
+    white-space: nowrap;
+}
+.side-panel.collapsed .small-muted {
     display: none;
 }
 .open-panel-btn {
@@ -153,8 +188,20 @@ body {
     width: 12px;
     cursor: ew-resize;
     border-radius: 6px;
-    background: rgba(255,255,255,0.1);
-    display: none;
+    background: rgba(255,255,255,0.12);
+    display: block;
+    z-index: 2;
+}
+.panel-bottom-handle {
+    position: absolute;
+    left: 8px;
+    right: 8px;
+    bottom: -6px;
+    height: 10px;
+    cursor: ns-resize;
+    border-radius: 6px;
+    background: rgba(255,255,255,0.08);
+    z-index: 2;
 }
 .node {
     width: 90vw;
@@ -234,6 +281,49 @@ body {
 .node[data-type="cons-container"] .add-btn {
     display: none !important;
 }
+
+/* === Новые AI-категории: риски, рекомендации, вердикт === */
+.node[data-type="risk"] {
+    border-left: 4px solid rgba(245,158,11,0.4);
+    background: rgba(245,158,11,0.06);
+}
+.node[data-type="recommendation"] {
+    border-left: 4px solid rgba(96,165,250,0.4);
+    background: rgba(96,165,250,0.06);
+}
+.node[data-type="verdict"] {
+    border-left: 4px solid rgba(167,139,250,0.45);
+    background: rgba(167,139,250,0.08);
+    font-style: italic;
+}
+.node[data-type="risks-container"] {
+    border-left: 4px solid rgba(245,158,11,0.55);
+    background: rgba(245,158,11,0.10);
+    font-weight: 700;
+    font-size: 14px;
+    color: #f59e0b;
+}
+.node[data-type="recommendations-container"] {
+    border-left: 4px solid rgba(96,165,250,0.55);
+    background: rgba(96,165,250,0.10);
+    font-weight: 700;
+    font-size: 14px;
+    color: #60a5fa;
+}
+.node[data-type="risks-container"] .buttons-container,
+.node[data-type="recommendations-container"] .buttons-container {
+    display: flex;
+}
+.node[data-type="risks-container"] .title,
+.node[data-type="recommendations-container"] .title {
+    cursor: default;
+    user-select: none;
+}
+.node[data-type="risks-container"] .add-btn,
+.node[data-type="recommendations-container"] .add-btn {
+    display: none !important;
+}
+
 .controls {
     display: flex;
     align-items: center;
@@ -310,6 +400,18 @@ body {
     stroke: var(--con-color) !important;
     filter: drop-shadow(0 0 4px rgba(239,68,68,0.4));
 }
+.connector-svg path.connector-risk {
+    stroke: #f59e0b !important;
+    filter: drop-shadow(0 0 4px rgba(245,158,11,0.4));
+}
+.connector-svg path.connector-recommendation {
+    stroke: #60a5fa !important;
+    filter: drop-shadow(0 0 4px rgba(96,165,250,0.4));
+}
+.connector-svg path.connector-verdict {
+    stroke: #a78bfa !important;
+    filter: drop-shadow(0 0 4px rgba(167,139,250,0.4));
+}
 .connector-svg path.connector-glow {
     filter: blur(8px);
     stroke-linecap: round;
@@ -352,6 +454,114 @@ body {
     margin: 6px 0 0 0;
     font-family: inherit;
     font-size: 12px;
+}
+.setup-form {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+.setup-label {
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--text-primary);
+}
+.setup-label-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: 4px;
+}
+.setup-textarea {
+    width: 100%;
+    min-height: 72px;
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(0,0,0,0.25);
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 13px;
+    line-height: 1.45;
+    resize: vertical;
+    user-select: text;
+    -webkit-user-select: text;
+}
+.setup-textarea:focus {
+    outline: none;
+    border-color: rgba(125,211,252,0.45);
+    box-shadow: 0 0 0 2px rgba(125,211,252,0.12);
+}
+.setup-outcomes-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 180px;
+    overflow-y: auto;
+}
+.setup-outcome-row {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+.setup-outcome-input {
+    flex: 1;
+    min-width: 0;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(0,0,0,0.25);
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 13px;
+    user-select: text;
+    -webkit-user-select: text;
+}
+.setup-outcome-input:focus {
+    outline: none;
+    border-color: rgba(125,211,252,0.45);
+}
+.setup-outcome-remove {
+    flex: 0 0 36px;
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    padding: 0;
+    border-radius: 8px;
+    border: 1px solid rgba(239,68,68,0.25);
+    background: rgba(239,68,68,0.08);
+    color: #ef4444;
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+    touch-action: manipulation;
+}
+.setup-outcome-remove:hover {
+    background: rgba(239,68,68,0.18);
+}
+.setup-add-btn {
+    flex: none !important;
+    min-height: 40px !important;
+    width: 100%;
+    font-size: 13px;
+}
+.setup-actions {
+    margin-top: 4px;
+}
+.setup-divider {
+    height: 1px;
+    margin: 12px 0;
+    background: rgba(255,255,255,0.08);
+}
+html[data-theme="light"] .setup-textarea,
+html[data-theme="light"] .setup-outcome-input {
+    background: rgba(255,255,255,0.92);
+    border-color: rgba(0,0,0,0.12);
+    color: #0a0a0f;
+}
+html[data-theme="light"] .setup-divider {
+    background: rgba(0,0,0,0.08);
 }
 .action-row {
     display: flex;
@@ -748,4 +958,85 @@ body {
         height: 32px;
         font-size: 14px;
     }
+}
+/* ── Расширенный AI-отчёт ──────────────────────────────────────── */
+.ai-section {
+    margin-top: 12px;
+}
+.ai-section:first-child {
+    margin-top: 8px;
+}
+.ai-section-title {
+    color: var(--text-primary);
+    font-weight: 700;
+    font-size: 12px;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+}
+.ai-section-body {
+    font-size: 13px;
+    line-height: 1.45;
+    color: var(--text-muted);
+}
+
+/* Списки */
+.risks-list,
+.recs-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.risks-list li,
+.recs-list li {
+    padding: 5px 8px 5px 14px;
+    margin: 4px 0;
+    font-size: 13px;
+    line-height: 1.4;
+    border-left: 2px solid;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.03);
+}
+.risks-list li { border-left-color: #f59e0b; color: #fde0a0; }
+.recs-list  li { border-left-color: #60a5fa; color: #c5dcff; }
+
+/* Оценка */
+.ai-rating-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.ai-rating-value {
+    font-weight: 700;
+    font-size: 14px;
+    white-space: nowrap;
+}
+.ai-rating-bar {
+    flex: 1;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 999px;
+    overflow: hidden;
+}
+.ai-rating-fill {
+    height: 100%;
+    border-radius: 999px;
+    transition: width 0.6s cubic-bezier(.2,.7,.3,1);
+    box-shadow: 0 0 12px rgba(255, 255, 255, 0.15) inset;
+}
+
+/* Вердикт */
+.ai-verdict {
+    background: linear-gradient(135deg, rgba(0,217,255,0.07), rgba(168,85,247,0.07));
+    border: 1px solid rgba(0,217,255,0.2);
+    border-left: 3px solid var(--accent, #00d9ff);
+    padding: 10px 12px;
+    border-radius: 8px;
+    margin-top: 14px;
+}
+.ai-verdict .verdict-body {
+    font-size: 13.5px;
+    line-height: 1.5;
+    color: #e6f6ff;
+    font-style: italic;
 }
